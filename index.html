@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Reproductor M3U8</title>
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Librería HLS.js para poder reproducir enlaces .m3u8 -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-6 font-sans">
+
+    <div class="max-w-4xl w-full">
+        <h1 class="text-3xl font-bold mb-2 text-blue-400 text-center">📺 Mi Reproductor IPTV</h1>
+        <p class="text-gray-400 text-center mb-8">Selecciona un canal de la lista</p>
+
+        <!-- Lista de canales internos -->
+        <div id="listaCanales" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <!-- Los botones de los canales se generarán aquí desde JavaScript -->
+        </div>
+
+        <!-- Contenedor del Video -->
+        <div class="bg-black w-full aspect-video rounded-xl overflow-hidden shadow-2xl relative border-2 border-gray-800">
+            <video id="reproductor" class="w-full h-full" controls></video>
+        </div>
+
+        <div id="mensajeError" class="mt-4 text-red-500 text-center hidden font-semibold bg-red-900/30 p-3 rounded-lg border border-red-800">
+            Error al cargar el video. Revisa el enlace.
+        </div>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('reproductor');
+        const listaCanalesDiv = document.getElementById('listaCanales');
+        const mensajeError = document.getElementById('mensajeError');
+        let hls; // Variable para guardar la instancia de hls.js
+
+        // === TUS CANALES INTERNOS AQUÍ ===
+        // Agrega, modifica o elimina los canales en esta lista
+        const misCanales = [
+            { nombre: "Canal de Prueba", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" },
+            { nombre: "Película Sintel", url: "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8" },
+            { nombre: "Tears of Steel", url: "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" },
+            { nombre: "Mi Canal Personal", url: "AQUI_PEGA_TU_ENLACE_M3U8" }
+        ];
+
+        // Función para crear los botones en la pantalla automáticamente
+        function renderizarCanales() {
+            misCanales.forEach(canal => {
+                const boton = document.createElement('button');
+                boton.className = "bg-gray-800 hover:bg-blue-600 border border-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 truncate shadow-md";
+                boton.innerText = canal.nombre;
+                boton.onclick = () => cargarVideo(canal.url);
+                listaCanalesDiv.appendChild(boton);
+            });
+        }
+
+        function cargarVideo(url) {
+            mensajeError.classList.add('hidden');
+
+            if (!url || url === "AQUI_PEGA_TU_ENLACE_M3U8") {
+                mensajeError.classList.remove('hidden');
+                mensajeError.innerText = "Este canal no tiene un enlace válido configurado.";
+                return;
+            }
+
+            // Si ya hay un video reproduciéndose, lo destruimos para cargar el nuevo
+            if (hls) {
+                hls.destroy();
+            }
+
+            // 1. Verificamos si el navegador soporta HLS.js (Chrome, Firefox, Edge, etc.)
+            if (Hls.isSupported()) {
+                hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(videoElement);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    videoElement.play().catch(e => console.log("Autoplay bloqueado por el navegador", e));
+                });
+
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    if (data.fatal) {
+                        mensajeError.classList.remove('hidden');
+                        mensajeError.innerText = "Error fatal al cargar la transmisión. Es posible que el enlace esté caído o bloqueado.";
+                    }
+                });
+            } 
+            // 2. Fallback para Safari (que soporta m3u8 de forma nativa sin la librería)
+            else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                videoElement.src = url;
+                videoElement.addEventListener('loadedmetadata', function() {
+                    videoElement.play();
+                });
+            } else {
+                mensajeError.classList.remove('hidden');
+                mensajeError.innerText = "Tu navegador no soporta la reproducción de este formato.";
+            }
+        }
+
+        // Cargar los botones y el primer video al iniciar la página
+        window.onload = () => {
+            renderizarCanales();
+            // Inicia automáticamente el primer canal de la lista
+            if (misCanales.length > 0) {
+                cargarVideo(misCanales[0].url);
+            }
+        };
+    </script>
+</body>
+</html>
