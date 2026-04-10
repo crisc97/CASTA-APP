@@ -16,15 +16,14 @@
         <p class="text-gray-400 text-center mb-6 text-sm sm:text-base">Selecciona un canal de la lista</p>
 
         <!-- Lista de canales internos -->
-        <!-- Se ajusta a 1 columna en celulares muy pequeños, 2 en móviles normales, y 4 en tablets/TVs -->
         <div id="listaCanales" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
             <!-- Los botones de los canales se generarán aquí desde JavaScript -->
         </div>
 
         <!-- Contenedor del Video -->
         <div class="bg-black w-full aspect-video rounded-xl overflow-hidden shadow-2xl relative border-2 border-gray-800">
-            <!-- tabindex="0" permite que el video sea seleccionado con el control remoto -->
-            <video id="reproductor" class="w-full h-full outline-none focus:ring-4 focus:ring-blue-500" controls tabindex="0"></video>
+            <!-- MODIFICADO: Se agregan atributos autoplay y playsinline -->
+            <video id="reproductor" class="w-full h-full outline-none focus:ring-4 focus:ring-blue-500" controls tabindex="0" autoplay playsinline></video>
         </div>
 
         <div id="mensajeError" class="mt-4 text-red-500 text-center hidden font-semibold bg-red-900/30 p-3 sm:p-4 rounded-lg border border-red-800">
@@ -36,11 +35,8 @@
         const videoElement = document.getElementById('reproductor');
         const listaCanalesDiv = document.getElementById('listaCanales');
         const mensajeError = document.getElementById('mensajeError');
-        let hls; // Variable para guardar la instancia de hls.js
+        let hls; 
 
-        // === TUS CANALES INTERNOS AQUÍ ===
-        // Cambia el "nombre" por el nombre de tu canal (ej: "Telefe", "Fox Sports") 
-        // y pon tu enlace .m3u8 en "url"
         const misCanales = [
             { nombre: "DirecTv Sports", url: "https://kh5vy.envivoslatam.org/dsports/tracks-v1a1/mono.m3u8?ip=200.82.115.194&token=d0173c88707225d801938d391a6255d2084b3d7b-8b-1775822854-1775768854" },
             { nombre: "TNT Sports", url: "https://pvtn5y.envivoslatam.org/tntsports/tracks-v1a1/mono.m3u8?ip=200.82.115.194&token=3584896a8444d5d44226de89411ea6fba7a7df1a-f9-1775822898-1775768898" },
@@ -48,16 +44,13 @@
             { nombre: "Fox Sports", url: "https://mze7u.envivoslatam.org/foxsports/tracks-v1a1/mono.m3u8?ip=200.82.115.194&token=3fc29d7b9ad493829835a90b9d73cea92a2f1880-93-1775822960-1775768960" }
         ];
 
-        // Función para crear los botones en la pantalla automáticamente
         function renderizarCanales() {
             misCanales.forEach((canal, index) => {
                 const boton = document.createElement('button');
-                // Estilos optimizados para TV (focus) y Móviles (py-4, texto más grande)
                 boton.className = "bg-gray-800 hover:bg-blue-600 focus:bg-blue-600 focus:ring-4 focus:ring-white outline-none border border-gray-700 text-white font-semibold py-4 px-4 rounded-xl transition duration-200 truncate shadow-md text-base sm:text-lg cursor-pointer";
                 boton.innerText = canal.nombre;
                 boton.onclick = () => {
                     cargarVideo(canal.url);
-                    // Opcional: Al seleccionar un canal, mandar el foco al video para controlarlo
                     setTimeout(() => videoElement.focus(), 500);
                 };
                 listaCanalesDiv.appendChild(boton);
@@ -73,6 +66,10 @@
                 return;
             }
 
+            // MODIFICADO: Forzar volumen máximo y asegurar que no esté mudo
+            videoElement.volume = 1.0;
+            videoElement.muted = false;
+
             if (hls) {
                 hls.destroy();
             }
@@ -83,62 +80,58 @@
                 hls.attachMedia(videoElement);
                 
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    videoElement.play().catch(e => console.log("Autoplay bloqueado por el navegador", e));
+                    // MODIFICADO: Intento de reproducción automática con manejo de restricciones
+                    videoElement.play().catch(e => {
+                        console.log("Autoplay con sonido bloqueado. Iniciando en mudo...");
+                        videoElement.muted = true;
+                        videoElement.play();
+                    });
                 });
 
                 hls.on(Hls.Events.ERROR, function (event, data) {
                     if (data.fatal) {
                         mensajeError.classList.remove('hidden');
-                        mensajeError.innerText = "Error fatal al cargar la transmisión. Es posible que el enlace esté caído o bloqueado.";
+                        mensajeError.innerText = "Error fatal al cargar la transmisión.";
                     }
                 });
             } 
             else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
                 videoElement.src = url;
                 videoElement.addEventListener('loadedmetadata', function() {
+                    videoElement.volume = 1.0;
                     videoElement.play();
                 });
-            } else {
-                mensajeError.classList.remove('hidden');
-                mensajeError.innerText = "Tu navegador no soporta la reproducción de este formato.";
             }
         }
 
-        // --- LÓGICA PARA NAVEGACIÓN EN SMART TV (Control Remoto) ---
+        // --- LÓGICA PARA NAVEGACIÓN EN SMART TV ---
         document.addEventListener('keydown', (e) => {
             const activeElement = document.activeElement;
             const botones = Array.from(listaCanalesDiv.querySelectorAll('button'));
             const currentIndex = botones.indexOf(activeElement);
 
-            // Si estamos enfocados en un botón de canal
             if (currentIndex > -1) {
-                // Calcular cuántas columnas hay en la pantalla actual para mover arriba/abajo
                 let columnas = 1;
-                if (window.innerWidth >= 1024) columnas = 4; // lg
-                else if (window.innerWidth >= 640) columnas = 2; // sm
+                if (window.innerWidth >= 1024) columnas = 4;
+                else if (window.innerWidth >= 640) columnas = 2;
 
                 let newIndex = currentIndex;
-
                 if (e.key === 'ArrowRight') newIndex = currentIndex + 1;
                 if (e.key === 'ArrowLeft') newIndex = currentIndex - 1;
                 if (e.key === 'ArrowDown') newIndex = currentIndex + columnas;
                 if (e.key === 'ArrowUp') newIndex = currentIndex - columnas;
 
-                // Prevenir que la pantalla haga scroll al usar las flechas y enfocar el nuevo botón
                 if (newIndex >= 0 && newIndex < botones.length && newIndex !== currentIndex) {
                     e.preventDefault();
                     botones[newIndex].focus();
                 }
 
-                // Si presionamos abajo y ya estamos en la última fila, ir al video
                 if (e.key === 'ArrowDown' && newIndex >= botones.length) {
                     e.preventDefault();
                     videoElement.focus();
                 }
             } 
-            // Si el foco está en el reproductor de video
             else if (activeElement === videoElement) {
-                // Si presionamos Arriba, volver a los canales
                 if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     if (botones.length > 0) botones[0].focus();
@@ -146,14 +139,10 @@
             }
         });
 
-        // Cargar elementos al iniciar
         window.onload = () => {
             renderizarCanales();
-            
             if (misCanales.length > 0) {
                 cargarVideo(misCanales[0].url);
-                
-                // Darle foco al primer botón para que el usuario de Smart TV sepa dónde está
                 const primerBoton = listaCanalesDiv.querySelector('button');
                 if(primerBoton) primerBoton.focus();
             }
