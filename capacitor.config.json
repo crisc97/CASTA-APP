@@ -1,0 +1,14 @@
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.tu-nombre.castaapp',
+  appName: 'CASTA-APP',
+  webDir: 'www',
+  // 👇 ESTA ES LA PARTE MÁGICA QUE DEBES AGREGAR 👇
+  server: {
+    url: 'https://mi-tv-online.onrender.com',
+    cleartext: true
+  }
+};
+
+export default config;
