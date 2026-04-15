@@ -1,10 +1,12 @@
 {
   "name": "casta-app-movil",
   "version": "1.0.0",
-  "description": "",
+  "description": "App de TV con soporte para despliegue en Render",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "echo 'No build needed'",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
@@ -12,7 +14,9 @@
   "type": "commonjs",
   "dependencies": {
     "@capacitor/android": "^8.3.0",
-    "@capacitor/core": "^8.3.0"
+    "@capacitor/core": "^8.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
