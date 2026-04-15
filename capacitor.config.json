@@ -1,14 +1,9 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+// --- NOTA: En tu PC, este archivo debe llamarse 'capacitor.config.ts' ---import { CapacitorConfig } from '@capacitor/cli';const config: CapacitorConfig = {appId: 'com.tu-nombre.castaapp',appName: 'CASTA-APP',webDir: 'www',server: {// URL principal de tu contenido en Renderurl: 'https://mi-tv-online.onrender.com',// IMPORTANTE: Esto permite que la navegación se mantenga dentro de la App 
+// y no se abra en el navegador Chrome del celular.
+allowNavigation: [
+  'mi-tv-online.onrender.com'
+],
 
-const config: CapacitorConfig = {
-  appId: 'com.tu-nombre.castaapp',
-  appName: 'CASTA-APP',
-  webDir: 'www',
-  // 👇 ESTA ES LA PARTE MÁGICA QUE DEBES AGREGAR 👇
-  server: {
-    url: 'https://mi-tv-online.onrender.com',
-    cleartext: true
-  }
-};
-
-export default config;
+// Permite cargar streams de video que no tengan certificado SSL (HTTP)
+cleartext: true
+}};export default config;
