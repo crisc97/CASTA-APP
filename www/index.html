@@ -3,38 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<<<<<<< HEAD
     <!-- INHIBIDOR 1: Evita que el servidor sepa que pides el video desde tu app o sitio web -->
+=======
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
     <meta name="referrer" content="no-referrer">
     <title>CASTA-APP</title>
-    <!-- Tailwind CSS para el diseño -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Librería HLS.js para poder reproducir enlaces .m3u8 -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4 sm:p-6 font-sans">
 
     <div class="max-w-5xl w-full">
         <h1 class="text-2xl sm:text-4xl font-bold mb-2 text-blue-400 text-center uppercase tracking-wider">📺 CASTA-APP ⚽</h1>
+<<<<<<< HEAD
         <p class="text-gray-400 text-center mb-6 text-sm sm:text-base">Selecciona un canal de la lista</p>
+=======
+        <p class="text-gray-400 text-center mb-6 text-sm sm:text-base">Canales actualizados vía Backend</p>
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
 
-        <!-- Lista de canales internos -->
-        <div id="listaCanales" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            <!-- Los botones de los canales se generarán aquí desde JavaScript -->
-        </div>
+        <div id="listaCanales" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6"></div>
 
+<<<<<<< HEAD
         <!-- Contenedor del Video -->
         <div class="bg-black w-full aspect-video rounded-xl overflow-hidden shadow-2xl relative border-2 border-gray-800 flex items-center justify-center">
             <video id="reproductor" class="w-full h-full outline-none focus:ring-4 focus:ring-blue-500" controls tabindex="0" autoplay playsinline></video>
             
             <!-- Spinner de Carga -->
+=======
+        <div class="bg-black w-full aspect-video rounded-xl overflow-hidden shadow-2xl relative border-2 border-gray-800 flex items-center justify-center">
+            <video id="reproductor" class="w-full h-full outline-none focus:ring-4 focus:ring-blue-500" controls tabindex="0" autoplay playsinline></video>
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
             <div id="loading" class="absolute hidden">
                 <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
             </div>
         </div>
 
+<<<<<<< HEAD
         <div id="mensajeError" class="mt-4 text-red-500 text-center hidden font-semibold bg-red-900/30 p-3 sm:p-4 rounded-lg border border-red-800">
             Error al cargar el video. Es posible que el servidor bloquee la conexión (403) o el enlace haya expirado.
         </div>
+=======
+        <div id="mensajeError" class="mt-4 text-red-500 text-center hidden font-semibold bg-red-900/30 p-3 sm:p-4 rounded-lg border border-red-800"></div>
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
     </div>
 
     <script>
@@ -44,69 +55,113 @@
         const loader = document.getElementById('loading');
         let hls; 
 
+<<<<<<< HEAD
         // Enlaces actualizados con los tokens más recientes
         const misCanales = [
             { nombre: "DirecTv Sports", url: "https://j8nte.envivoslatam.org/hotflix/dsports/index.m3u8?token=967ba5cfcfa26d227db233168c6187541f049a90-99-1776491791-1776437791&ip=181.228.90.195" },
             { nombre: "TNT Sports", url: "https://bd2ih.envivoslatam.org/tntsports/tracks-v1a1/mono.m3u8?ip=181.228.90.195&token=bdf0bf58740230614b8135373d09682ae3a755ce-d8-1776490392-1776436392" },
             { nombre: "ESPN Premium", url: "https://xky9q.envivoslatam.org/espnpremium/tracks-v1a1/mono.m3u8?ip=181.228.90.195&token=b2ab3a5797b01f69aee2f27bcb6d6b4d4970190f-82-1776490412-1776436412" },
             { nombre: "Fox Sports", url: "https://ub2dr.envivoslatam.org/foxsports/tracks-v1a1/mono.m3u8?ip=181.228.90.195&token=2f13614ea9cf3687a50a9f155289b58af9ae4ffe-d5-1776490439-1776436439" }
+=======
+        // CONFIGURACIÓN: Cambia esto por tu URL de Render
+        const API_URL = "https://mi-tv-online.onrender.com"; 
+
+        const misCanales = [
+            { nombre: "DirecTv Sports", id: "dsports" },
+            { nombre: "TNT Sports", id: "tnt" },
+            { nombre: "ESPN Premium", id: "espn" },
+            { nombre: "Fox Sports", id: "fox" }
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
         ];
 
         function renderizarCanales() {
             listaCanalesDiv.innerHTML = '';
+<<<<<<< HEAD
             misCanales.forEach((canal, index) => {
+=======
+            misCanales.forEach((canal) => {
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
                 const boton = document.createElement('button');
                 boton.className = "bg-gray-800 hover:bg-blue-600 focus:bg-blue-600 focus:ring-4 focus:ring-white outline-none border border-gray-700 text-white font-semibold py-4 px-4 rounded-xl transition duration-200 truncate shadow-md text-base sm:text-lg cursor-pointer";
                 boton.innerText = canal.nombre;
-                boton.onclick = () => {
-                    cargarVideo(canal.url);
-                    setTimeout(() => videoElement.focus(), 500);
-                };
+                boton.onclick = () => obtenerEnlaceServidor(canal.id);
                 listaCanalesDiv.appendChild(boton);
             });
         }
 
-        function cargarVideo(url) {
+        // Nueva función para pedir el enlace al server.js
+        async function obtenerEnlaceServidor(canalId) {
             mensajeError.classList.add('hidden');
             loader.classList.remove('hidden');
 
+<<<<<<< HEAD
             if (!url) {
                 mensajeError.classList.remove('hidden');
                 mensajeError.innerText = "Este canal no tiene un enlace válido.";
                 loader.classList.add('hidden');
                 return;
+=======
+            try {
+                const res = await fetch(`${API_URL}/api/get-stream/${canalId}`);
+                const data = await res.json();
+                
+                if (data.exito) {
+                    ejecutarHLS(data.url);
+                } else {
+                    throw new Error("No se pudo obtener el enlace");
+                }
+            } catch (err) {
+                loader.classList.add('hidden');
+                mensajeError.classList.remove('hidden');
+                mensajeError.innerText = "Error: El servidor de Render no responde o el canal no está disponible.";
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
             }
+        }
 
+<<<<<<< HEAD
+=======
+        function ejecutarHLS(url) {
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
             videoElement.volume = 1.0;
             videoElement.muted = false;
 
-            if (hls) {
-                hls.destroy();
-            }
+            if (hls) hls.destroy();
 
             if (Hls.isSupported()) {
                 hls = new Hls({
+<<<<<<< HEAD
                     // INHIBIDOR 2: Limpieza de cabeceras para evitar bloqueos por origen
                     xhrSetup: function(xhr, url) {
                         xhr.withCredentials = false;
+=======
+                    xhrSetup: function(xhr) {
+                        xhr.withCredentials = false;
+                        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
                     }
                 });
                 hls.loadSource(url);
                 hls.attachMedia(videoElement);
+<<<<<<< HEAD
                 
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
                     loader.classList.add('hidden');
                     videoElement.play().catch(e => {
                         console.log("Autoplay con sonido bloqueado. Iniciando en mudo...");
+=======
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    loader.classList.add('hidden');
+                    videoElement.play().catch(() => {
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
                         videoElement.muted = true;
                         videoElement.play();
                     });
                 });
-
-                hls.on(Hls.Events.ERROR, function (event, data) {
+                hls.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
                         loader.classList.add('hidden');
                         mensajeError.classList.remove('hidden');
+<<<<<<< HEAD
                         if (data.response && data.response.code === 403) {
                             mensajeError.innerText = "🚫 Error 403: El servidor detectó la extracción. El enlace o la IP han caducado.";
                         } else {
@@ -121,28 +176,35 @@
                     loader.classList.add('hidden');
                     videoElement.play();
                 });
+=======
+                        mensajeError.innerText = "Error al conectar con la señal de video.";
+                    }
+                });
+            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                videoElement.src = url;
+                videoElement.play();
+                loader.classList.add('hidden');
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
             }
         }
 
-        // --- LÓGICA PARA NAVEGACIÓN EN SMART TV ---
+        // Navegación con flechas (TV)
         document.addEventListener('keydown', (e) => {
             const activeElement = document.activeElement;
             const botones = Array.from(listaCanalesDiv.querySelectorAll('button'));
             const currentIndex = botones.indexOf(activeElement);
 
             if (currentIndex > -1) {
-                let columnas = 1;
-                if (window.innerWidth >= 1024) columnas = 4;
-                else if (window.innerWidth >= 640) columnas = 2;
+                let col = window.innerWidth >= 1024 ? 4 : (window.innerWidth >= 640 ? 2 : 1);
+                let next;
+                if (e.key === 'ArrowRight') next = currentIndex + 1;
+                if (e.key === 'ArrowLeft') next = currentIndex - 1;
+                if (e.key === 'ArrowDown') next = currentIndex + col;
+                if (e.key === 'ArrowUp') next = currentIndex - col;
 
-                let newIndex = currentIndex;
-                if (e.key === 'ArrowRight') newIndex = currentIndex + 1;
-                if (e.key === 'ArrowLeft') newIndex = currentIndex - 1;
-                if (e.key === 'ArrowDown') newIndex = currentIndex + columnas;
-                if (e.key === 'ArrowUp') newIndex = currentIndex - columnas;
-
-                if (newIndex >= 0 && newIndex < botones.length && newIndex !== currentIndex) {
+                if (next >= 0 && next < botones.length) {
                     e.preventDefault();
+<<<<<<< HEAD
                     botones[newIndex].focus();
                 } else if (e.key === 'ArrowDown' && newIndex >= botones.length) {
                     e.preventDefault();
@@ -152,17 +214,31 @@
             else if (activeElement === videoElement && e.key === 'ArrowUp') {
                 e.preventDefault();
                 if (botones.length > 0) botones[0].focus();
+=======
+                    botones[next].focus();
+                }
+>>>>>>> 993bff6 (Conexión App-Servidor lista)
             }
         });
 
         window.onload = () => {
             renderizarCanales();
-            if (misCanales.length > 0) {
-                cargarVideo(misCanales[0].url);
-                const primerBoton = listaCanalesDiv.querySelector('button');
-                if(primerBoton) primerBoton.focus();
-            }
+            // Cargar el primero por defecto al entrar
+            if (misCanales.length > 0) obtenerEnlaceServidor(misCanales[0].id);
         };
     </script>
 </body>
 </html>
+```
+
+---
+
+### Pasos finales para que todo funcione:
+
+1.  **En tu PC:** Crea el archivo `server.js` con el código que te pasé en el mensaje anterior.
+2.  **En tu PC:** Pega este nuevo código en tu `index.html`.
+3.  **Sube todo a GitHub:**
+    ```bash
+    git add .
+    git commit -m "Conexión App-Servidor lista"
+    git push origin main
