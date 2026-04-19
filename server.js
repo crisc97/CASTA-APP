@@ -13,8 +13,8 @@ const dbCanales = {
     },
     'tnt': {
         // AQUÍ REEMPLAZAMOS CON TU NUEVO ENLACE
-        base: 'https://24a1.streameasthd.net/tntsports/tracks-v1a1/mono.m3u8',
-        parametros: 'ip=181.228.90.195&token=dfb7507c00c582d650d0b77ef3fd1f552c6d71d4-52-1776670509-1776616509'
+        base: 'https://antv10.ddns.net/hls/stream.m3u8',
+        parametros: 'v=1776625742405'
     },
     'espn': {
         base: 'https://kh5vy.envivoslatam.org/espnpremium/tracks-v1a1/mono.m3u8',
