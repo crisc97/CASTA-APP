@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
+const nodemailer = require('nodemailer');
 
 app.use(cors());
 
@@ -42,6 +43,43 @@ app.get('/api/get-stream/:canal', (req, res) => {
 
 app.get('/', (req, res) => { 
     res.send('<h1>🚀 Servidor CASTA-APP Online</h1>'); 
+});
+// --- RUTA PARA RECIBIR ALERTAS Y ENVIAR MAIL ---
+app.post('/api/reportar', async (req, res) => {
+    const { canal } = req.body;
+
+    if (!canal) {
+        return res.status(400).json({ error: "Falta el nombre del canal" });
+    }
+
+    try {
+        // 1. Configuramos quién envía el correo
+        const transporter = nodemailer.createTransport({
+            service: 'gmail', 
+            auth: {
+                user: process.env.MI_CORREO, // Se configura en Render
+                pass: process.env.MI_CONTRASENA // Se configura en Render
+            }
+        });
+
+        // 2. Armamos el correo
+        const mailOptions = {
+            from: `"App Casta" <${process.env.MI_CORREO}>`,
+            to: process.env.MI_CORREO, // Te lo envías a ti mismo (o pon otro mail aquí)
+            subject: `🚨 ALERTA CASTA-APP: El canal ${canal} está fallando`,
+            text: `Hola,\n\nUn usuario acaba de reportar desde la App que el canal "${canal}" no carga o está caído.\n\nPor favor, revisa y actualiza el enlace.\n\nSaludos,\nTu Servidor Bot 🤖`
+        };
+
+        // 3. Enviamos el correo
+        await transporter.sendMail(mailOptions);
+        
+        console.log(`[ALERTA] Correo enviado por falla en: ${canal}`);
+        res.json({ exito: true, mensaje: "Reporte enviado" });
+
+    } catch (error) {
+        console.error("[ERROR] No se pudo enviar el correo:", error);
+        res.status(500).json({ exito: false, error: "Error interno del servidor" });
+    }
 });
 
 app.listen(PORT, '0.0.0.0', () => { 
