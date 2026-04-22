@@ -13,8 +13,8 @@ app.use(express.json());
 const dbCanales = {
     // --- TNT SPORTS ---
     'tnt_1': {
-        base: 'https://deportes.ksdjugfsddeports.com:9092/MTgxLjIyOC45MC4xOTU=/4_.m3u8',
-        parametros: 'token=8x-3iWaRDxhkbCSBmqUMBg&expires=1776880246'
+        base: 'https://tk0hz.envivoslatam.org/hotflix/tntsports/index.m3u8',
+        parametros: 'token=2d31ee61fa39e8f26d1ae2817536cdfaa0304243-1e-1776893748-1776839748'
     },
     'tnt_2': {
         base: 'https://tk0hz.envivoslatam.org/hotflix/tntsports/index.m3u8',
