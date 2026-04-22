@@ -33,6 +33,9 @@ const dbCanales = {
     'espn_2': {
         base: 'AQUI_VA_EL_LINK_DE_ESPN_OPCION_2',
         parametros: 'ip=xyz&token=xyz' // Reemplazar con el parámetro real si tiene
+    'espn_3': {
+        base: 'AQUI_VA_EL_LINK_DE_ESPN_OPCION_3',
+        parametros: 'ip=xyz&token=xyz' // Reemplazar con el parámetro real si tiene
     },
 
     // --- DSPORTS ---
@@ -42,6 +45,9 @@ const dbCanales = {
     },
     'dsports_2': {
         base: 'AQUI_VA_EL_LINK_DE_DSPORTS_OPCION_2',
+        parametros: 'ip=xyz&token=xyz' // Reemplazar con el parámetro real si tiene
+    'dsports_3': {
+        base: 'AQUI_VA_EL_LINK_DE_DSPORTS_OPCION_3',
         parametros: 'ip=xyz&token=xyz' // Reemplazar con el parámetro real si tiene
     }
 };
