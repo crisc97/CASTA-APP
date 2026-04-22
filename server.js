@@ -17,12 +17,12 @@ const dbCanales = {
         parametros: 'token=8x-3iWaRDxhkbCSBmqUMBg&expires=1776880246'
     },
     'tnt_2': {
-        base: 'AQUI_VA_EL_LINK_DE_TNT_OPCION_2',
-        parametros: 'v=xyz' // Reemplazar con el parámetro real si tiene
+        base: 'https://tk0hz.envivoslatam.org/hotflix/tntsports/index.m3u8',
+        parametros: 'token=2d31ee61fa39e8f26d1ae2817536cdfaa0304243-1e-1776893748-1776839748' // Reemplazar con el parámetro real si tiene
     },
     'tnt_3': {
-        base: 'AQUI_VA_EL_LINK_DE_TNT_OPCION_3',
-        parametros: 'v=xyz' // Reemplazar con el parámetro real si tiene
+        base: 'https://cdn2.zohanayaan.com:1686/hls/tntarg.m3u8',
+        parametros: 'md5=2JItcM4Z7jUmJVO9EcYyAA&expires=1776856069' // Reemplazar con el parámetro real si tiene
     },
 
     // --- ESPN PREMIUM ---
@@ -35,8 +35,8 @@ const dbCanales = {
         parametros: 'token=E9L55MEInA9i5_rr8YRNUQ&expires=1776880162' // Reemplazar con el parámetro real si tiene
      },    
     'espn_3': {
-        base: 'AQUI_VA_EL_LINK_DE_ESPN_OPCION_3',
-        parametros: 'ip=xyz&token=xyz' // Reemplazar con el parámetro real si tiene
+        base: 'https://cdn4.zohanayaan.com:1686/hls/espnar.m3u8',
+        parametros: 'md5=iJutx_apVGzpxL9Chcs-kA&expires=1776856173' // Reemplazar con el parámetro real si tiene
     },
 
     // --- DSPORTS ---
@@ -45,12 +45,12 @@ const dbCanales = {
         parametros: 'token=BWsZ9wuhVtu2q0f-H3_08A&expires=1776880331'
     },
     'dsports_2': {
-        base: 'AQUI_VA_EL_LINK_DE_DSPORTS_OPCION_2',
-        parametros: 'ip=xyz&token=xyz' // Reemplazar con el parámetro real si tiene
+        base: 'https://vg7ie.envivoslatam.org/dsports/tracks-v1a1/mono.m3u8',
+        parametros: 'token=df20d1345ddf914c84aa7caced8870ce365e82af-9a-1776893584-1776839584' // Reemplazar con el parámetro real si tiene
      },
     'dsports_3': {
-        base: 'AQUI_VA_EL_LINK_DE_DSPORTS_OPCION_3',
-        parametros: 'ip=xyz&token=xyz' // Reemplazar con el parámetro real si tiene
+        base: 'https://cdn4.zohanayaan.com:1686/hls/dsportshd1.m3u8',
+        parametros: 'md5=RgzpbSywI-eUiFOwnwx0dw&expires=1776855896' // Reemplazar con el parámetro real si tiene
     }
 };
 
