@@ -3,31 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- INHIBIDOR 1: Evita que el servidor sepa que pides el video desde tu app o sitio web -->
     <meta name="referrer" content="no-referrer">
-    <title>CASTA-APP</title>
+    <title>CASTA-APP PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        /* Ocultar barra de scroll en el menú para un look más limpio */
+        #sidebar::-webkit-scrollbar { display: none; }
+        #sidebar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4 sm:p-6 font-sans">
+<body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen relative font-sans select-none">
 
-    <div class="max-w-5xl w-full">
-        <h1 class="text-2xl sm:text-4xl font-bold mb-2 text-blue-400 text-center uppercase tracking-wider">📺 CASTA-APP ⚽</h1>
-        <p class="text-gray-400 text-center mb-6 text-sm sm:text-base">Canales actualizados vía Backend</p>
+    <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
+        <video id="reproductor" class="w-full h-full outline-none object-contain" controls tabindex="-1" autoplay playsinline></video>
 
-        <div id="listaCanales" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6"></div>
-
-        <!-- Contenedor del Video -->
-        <div class="bg-black w-full aspect-video rounded-xl overflow-hidden shadow-2xl relative border-2 border-gray-800 flex items-center justify-center">
-            <video id="reproductor" class="w-full h-full outline-none focus:ring-4 focus:ring-blue-500" controls tabindex="0" autoplay playsinline></video>
-            
-            <!-- Spinner de Carga -->
-            <div id="loading" class="absolute hidden">
-                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
+        <div id="loading" class="absolute hidden z-10">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
         </div>
 
-        <div id="mensajeError" class="mt-4 text-red-500 text-center hidden font-semibold bg-red-900/30 p-3 sm:p-4 rounded-lg border border-red-800"></div>
+        <div id="mensajeError" class="absolute z-10 bottom-10 left-1/2 transform -translate-x-1/2 hidden bg-red-900/80 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center max-w-lg"></div>
+    </div>
+
+    <div class="absolute top-6 left-6 right-6 z-40 flex justify-between items-start pointer-events-none">
+        <button id="btnMenu" class="pointer-events-auto bg-black/60 hover:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+
+        <div class="flex gap-4 pointer-events-auto">
+            <button id="btnCast" class="bg-black/60 hover:bg-purple-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none" title="Transmitir a TV">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            </button>
+
+            <button id="btnReportar" class="bg-black/60 hover:bg-red-600 focus:ring-4 focus:ring-white text-white px-4 py-3 rounded-full border border-gray-700 transition duration-300 font-bold flex items-center gap-2 hidden outline-none" title="Reportar Falla">
+                <span>⚠️</span> <span class="hidden sm:inline">Reportar Caída</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="sidebar" class="absolute top-0 left-0 h-full w-72 sm:w-80 bg-black/95 backdrop-blur-md z-50 p-6 transform translate-x-0 transition-transform duration-300 ease-in-out border-r border-gray-800 shadow-[20px_0_30px_rgba(0,0,0,0.7)] flex flex-col overflow-y-auto">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-black text-blue-500 tracking-wider">CASTA</h1>
+                <p class="text-xs text-gray-400 tracking-widest mt-1 uppercase">TV En Vivo</p>
+            </div>
+            <button id="btnCerrar" class="text-gray-400 hover:text-white text-3xl font-bold focus:outline-none">&times;</button>
+        </div>
+        <div id="listaCanales" class="flex flex-col gap-2 pb-10"></div>
     </div>
 
     <script>
@@ -35,31 +57,97 @@
         const listaCanalesDiv = document.getElementById('listaCanales');
         const mensajeError = document.getElementById('mensajeError');
         const loader = document.getElementById('loading');
-        let hls; 
+
+        const sidebar = document.getElementById('sidebar');
+        const btnMenu = document.getElementById('btnMenu');
+        const btnCerrar = document.getElementById('btnCerrar');
+        const btnCast = document.getElementById('btnCast');
+        const btnReportar = document.getElementById('btnReportar');
+
+        let hls;
+        let canalActualNombre = ""; 
 
         // CONFIGURACIÓN: Tu URL de Render
-        const API_URL = "https://casta-app.onrender.com"; 
+        const API_URL = "https://casta-app.onrender.com";
 
         const misCanales = [
-            { nombre: "DirecTv Sports", id: "dsports" },
-            { nombre: "TNT Sports", id: "tnt" },
-            { nombre: "ESPN Premium", id: "espn" },
-            { nombre: "Fox Sports", id: "fox" }
+            {
+                nombre: "TNT Sports",
+                opciones: [
+                    { nombre: "Opción 1 (FHD)", id: "tnt_1" },
+                    { nombre: "Opción 2 (HD)", id: "tnt_2" },
+                    { nombre: "Opción 3 (Respaldo)", id: "tnt_3" }
+                ]
+            },
+            {
+                nombre: "ESPN Premium",
+                opciones: [
+                    { nombre: "Opción Principal", id: "espn_1" },
+                    { nombre: "Opción Alternativa", id: "espn_2" }
+                ]
+            },
+            {
+                nombre: "DirecTv Sports",
+                opciones: [
+                    { nombre: "DSPORTS 1", id: "dsports_1" },
+                    { nombre: "DSPORTS 2", id: "dsports_2" }
+                ]
+            }
         ];
 
+        // --- FUNCIONES DEL MENÚ ---
+        function abrirMenu() {
+            sidebar.classList.remove('-translate-x-full');
+            const primerBoton = listaCanalesDiv.querySelector('button');
+            if(primerBoton) primerBoton.focus();
+        }
+
+        function cerrarMenu() {
+            sidebar.classList.add('-translate-x-full');
+            videoElement.focus();
+        }
+
+        btnMenu.addEventListener('click', abrirMenu);
+        btnCerrar.addEventListener('click', cerrarMenu);
+
+        // --- RENDERIZAR CANALES CON SUB-OPCIONES ---
         function renderizarCanales() {
             listaCanalesDiv.innerHTML = '';
             misCanales.forEach((canal) => {
-                const boton = document.createElement('button');
-                boton.className = "bg-gray-800 hover:bg-blue-600 focus:bg-blue-600 focus:ring-4 focus:ring-white outline-none border border-gray-700 text-white font-semibold py-4 px-4 rounded-xl transition duration-200 truncate shadow-md text-base sm:text-lg cursor-pointer";
-                boton.innerText = canal.nombre;
-                boton.onclick = () => obtenerEnlaceServidor(canal.id);
-                listaCanalesDiv.appendChild(boton);
+                const canalContainer = document.createElement('div');
+                canalContainer.className = "flex flex-col gap-1 mb-2";
+
+                const btnPrincipal = document.createElement('button');
+                btnPrincipal.className = "w-full text-left bg-gray-800 hover:bg-gray-700 focus:bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none text-white font-bold py-3 px-4 rounded-lg transition border border-gray-700 flex justify-between items-center";
+                btnPrincipal.innerHTML = `<span>${canal.nombre}</span> <span class="text-xs">▼</span>`;
+
+                const subOpcionesDiv = document.createElement('div');
+                subOpcionesDiv.className = "hidden flex-col gap-1 pl-4 mt-1 border-l-2 border-blue-500";
+
+                canal.opciones.forEach(opcion => {
+                    const btnOpcion = document.createElement('button');
+                    btnOpcion.className = "w-full text-left bg-gray-900 hover:bg-blue-600 focus:bg-blue-600 focus:ring-2 focus:ring-white outline-none text-gray-300 hover:text-white py-2 px-3 rounded-md transition text-sm";
+                    btnOpcion.innerText = opcion.nombre;
+                    btnOpcion.onclick = () => {
+                        canalActualNombre = `${canal.nombre} - ${opcion.nombre}`;
+                        obtenerEnlaceServidor(opcion.id);
+                        cerrarMenu();
+                        btnReportar.classList.remove('hidden');
+                    };
+                    subOpcionesDiv.appendChild(btnOpcion);
+                });
+
+                btnPrincipal.onclick = () => {
+                    subOpcionesDiv.classList.toggle('hidden');
+                };
+
+                canalContainer.appendChild(btnPrincipal);
+                canalContainer.appendChild(subOpcionesDiv);
+                listaCanalesDiv.appendChild(canalContainer);
             });
         }
 
-      
-        // Función para pedir el enlace al server.js en Render
+        // --- OBTENER ENLACE AL SERVIDOR ---
         async function obtenerEnlaceServidor(canalId) {
             mensajeError.classList.add('hidden');
             loader.classList.remove('hidden');
@@ -67,7 +155,7 @@
             try {
                 const res = await fetch(`${API_URL}/api/get-stream/${canalId}`);
                 const data = await res.json();
-                
+
                 if (data.exito) {
                     ejecutarHLS(data.url);
                 } else {
@@ -77,9 +165,11 @@
                 loader.classList.add('hidden');
                 mensajeError.classList.remove('hidden');
                 mensajeError.innerText = "Error: El servidor de Render no responde o el canal no está disponible.";
+                abrirMenu();
             }
         }
 
+        // --- REPRODUCCIÓN (HLS MEJORADO) ---
         function ejecutarHLS(url) {
             videoElement.volume = 1.0;
             videoElement.muted = false;
@@ -87,13 +177,10 @@
             if (hls) hls.destroy();
 
             if (Hls.isSupported()) {
-                // Configuración agresiva para intentar saltar CORS y timeouts
+                // Configuración agresiva extraída del código original
                 hls = new Hls({
-                    debug: true, // Esto nos ayudará a ver qué pasa en la consola del navegador (F12)
-                    xhrSetup: function(xhr) {
-                        xhr.withCredentials = false;
-                    },
-                    // Tiempo límite antes de declarar que la señal no carga (10 segundos)
+                    debug: false, 
+                    xhrSetup: function(xhr) { xhr.withCredentials = false; },
                     manifestLoadingMaxRetry: 2,
                     manifestLoadingTimeOut: 10000,
                     levelLoadingMaxRetry: 2,
@@ -116,13 +203,14 @@
                     if (data.fatal) {
                         loader.classList.add('hidden');
                         mensajeError.classList.remove('hidden');
+                        abrirMenu(); // Si falla, abre el menú para elegir otra opción
                         
                         // Diagnóstico detallado del error
                         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                             if (data.response && data.response.code === 403) {
-                                mensajeError.innerText = "🚫 Error 403 (Prohibido): El servidor original detectó que no estamos en su web oficial. Bloqueo por Referer/CORS o IP expirada.";
+                                mensajeError.innerText = "🚫 Error 403 (Prohibido): Bloqueo por Referer/CORS o IP expirada. ¡Usa el botón de reportar!";
                             } else if (data.response && data.response.code === 0) {
-                                mensajeError.innerText = "🚧 Error de CORS: El servidor original bloquea la reproducción en otros sitios web.";
+                                mensajeError.innerText = "🚧 Error de CORS: El servidor original bloquea la reproducción.";
                             } else {
                                 mensajeError.innerText = "❌ Error de red: No se pudo conectar con el servidor de video (Timeout).";
                             }
@@ -140,37 +228,88 @@
             }
         }
 
-        // Navegación con flechas (TV)
+        // --- NAVEGACIÓN PARA CONTROL REMOTO (TV) ---
         document.addEventListener('keydown', (e) => {
-            const activeElement = document.activeElement;
-            const botones = Array.from(listaCanalesDiv.querySelectorAll('button'));
-            const currentIndex = botones.indexOf(activeElement);
+            const isMenuAbierto = !sidebar.classList.contains('-translate-x-full');
 
-            if (currentIndex > -1) {
-                let col = window.innerWidth >= 1024 ? 4 : (window.innerWidth >= 640 ? 2 : 1);
-                let next;
-                if (e.key === 'ArrowRight') next = currentIndex + 1;
-                if (e.key === 'ArrowLeft') next = currentIndex - 1;
-                if (e.key === 'ArrowDown') next = currentIndex + col;
-                if (e.key === 'ArrowUp') next = currentIndex - col;
+            // Abrir menú con flecha Izquierda si está cerrado
+            if (e.key === 'ArrowLeft' && !isMenuAbierto) {
+                abrirMenu();
+                return;
+            }
+            // Cerrar menú con flecha Derecha si está abierto
+            if (e.key === 'ArrowRight' && isMenuAbierto) {
+                cerrarMenu();
+                return;
+            }
 
-                if (next >= 0 && next < botones.length) {
-                    e.preventDefault();
-                    botones[next].focus();
-                } else if (e.key === 'ArrowDown' && next >= botones.length) {
-                    e.preventDefault();
-                    videoElement.focus();
+            // Navegación nativa básica (Tabulación) para mandos de TV
+            if (isMenuAbierto) {
+                const botones = Array.from(sidebar.querySelectorAll('button:not(.hidden)'));
+                const currentIndex = botones.indexOf(document.activeElement);
+
+                if (currentIndex > -1) {
+                    if (e.key === 'ArrowDown' && currentIndex < botones.length - 1) {
+                        e.preventDefault();
+                        botones[currentIndex + 1].focus();
+                    }
+                    if (e.key === 'ArrowUp' && currentIndex > 0) {
+                        e.preventDefault();
+                        botones[currentIndex - 1].focus();
+                    }
                 }
-            } else if (activeElement === videoElement && e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (botones.length > 0) botones[0].focus();
             }
         });
 
+        // --- FUNCIONALIDAD CAST (TRANSMITIR A TV) ---
+        btnCast.addEventListener('click', () => {
+            if (videoElement.remote && videoElement.remote.state !== 'disconnected') {
+                videoElement.remote.prompt()
+                    .catch(err => alert("Tu dispositivo no soporta o canceló la transmisión."));
+            } else {
+                alert("La transmisión nativa no está disponible en este dispositivo. Usa la opción de duplicar pantalla de tu celular.");
+            }
+        });
+
+        // --- FUNCIONALIDAD REPORTAR FALLA ---
+        btnReportar.addEventListener('click', async () => {
+            if (!canalActualNombre) return;
+
+            const textoOriginal = btnReportar.innerHTML;
+            btnReportar.innerHTML = "✅ Reportado";
+            btnReportar.disabled = true;
+
+            try {
+                await fetch(`${API_URL}/api/reportar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ canal: canalActualNombre })
+                });
+            } catch (error) {
+                console.log("No se pudo enviar el reporte al server");
+            }
+
+            setTimeout(() => {
+                btnReportar.innerHTML = textoOriginal;
+                btnReportar.disabled = false;
+            }, 3000);
+        });
+
+        // --- INICIO DE LA APP ---
         window.onload = () => {
             renderizarCanales();
-            // Cargar el primero por defecto al entrar
-            if (misCanales.length > 0) obtenerEnlaceServidor(misCanales[0].id);
+            
+            // Lógica combinada: Cargar la primera opción del primer canal por defecto
+            if (misCanales.length > 0 && misCanales[0].opciones.length > 0) {
+                const primerCanal = misCanales[0];
+                const primeraOpcion = primerCanal.opciones[0];
+                
+                canalActualNombre = `${primerCanal.nombre} - ${primeraOpcion.nombre}`;
+                obtenerEnlaceServidor(primeraOpcion.id);
+                btnReportar.classList.remove('hidden');
+            } else {
+                abrirMenu(); // Si por algún motivo no hay canales, abre el menú
+            }
         };
     </script>
 </body>
