@@ -31,7 +31,7 @@ const dbCanales = {
         parametros: 'ip=181.228.90.195&token=d62ed86a56a0d0ff40d8feeb4b0590f74c83c28c-12-1776601177-1776547177'
     },
     'espn_2': {
-        base: 'AQUI_VA_EL_LINK_DE_ESPN_OPCION_2',
+        base: 'https://smjt9q.envivoslatam.org/hotflix/espnpremium/index.m3u8',
         parametros: 'ip=xyz&token=xyz' // Reemplazar con el parámetro real si tiene
      },    
     'espn_3': {
