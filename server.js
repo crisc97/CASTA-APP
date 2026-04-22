@@ -13,8 +13,8 @@ app.use(express.json());
 const dbCanales = {
     // --- TNT SPORTS ---
     'tnt_1': {
-        base: 'https://2smh3wve.58103793.net:8443/hls/xkvfhc3.m3u8',
-        parametros: 's=EzWL4twoMSmulktDV8yGDQ&e=1776868051'
+        base: 'https://deportes.ksdjugfsddeports.com:9092/MTgxLjIyOC45MC4xOTU=/4_.m3u8',
+        parametros: 'token=8x-3iWaRDxhkbCSBmqUMBg&expires=1776880246'
     },
     'tnt_2': {
         base: 'AQUI_VA_EL_LINK_DE_TNT_OPCION_2',
@@ -27,12 +27,12 @@ const dbCanales = {
 
     // --- ESPN PREMIUM ---
     'espn_1': {
-        base: 'https://kh5vy.envivoslatam.org/espnpremium/tracks-v1a1/mono.m3u8',
-        parametros: 'ip=181.228.90.195&token=d62ed86a56a0d0ff40d8feeb4b0590f74c83c28c-12-1776601177-1776547177'
+        base: 'https://deportes.ksdjugfsddeports.com:9092/MTgxLjIyOC45MC4xOTU=/5_.m3u8',
+        parametros: 'token=1WUzWQOOTXlxjCXGEL1pAQ&expires=1776879964'
     },
     'espn_2': {
-        base: 'https://smjt9q.envivoslatam.org/hotflix/espnpremium/index.m3u8',
-        parametros: 'ip=xyz&token=xyz' // Reemplazar con el parámetro real si tiene
+        base: 'https://deportes.ksdjugfsddeports.com:9092/MTgxLjIyOC45MC4xOTU=/5_.m3u8',
+        parametros: 'token=E9L55MEInA9i5_rr8YRNUQ&expires=1776880162' // Reemplazar con el parámetro real si tiene
      },    
     'espn_3': {
         base: 'AQUI_VA_EL_LINK_DE_ESPN_OPCION_3',
@@ -41,8 +41,8 @@ const dbCanales = {
 
     // --- DSPORTS ---
     'dsports_1': {
-        base: 'https://2smh3wve.58103793.net:8443/hls/4jva7tj642f9b.m3u8',
-        parametros: 's=SJCtDMsD1cnkveim0VX5cQ&e=1776868312'
+        base: 'https://deportes.ksdjugfsddeports.com:9092/MTgxLjIyOC45MC4xOTU=/3_.m3u8',
+        parametros: 'token=BWsZ9wuhVtu2q0f-H3_08A&expires=1776880331'
     },
     'dsports_2': {
         base: 'AQUI_VA_EL_LINK_DE_DSPORTS_OPCION_2',
