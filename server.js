@@ -13,8 +13,8 @@ app.use(express.json());
 const dbCanales = {
     // --- TNT SPORTS ---
     'tnt_1': {
-        base: 'https://antv10.ddns.net/hls/stream.m3u8',
-        parametros: 'v=1776625742405'
+        base: 'https://2smh3wve.58103793.net:8443/hls/xkvfhc3.m3u8',
+        parametros: 's=EzWL4twoMSmulktDV8yGDQ&e=1776868051'
     },
     'tnt_2': {
         base: 'AQUI_VA_EL_LINK_DE_TNT_OPCION_2',
@@ -41,8 +41,8 @@ const dbCanales = {
 
     // --- DSPORTS ---
     'dsports_1': {
-        base: 'https://j8nte.envivoslatam.org/dsports/tracks-v1a1/mono.m3u8',
-        parametros: 'ip=181.228.90.195&token=0b8484e94d78af9184c60015330fa06fbff9749e-3c-1776600035-1776546035'
+        base: 'https://2smh3wve.58103793.net:8443/hls/4jva7tj642f9b.m3u8',
+        parametros: 's=SJCtDMsD1cnkveim0VX5cQ&e=1776868312'
     },
     'dsports_2': {
         base: 'AQUI_VA_EL_LINK_DE_DSPORTS_OPCION_2',

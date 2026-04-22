@@ -6,7 +6,10 @@
     <meta name="referrer" content="no-referrer">
     <title>CASTA-APP</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
+    
     <style>
         /* Ocultar barra de scroll en el menú para un look más limpio */
         #sidebar::-webkit-scrollbar { display: none; }
@@ -64,7 +67,9 @@
         const btnCast = document.getElementById('btnCast');
         const btnReportar = document.getElementById('btnReportar');
 
+        // Variables globales para los reproductores
         let hls;
+        let dashPlayer;
         let canalActualNombre = ""; 
 
         // CONFIGURACIÓN: Tu URL de Render
@@ -159,7 +164,7 @@
                 const data = await res.json();
 
                 if (data.exito) {
-                    ejecutarHLS(data.url);
+                    ejecutarVideo(data.url);
                 } else {
                     throw new Error("No se pudo obtener el enlace");
                 }
@@ -171,59 +176,95 @@
             }
         }
 
-        // --- REPRODUCCIÓN (HLS MEJORADO) ---
-        function ejecutarHLS(url) {
+        // --- REPRODUCCIÓN MULTIFORMATO (HLS Y DASH) ---
+        function ejecutarVideo(url) {
             videoElement.volume = 1.0;
             videoElement.muted = false;
 
-            if (hls) hls.destroy();
+            // Limpiar reproductores anteriores para evitar conflictos
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            if (dashPlayer) {
+                dashPlayer.destroy();
+                dashPlayer = null;
+            }
 
-            if (Hls.isSupported()) {
-                // Configuración agresiva extraída del código original
-                hls = new Hls({
-                    debug: false, 
-                    xhrSetup: function(xhr) { xhr.withCredentials = false; },
-                    manifestLoadingMaxRetry: 2,
-                    manifestLoadingTimeOut: 10000,
-                    levelLoadingMaxRetry: 2,
-                    levelLoadingTimeOut: 10000
-                });
-
-                hls.loadSource(url);
-                hls.attachMedia(videoElement);
+            // 1. FORMATO MPEG-DASH (.mpd)
+            if (url.includes('.mpd')) {
+                console.log("Cargando formato DASH (.mpd)");
+                dashPlayer = dashjs.MediaPlayer().create();
+                dashPlayer.initialize(videoElement, url, true);
                 
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                // Ocultar loader cuando empiece a reproducir
+                dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => {
                     loader.classList.add('hidden');
-                    videoElement.play().catch(() => {
-                        console.log("Autoplay con sonido bloqueado. Iniciando en mudo...");
-                        videoElement.muted = true;
-                        videoElement.play();
-                    });
                 });
 
-                hls.on(Hls.Events.ERROR, (event, data) => {
-                    if (data.fatal) {
-                        loader.classList.add('hidden');
-                        mensajeError.classList.remove('hidden');
-                        abrirMenu(); // Si falla, abre el menú para elegir otra opción
-                        
-                        // Diagnóstico detallado del error
-                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                            if (data.response && data.response.code === 403) {
-                                mensajeError.innerText = "🚫 Error 403 (Prohibido): Bloqueo por Referer/CORS o IP expirada. ¡Usa el botón de reportar!";
-                            } else if (data.response && data.response.code === 0) {
-                                mensajeError.innerText = "🚧 Error de CORS: El servidor original bloquea la reproducción.";
-                            } else {
-                                mensajeError.innerText = "❌ Error de red: No se pudo conectar con el servidor de video (Timeout).";
-                            }
-                        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                            mensajeError.innerText = "⚠️ Error de decodificación: El formato del video no es compatible o está corrupto.";
-                        } else {
-                            mensajeError.innerText = "💥 Error fatal desconocido al intentar reproducir.";
-                        }
-                    }
+                // Manejo de errores de DASH
+                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
+                    loader.classList.add('hidden');
+                    mensajeError.classList.remove('hidden');
+                    mensajeError.innerText = "💥 Error en DASH: El servidor bloquea la reproducción o el formato está corrupto.";
+                    abrirMenu();
                 });
-            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            } 
+            // 2. FORMATO HLS (.m3u8)
+            else if (url.includes('.m3u8')) {
+                console.log("Cargando formato HLS (.m3u8)");
+                if (Hls.isSupported()) {
+                    hls = new Hls({
+                        debug: false, 
+                        xhrSetup: function(xhr) { xhr.withCredentials = false; },
+                        manifestLoadingMaxRetry: 2,
+                        manifestLoadingTimeOut: 10000,
+                        levelLoadingMaxRetry: 2,
+                        levelLoadingTimeOut: 10000
+                    });
+
+                    hls.loadSource(url);
+                    hls.attachMedia(videoElement);
+                    
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        loader.classList.add('hidden');
+                        videoElement.play().catch(() => {
+                            console.log("Autoplay con sonido bloqueado. Iniciando en mudo...");
+                            videoElement.muted = true;
+                            videoElement.play();
+                        });
+                    });
+
+                    hls.on(Hls.Events.ERROR, (event, data) => {
+                        if (data.fatal) {
+                            loader.classList.add('hidden');
+                            mensajeError.classList.remove('hidden');
+                            abrirMenu(); 
+                            
+                            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                                if (data.response && data.response.code === 403) {
+                                    mensajeError.innerText = "🚫 Error 403 (Prohibido): Bloqueo por IP o Token expirado.";
+                                } else if (data.response && data.response.code === 0) {
+                                    mensajeError.innerText = "🚧 Error de CORS: El servidor original bloquea la reproducción.";
+                                } else {
+                                    mensajeError.innerText = "❌ Error de red: No se pudo conectar con el servidor de video.";
+                                }
+                            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                                mensajeError.innerText = "⚠️ Error de decodificación: El formato del video no es compatible.";
+                            } else {
+                                mensajeError.innerText = "💥 Error fatal desconocido al intentar reproducir.";
+                            }
+                        }
+                    });
+                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoElement.src = url;
+                    videoElement.play();
+                    loader.classList.add('hidden');
+                }
+            } 
+            // 3. OTROS FORMATOS (Ej: mp4 directo)
+            else {
+                console.log("Cargando formato directo nativo");
                 videoElement.src = url;
                 videoElement.play();
                 loader.classList.add('hidden');
@@ -234,18 +275,15 @@
         document.addEventListener('keydown', (e) => {
             const isMenuAbierto = !sidebar.classList.contains('-translate-x-full');
 
-            // Abrir menú con flecha Izquierda si está cerrado
             if (e.key === 'ArrowLeft' && !isMenuAbierto) {
                 abrirMenu();
                 return;
             }
-            // Cerrar menú con flecha Derecha si está abierto
             if (e.key === 'ArrowRight' && isMenuAbierto) {
                 cerrarMenu();
                 return;
             }
 
-            // Navegación nativa básica (Tabulación) para mandos de TV
             if (isMenuAbierto) {
                 const botones = Array.from(sidebar.querySelectorAll('button:not(.hidden)'));
                 const currentIndex = botones.indexOf(document.activeElement);
@@ -301,7 +339,6 @@
         window.onload = () => {
             renderizarCanales();
             
-            // Lógica combinada: Cargar la primera opción del primer canal por defecto
             if (misCanales.length > 0 && misCanales[0].opciones.length > 0) {
                 const primerCanal = misCanales[0];
                 const primeraOpcion = primerCanal.opciones[0];
@@ -310,7 +347,7 @@
                 obtenerEnlaceServidor(primeraOpcion.id);
                 btnReportar.classList.remove('hidden');
             } else {
-                abrirMenu(); // Si por algún motivo no hay canales, abre el menú
+                abrirMenu(); 
             }
         };
     </script>
