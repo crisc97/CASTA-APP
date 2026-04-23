@@ -44,7 +44,7 @@ const dbCanales = {
     // 🔥 CANAL AUTOMÁTICO (BOT SCRAPER)
     'espn_scraper': {
         urlScraping: 'https://tvlibr3.com/en-vivo/espn-premium/', 
-        selectorScraping: 'html > iframe' 
+        selectorScraping: 'iframe#iframe' // Tu selector mágico
     },
 
     // --- DSPORTS ---
@@ -62,7 +62,7 @@ const dbCanales = {
     }
 };
 
-// --- RUTA INTELIGENTE PARA OBTENER ENLACES (NORMALES Y SCRAPER) ---
+// --- RUTA INTELIGENTE PARA OBTENER ENLACES ---
 app.get('/api/get-stream/:canal', async (req, res) => {
     const canalId = req.params.canal;
     const datosCanal = dbCanales[canalId];
@@ -77,9 +77,15 @@ app.get('/api/get-stream/:canal', async (req, res) => {
             console.log(`Ejecutando Bot Scraper para: ${canalId}`);
             const respuesta = await axios.get(datosCanal.urlScraping);
             const $ = cheerio.load(respuesta.data);
-            const enlaceExtraido = $(datosCanal.selectorScraping).attr('src');
+            let enlaceExtraido = $(datosCanal.selectorScraping).attr('src');
             
             if (enlaceExtraido) {
+                // MAGIA NUEVA: Si el enlace empieza con "/", le pegamos el dominio completo
+                if (enlaceExtraido.startsWith('/')) {
+                    const urlBase = new URL(datosCanal.urlScraping).origin; // Esto saca "https://tvlibr3.com"
+                    enlaceExtraido = urlBase + enlaceExtraido;
+                }
+                
                 return res.json({ exito: true, url: enlaceExtraido });
             } else {
                 return res.status(404).json({ exito: false, mensaje: "El Bot no encontró el video en la página web." });
@@ -109,10 +115,7 @@ app.get('/', (req, res) => {
 // --- RUTA PARA RECIBIR ALERTAS Y ENVIAR MAIL ---
 app.post('/api/reportar', async (req, res) => {
     const { canal } = req.body;
-
-    if (!canal) {
-        return res.status(400).json({ error: "Falta el nombre del canal" });
-    }
+    if (!canal) return res.status(400).json({ error: "Falta el nombre del canal" });
 
     try {
         const transporter = nodemailer.createTransport({
@@ -131,7 +134,6 @@ app.post('/api/reportar', async (req, res) => {
         };
 
         await transporter.sendMail(mailOptions);
-        
         console.log(`[ALERTA ENVIADA] Correo enviado por falla en: ${canal}`);
         res.json({ exito: true, mensaje: "Reporte enviado correctamente" });
 
