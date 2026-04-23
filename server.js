@@ -31,9 +31,11 @@ const dbCanales = {
         parametros: 'token=_hoXlZBpvnPFpXqkXpj5Tg&expires=1777011046'
     },
     'espn_2': {
-        base: 'https://edge-live03-hr.cvattv.com.ar/tok_eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNzc3MTUxNjE2Iiwic2lwIjoiMTgxLjIyOC45MC4xOTUiLCJwYXRoIjoiL2xpdmUvYzdlZHMvRm94X1Nwb3J0c19QcmVtaXVuX0hEL1NBX0xpdmVfZGFzaF9lbmNfQy8iLCJzZXNzaW9uX2Nkbl9pZCI6IjM0NTUyMGVkYjUxMDFhYTIiLCJzZXNzaW9uX2lkIjoiIiwiY2xpZW50X2lkIjoiIiwiZGV2aWNlX2lkIjoiIiwibWF4X3Nlc3Npb25zIjowLCJzZXNzaW9uX2R1cmF0aW9uIjowLCJ1cmwiOiJodHRwczovLzE4MS4xMi4zNi4xNTAiLCJhdWQiOiIyOTYiLCJzb3VyY2VzIjpbODUsMTQ0LDg2LDg4XX0=.7jnZqLSgob2q-NhgBBrAD8MNwd5Lpwjo3xlmLqWEzQ835_Q9p6YLZRohnJFpbog3SUitFdnpnlBh6QxLwtcAIQ==/live/c7eds/Fox_Sports_Premiun_HD/SA_Live_dash_enc_C/Fox_Sports_Premiun_HD.mpd',
-        parametros: 'token=E9L55MEInA9i5_rr8YRNUQ&expires=1776880162' // Reemplazar con el parámetro real si tiene
-     },    
+        // FORMATO NUEVO: Token en el medio
+        dominio: 'https://edge-live03-hr.cvattv.com.ar/',
+        token: 'tok_eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNzc3MTUxNjE2Iiwic2lwIjoiMTgxLjIyOC45MC4xOTUiLCJwYXRoIjoiL2xpdmUvYzdlZHMvRm94X1Nwb3J0c19QcmVtaXVuX0hEL1NBX0xpdmVfZGFzaF9lbmNfQy8iLCJzZXNzaW9uX2Nkbl9pZCI6IjM0NTUyMGVkYjUxMDFhYTIiLCJzZXNzaW9uX2lkIjoiIiwiY2xpZW50X2lkIjoiIiwiZGV2aWNlX2lkIjoiIiwibWF4X3Nlc3Npb25zIjowLCJzZXNzaW9uX2R1cmF0aW9uIjowLCJ1cmwiOiJodHRwczovLzE4MS4xMi4zNi4xNTAiLCJhdWQiOiIyOTYiLCJzb3VyY2VzIjpbODUsMTQ0LDg2LDg4XX0=.7jnZqLSgob2q-NhgBBrAD8MNwd5Lpwjo3xlmLqWEzQ835_Q9p6YLZRohnJFpbog3SUitFdnpnlBh6QxLwtcAIQ==/',
+        ruta: 'live/c7eds/Fox_Sports_Premiun_HD/SA_Live_dash_enc_C/Fox_Sports_Premiun_HD.mpd'
+    },    
     'espn_3': {
         base: 'https://cdn4.zohanayaan.com:1686/hls/espnar.m3u8',
         parametros: 'md5=iJutx_apVGzpxL9Chcs-kA&expires=1776856173' // Reemplazar con el parámetro real si tiene
@@ -60,8 +62,16 @@ app.get('/api/get-stream/:canal', (req, res) => {
     const datosCanal = dbCanales[canalId];
     
     if (datosCanal) {
-        // Si no hay parámetros definidos para las opciones de repuesto, solo enviamos la base
-        let urlFinal = datosCanal.parametros ? `${datosCanal.base}?${datosCanal.parametros}` : datosCanal.base;
+        let urlFinal = "";
+
+        // 1. Verificamos si usa la estructura de 3 partes (Token en el medio)
+        if (datosCanal.dominio && datosCanal.ruta) {
+            urlFinal = datosCanal.dominio + datosCanal.token + datosCanal.ruta;
+        } 
+        // 2. Si usa la estructura tradicional (Base + Parámetros con "?")
+        else {
+            urlFinal = datosCanal.parametros ? `${datosCanal.base}?${datosCanal.parametros}` : datosCanal.base;
+        }
         
         res.json({ 
             exito: true, 
