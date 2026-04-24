@@ -3,6 +3,7 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const puppeteer = require('puppeteer'); // <-- ¡NUEVO!
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,7 +37,7 @@ const dbCanales = {
         dominio: 'https://edge-live03-hr.cvattv.com.ar/',
         token: 'tok_eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNzc3MTUxNjE2Iiwic2lwIjoiMTgxLjIyOC45MC4xOTUiLCJwYXRoIjoiL2xpdmUvYzdlZHMvRm94X1Nwb3J0c19QcmVtaXVuX0hEL1NBX0xpdmVfZGFzaF9lbmNfQy8iLCJzZXNzaW9uX2Nkbl9pZCI6IjM0NTUyMGVkYjUxMDFhYTIiLCJzZXNzaW9uX2lkIjoiIiwiY2xpZW50X2lkIjoiIiwiZGV2aWNlX2lkIjoiIiwibWF4X3Nlc3Npb25zIjowLCJzZXNzaW9uX2R1cmF0aW9uIjowLCJ1cmwiOiJodHRwczovLzE4MS4xMi4zNi4xNTAiLCJhdWQiOiIyOTYiLCJzb3VyY2VzIjpbODUsMTQ0LDg2LDg4XX0=.7jnZqLSgob2q-NhgBBrAD8MNwd5Lpwjo3xlmLqWEzQ835_Q9p6YLZRohnJFpbog3SUitFdnpnlBh6QxLwtcAIQ==/',
         ruta: 'live/c7eds/Fox_Sports_Premiun_HD/SA_Live_dash_enc_C/Fox_Sports_Premiun_HD.mpd'
-    },    
+    },  
     'espn_3': {
         base: 'https://cdn4.zohanayaan.com:1686/hls/espnar.m3u8',
         parametros: 'md5=iJutx_apVGzpxL9Chcs-kA&expires=1776856173'
@@ -44,7 +45,7 @@ const dbCanales = {
     // 🔥 CANAL AUTOMÁTICO (BOT SCRAPER)
     'espn_scraper': {
         urlScraping: 'https://tvlibr3.com/en-vivo/espn-premium/', 
-        selectorScraping: 'iframe#iframe' // Tu selector mágico
+        selectorScraping: 'iframe#iframe'
     },
 
     // --- DSPORTS ---
@@ -72,23 +73,43 @@ app.get('/api/get-stream/:canal', async (req, res) => {
     }
 
     try {
-        // 🤖 CASO 1: ES UN CANAL AUTOMÁTICO (SCRAPER)
+        // 🤖 CASO 1: ES UN CANAL AUTOMÁTICO (SCRAPER CON PUPPETEER)
         if (datosCanal.urlScraping) {
-            console.log(`Ejecutando Bot Scraper para: ${canalId}`);
-            const respuesta = await axios.get(datosCanal.urlScraping);
-            const $ = cheerio.load(respuesta.data);
-            let enlaceExtraido = $(datosCanal.selectorScraping).attr('src');
+            console.log(`Ejecutando Bot Scraper (Navegador Real) para: ${canalId}`);
             
-            if (enlaceExtraido) {
-                // MAGIA NUEVA: Si el enlace empieza con "/", le pegamos el dominio completo
-                if (enlaceExtraido.startsWith('/')) {
-                    const urlBase = new URL(datosCanal.urlScraping).origin; // Esto saca "https://tvlibr3.com"
-                    enlaceExtraido = urlBase + enlaceExtraido;
-                }
+            const browser = await puppeteer.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+            });
+            
+            const page = await browser.newPage();
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36');
+            
+            try {
+                await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 15000 });
+                await page.waitForSelector(datosCanal.selectorScraping, { timeout: 8000 });
                 
-                return res.json({ exito: true, url: enlaceExtraido });
-            } else {
-                return res.status(404).json({ exito: false, mensaje: "El Bot no encontró el video en la página web." });
+                let enlaceExtraido = await page.evaluate((selector) => {
+                    const elemento = document.querySelector(selector);
+                    return elemento ? elemento.src : null;
+                }, datosCanal.selectorScraping);
+
+                await browser.close();
+
+                if (enlaceExtraido) {
+                    if (enlaceExtraido.startsWith('/')) {
+                        const urlBase = new URL(datosCanal.urlScraping).origin;
+                        enlaceExtraido = urlBase + enlaceExtraido;
+                    }
+                    return res.json({ exito: true, url: enlaceExtraido });
+                } else {
+                    return res.status(404).json({ exito: false, mensaje: "El iframe no apareció en la página web." });
+                }
+
+            } catch (err) {
+                await browser.close();
+                console.error("Error en el navegador:", err.message);
+                return res.status(404).json({ exito: false, mensaje: "La página bloqueó al bot o el video tardó mucho." });
             }
         } 
         // 📺 CASO 2: ES UN CANAL NORMAL (ESTÁTICO)

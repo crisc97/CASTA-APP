@@ -19,7 +19,8 @@
     "cheerio": "^1.2.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "nodemailer": "^8.0.5"
+    "nodemailer": "^8.0.5",
+    "puppeteer": "^24.42.0"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

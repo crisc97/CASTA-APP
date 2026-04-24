@@ -1,22 +1,13 @@
-import { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
-  appId: 'com.tu-nombre.castaapp', // Mantén el que ya tenías
-  appName: 'CASTA-APP',
-  webDir: 'www',
-  server: {
-    // 1. Cargamos tu página real de GitHub
-    url: 'https://crisc97.github.io/CASTA-APP/',
-    
-    // 2. IMPORTANTE: Esto evita que se abra el navegador Chrome
-    allowNavigation: [
-      'crisc97.github.io',
-      '*.onrender.com' // Esto permite que la App hable con tu servidor de Render
-    ],
-
-    // 3. Permite cargar los videos aunque no tengan SSL seguro
-    cleartext: true
+{
+  "appId": "com.tu-nombre.castaapp",
+  "appName": "CASTA-APP",
+  "webDir": "www",
+  "server": {
+    "url": "https://crisc97.github.io/CASTA-APP/",
+    "cleartext": true,
+    "allowNavigation": [
+      "crisc97.github.io",
+      "*.onrender.com"
+    ]
   }
-};
-
-export default config;
+}
