@@ -120,24 +120,48 @@
         btnMenu.addEventListener('click', abrirMenu);
         btnCerrar.addEventListener('click', cerrarMenu);
 
-        function renderizarCanales() {
+       function renderizarCanales() {
             listaCanalesDiv.innerHTML = '';
+            
+            // Estas dos listas nos ayudarán a controlar las solapas y los colores
+            const todasLasSolapas = [];
+            const todosLosBotonesOpcion = [];
+
             misCanales.forEach((canal) => {
                 const canalContainer = document.createElement('div');
                 canalContainer.className = "flex flex-col gap-1 mb-2";
 
                 const btnPrincipal = document.createElement('button');
-                btnPrincipal.className = "w-full text-left bg-gray-800 hover:bg-gray-700 focus:bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none text-white font-bold py-3 px-4 rounded-lg transition border border-gray-700 flex justify-between items-center";
+                btnPrincipal.className = "w-full text-left bg-gray-800 hover:bg-gray-700 focus:bg-gray-700 outline-none text-white font-bold py-3 px-4 rounded-lg transition border border-gray-700 flex justify-between items-center";
                 btnPrincipal.innerHTML = `<span>${canal.nombre}</span> <span class="text-xs">▼</span>`;
 
                 const subOpcionesDiv = document.createElement('div');
                 subOpcionesDiv.className = "hidden flex-col gap-1 pl-4 mt-1 border-l-2 border-blue-500";
+                
+                // Guardamos la solapa en nuestra lista
+                todasLasSolapas.push(subOpcionesDiv);
 
                 canal.opciones.forEach(opcion => {
                     const btnOpcion = document.createElement('button');
-                    btnOpcion.className = "w-full text-left bg-gray-900 hover:bg-blue-600 focus:bg-blue-600 focus:ring-2 focus:ring-white outline-none text-gray-300 hover:text-white py-2 px-3 rounded-md transition text-sm";
+                    // Le quitamos colores fijos para poder jugar con ellos al hacer clic
+                    btnOpcion.className = "w-full text-left bg-gray-900 outline-none text-gray-300 hover:text-white py-2 px-3 rounded-md transition text-sm";
                     btnOpcion.innerText = opcion.nombre;
+                    
+                    // Guardamos el botón en nuestra lista
+                    todosLosBotonesOpcion.push(btnOpcion);
+
                     btnOpcion.onclick = () => {
+                        // 1. LÓGICA DE RESALTADO (Color)
+                        // Primero, le quitamos el color azul a todos los botones
+                        todosLosBotonesOpcion.forEach(b => {
+                            b.classList.remove('bg-blue-600', 'text-white', 'font-bold');
+                            b.classList.add('bg-gray-900', 'text-gray-300');
+                        });
+                        // Luego, le ponemos el color azul SOLO al que tocamos
+                        btnOpcion.classList.remove('bg-gray-900', 'text-gray-300');
+                        btnOpcion.classList.add('bg-blue-600', 'text-white', 'font-bold');
+
+                        // Tu lógica original de reproducción
                         canalActualNombre = `${canal.nombre} - ${opcion.nombre}`;
                         obtenerEnlaceServidor(opcion.id);
                         cerrarMenu();
@@ -147,15 +171,33 @@
                 });
 
                 btnPrincipal.onclick = () => {
-                    subOpcionesDiv.classList.toggle('hidden');
+                    // 2. LÓGICA DE CERRAR OTRAS SOLAPAS
+                    // Verificamos si la solapa que tocamos estaba oculta o abierta
+                    const estabaOculta = subOpcionesDiv.classList.contains('hidden');
+                    
+                    // Cerramos TODAS las solapas sin excepción
+                    todasLasSolapas.forEach(solapa => solapa.classList.add('hidden'));
+
+                    // Si la que tocamos estaba oculta, la abrimos (si estaba abierta, queda cerrada)
+                    if (estabaOculta) {
+                        subOpcionesDiv.classList.remove('hidden');
+                    }
                 };
 
                 canalContainer.appendChild(btnPrincipal);
                 canalContainer.appendChild(subOpcionesDiv);
                 listaCanalesDiv.appendChild(canalContainer);
             });
-        }
 
+            // 3. LÓGICA DE REPRODUCCIÓN AUTOMÁTICA DEL PRIMER CANAL
+            // Si hay canales en la lista...
+            if (todosLosBotonesOpcion.length > 0) {
+                // Abrimos la primera solapa
+                todasLasSolapas[0].classList.remove('hidden');
+                // Hacemos "clic" virtual en el primer botón de canal
+                todosLosBotonesOpcion[0].click();
+            }
+        }
         async function obtenerEnlaceServidor(canalId) {
             mensajeError.classList.add('hidden');
             loader.classList.remove('hidden');
