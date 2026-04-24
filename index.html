@@ -21,7 +21,7 @@
     <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
         <video id="reproductor" class="w-full h-full outline-none object-contain" controls tabindex="-1" autoplay playsinline></video>
         
-        <iframe id="reproductorIframe" class="w-full h-full border-none hidden" allowfullscreen allow="autoplay; encrypted-media" referrerpolicy="origin" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"></iframe>
+        <iframe id="reproductorIframe" class="w-full h-full border-none hidden" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="no-referrer"></iframe>
 
         <div id="loading" class="absolute hidden z-10">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
@@ -219,7 +219,7 @@
             }
         }
 
-        // --- EL CEREBRO DEL NUEVO REPRODUCTOR DUAL ---
+        // CAMBIO 2: EL CEREBRO DEL NUEVO REPRODUCTOR DUAL
         function ejecutarVideo(url) {
             // Limpiar reproductores anteriores de video puro
             if (hls) { hls.destroy(); hls = null; }
@@ -235,7 +235,13 @@
                 videoElement.classList.add('hidden');
                 iframeElement.classList.remove('hidden');
                 
-                iframeElement.src = url;
+                // INTENTO DE AUTOPLAY: Le inyectamos los parámetros a la URL por si el reproductor los acepta
+                let urlConAutoplay = url;
+                if (!url.includes('autoplay')) {
+                    urlConAutoplay += url.includes('?') ? '&autoplay=1&muted=1' : '?autoplay=1&muted=1';
+                }
+
+                iframeElement.src = urlConAutoplay;
                 loader.classList.add('hidden');
             } else {
                 console.log("Cargando video puro...");
