@@ -3,7 +3,7 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const puppeteer = require('puppeteer'); // <-- ¡NUEVO!
+const puppeteer = require('puppeteer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -86,8 +86,9 @@ app.get('/api/get-stream/:canal', async (req, res) => {
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36');
             
             try {
-                await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 15000 });
-                await page.waitForSelector(datosCanal.selectorScraping, { timeout: 8000 });
+                // AQUÍ ESTÁ EL CAMBIO DE TIEMPOS ⏳
+                await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
+                await page.waitForSelector(datosCanal.selectorScraping, { timeout: 15000 });
                 
                 let enlaceExtraido = await page.evaluate((selector) => {
                     const elemento = document.querySelector(selector);
