@@ -93,7 +93,31 @@ app.get('/api/get-stream/:canal', async (req, res) => {
             const browser = await puppeteer.launch({
                 headless: true,
                 args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-            }); // <-- ¡AQUÍ FALTABA ESTO PARA CERRAR EL LAUNCH!
+            });
 
-            // Aquí dentro deberías poner el resto de la lógica de Puppeteer (abrir página, buscar iframe, etc.)
             // Por ahora, solo cerramos el navegador y mandamos un mensaje de prueba
+            await browser.close();
+            return res.json({ exito: true, mensaje: "Bot ejecutado, pero falta completar la lógica de extracción." });
+
+        } else if (datosCanal.dominio && datosCanal.token && datosCanal.ruta) {
+            // 📡 CASO 2: CANAL COMPLEJO (Con Token separado)
+            const urlCompleta = `${datosCanal.dominio}${datosCanal.token}${datosCanal.ruta}`;
+            return res.json({ exito: true, url: urlCompleta });
+
+        } else {
+            // 🔗 CASO 3: CANAL SIMPLE (Base + Parametros)
+            const separador = datosCanal.parametros ? '?' : '';
+            const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
+            return res.json({ exito: true, url: urlCompleta });
+        }
+
+    } catch (error) { 
+        console.error("Error al procesar la ruta:", error);
+        return res.status(500).json({ exito: false, error: error.message });
+    }
+}); 
+
+// --- ENCENDIDO DEL SERVIDOR ---
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
+});
