@@ -5,12 +5,14 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 
-app.use(cors());
-const PORT = process.env.PORT || 3000;
+// 1. PRIMERO CREAMOS LA VARIABLE 'app' (¡Esto era lo que faltaba!)
+const app = express();
 
-// MIDDLEWARES
-app.use(cors());
+// 2. LUEGO LE APLICAMOS LOS MIDDLEWARES Y EL CORS LIBRE
+app.use(cors({ origin: '*' }));
 app.use(express.json()); 
+
+const PORT = process.env.PORT || 3000;
 
 // --- BASE DE DATOS DE CANALES ---
 const dbCanales = {
