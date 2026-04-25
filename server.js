@@ -5,7 +5,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 
-// 1. PRIMERO CREAMOS LA VARIABLE 'app' (¡Esto era lo que faltaba!)
+// 1. PRIMERO CREAMOS LA VARIABLE 'app'
 const app = express();
 
 // 2. LUEGO LE APLICAMOS LOS MIDDLEWARES Y EL CORS LIBRE
@@ -65,6 +65,9 @@ const dbCanales = {
     }
 };
 
+// --- MEMORIA CACHÉ PARA ACELERAR EL BOT ---
+const memoriaCache = {};
+
 // --- RUTA INTELIGENTE PARA OBTENER ENLACES ---
 app.get('/api/get-stream/:canal', async (req, res) => {
     const canalId = req.params.canal;
@@ -77,97 +80,17 @@ app.get('/api/get-stream/:canal', async (req, res) => {
     try {
         // 🤖 CASO 1: ES UN CANAL AUTOMÁTICO (SCRAPER CON PUPPETEER)
         if (datosCanal.urlScraping) {
-            console.log(`Ejecutando Bot Scraper (Navegador Real) para: ${canalId}`);
+            
+            // ⚡ REVISAMOS LA MEMORIA PRIMERO (Ahorra 30 segundos)
+            // Si ya buscamos este link hace menos de 2 horas (7200000 ms), lo mandamos al instante.
+            const ahora = Date.now();
+            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
+                console.log(`⚡ Entregando link de ${canalId} desde la memoria (¡Instántaneo!)`);
+                return res.json({ exito: true, url: memoriaCache[canalId].url });
+            }
+
+            console.log(`Buscando link fresco para: ${canalId}... (Esto tomará unos segundos)`);
             
             const browser = await puppeteer.launch({
                 headless: true,
                 args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-            });
-            
-            const page = await browser.newPage();
-            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36');
-            
-            try {
-                // AQUÍ ESTÁ EL CAMBIO DE TIEMPOS ⏳
-                await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
-                await page.waitForSelector(datosCanal.selectorScraping, { timeout: 15000 });
-                
-                let enlaceExtraido = await page.evaluate((selector) => {
-                    const elemento = document.querySelector(selector);
-                    return elemento ? elemento.src : null;
-                }, datosCanal.selectorScraping);
-
-                await browser.close();
-
-                if (enlaceExtraido) {
-                    if (enlaceExtraido.startsWith('/')) {
-                        const urlBase = new URL(datosCanal.urlScraping).origin;
-                        enlaceExtraido = urlBase + enlaceExtraido;
-                    }
-                    return res.json({ exito: true, url: enlaceExtraido });
-                } else {
-                    return res.status(404).json({ exito: false, mensaje: "El iframe no apareció en la página web." });
-                }
-
-            } catch (err) {
-                await browser.close();
-                console.error("Error en el navegador:", err.message);
-                return res.status(404).json({ exito: false, mensaje: "La página bloqueó al bot o el video tardó mucho." });
-            }
-        } 
-        // 📺 CASO 2: ES UN CANAL NORMAL (ESTÁTICO)
-        else {
-            let urlFinal = "";
-            if (datosCanal.dominio && datosCanal.ruta) {
-                urlFinal = datosCanal.dominio + datosCanal.token + datosCanal.ruta;
-            } else {
-                urlFinal = datosCanal.parametros ? `${datosCanal.base}?${datosCanal.parametros}` : datosCanal.base;
-            }
-            return res.json({ exito: true, url: urlFinal });
-        }
-    } catch (error) {
-        console.error(`Error procesando el canal ${canalId}:`, error.message);
-        res.status(500).json({ exito: false, mensaje: "Error interno del servidor al procesar el canal." });
-    }
-});
-
-// --- RUTA PRINCIPAL DE BIENVENIDA ---
-app.get('/', (req, res) => { 
-    res.send('<h1>🚀 Servidor CASTA-APP PRO Online</h1><p>Sistema de subcanales y alertas activo.</p>'); 
-});
-
-// --- RUTA PARA RECIBIR ALERTAS Y ENVIAR MAIL ---
-app.post('/api/reportar', async (req, res) => {
-    const { canal } = req.body;
-    if (!canal) return res.status(400).json({ error: "Falta el nombre del canal" });
-
-    try {
-        const transporter = nodemailer.createTransport({
-            service: 'gmail', 
-            auth: {
-                user: process.env.MI_CORREO, 
-                pass: process.env.MI_CONTRASENA 
-            }
-        });
-
-        const mailOptions = {
-            from: `"App Casta" <${process.env.MI_CORREO}>`,
-            to: process.env.MI_CORREO, 
-            subject: `🚨 ALERTA CASTA-APP: Falló ${canal}`,
-            text: `Hola,\n\nUn usuario acaba de reportar desde la App que el canal:\n\n👉 "${canal}"\n\nNo carga o está caído.\n\nPor favor, revisa tu servidor y actualiza el enlace.\n\nSaludos,\nTu Servidor Bot 🤖`
-        };
-
-        await transporter.sendMail(mailOptions);
-        console.log(`[ALERTA ENVIADA] Correo enviado por falla en: ${canal}`);
-        res.json({ exito: true, mensaje: "Reporte enviado correctamente" });
-
-    } catch (error) {
-        console.error("[ERROR] No se pudo enviar el correo:", error);
-        res.status(500).json({ exito: false, error: "Error interno del servidor al enviar correo" });
-    }
-});
-
-// --- INICIAR SERVIDOR ---
-app.listen(PORT, '0.0.0.0', () => { 
-    console.log(`Servidor corriendo sin problemas en el puerto ${PORT}`); 
-});
