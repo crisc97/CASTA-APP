@@ -13,7 +13,10 @@ app.use(cors({ origin: '*' }));
 app.use(express.json()); 
 
 const PORT = process.env.PORT || 3000;
-
+// Ruta principal de bienvenida
+app.get('/', (req, res) => {
+    res.send('¡🚀 El servidor de Casta-App está 100% operativo!');
+});
 // --- BASE DE DATOS DE CANALES ---
 const dbCanales = {
     // --- TNT SPORTS ---
