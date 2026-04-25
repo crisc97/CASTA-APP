@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
+const path = require('path'); // <-- AGREGADO: Para poder leer el index.html
 
 // 1. PRIMERO CREAMOS LA VARIABLE 'app'
 const app = express();
@@ -13,10 +14,12 @@ app.use(cors({ origin: '*' }));
 app.use(express.json()); 
 
 const PORT = process.env.PORT || 3000;
-// Ruta principal de bienvenida
+
+// Ruta principal para mostrar tu interfaz web (el frontend)
 app.get('/', (req, res) => {
-    res.send('¡🚀 El servidor de Casta-App está 100% operativo!');
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
+
 // --- BASE DE DATOS DE CANALES ---
 const dbCanales = {
     // --- TNT SPORTS ---
@@ -87,7 +90,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
             // ⚡ REVISAMOS LA MEMORIA PRIMERO
             const ahora = Date.now();
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
-                console.log(`⚡ Entregando link de ${canalId} desde la memoria (¡Instántaneo!)`);
+                console.log(`⚡ Entregando link de ${canalId} desde la memoria (¡Instantáneo!)`);
                 return res.json({ exito: true, url: memoriaCache[canalId].url });
             }
 
@@ -98,29 +101,38 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
             });
 
-            // Por ahora, solo cerramos el navegador y mandamos un mensaje de prueba
-            await browser.close();
-            return res.json({ exito: true, url: datosCanal.urlScraping });
+            try {
+                const page = await browser.newPage();
+                
+                // Nos hacemos pasar por un navegador normal
+                await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
+
+                // 1. Entramos a la página web
+                await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 15000 });
+
+                // 2. Esperamos a que aparezca el reproductor
+                await page.waitForSelector(datosCanal.selectorScraping, { timeout: 10000 });
+
+                // 3. Extraemos SOLO el enlace del iframe
+                const linkLimpio = await page.$eval(datosCanal.selectorScraping, iframe => iframe.src);
+
+                console.log(`✅ Link extraído con éxito: ${linkLimpio}`);
+
+                // Guardamos en caché
+                memoriaCache[canalId] = { url: linkLimpio, tiempo: Date.now() };
+
+                await browser.close();
+                
+                // Le enviamos al frontend SOLO el enlace del reproductor
+                return res.json({ exito: true, url: linkLimpio });
+
+            } catch (errorBot) {
+                await browser.close();
+                console.error("Error dentro del Bot Puppeteer:", errorBot.message);
+                return res.status(500).json({ exito: false, mensaje: "El bot no pudo extraer el video." });
+            }
 
         } else if (datosCanal.dominio && datosCanal.token && datosCanal.ruta) {
             // 📡 CASO 2: CANAL COMPLEJO (Con Token separado)
             const urlCompleta = `${datosCanal.dominio}${datosCanal.token}${datosCanal.ruta}`;
-            return res.json({ exito: true, url: urlCompleta });
-
-        } else {
-            // 🔗 CASO 3: CANAL SIMPLE (Base + Parametros)
-            const separador = datosCanal.parametros ? '?' : '';
-            const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
-            return res.json({ exito: true, url: urlCompleta });
-        }
-
-    } catch (error) { 
-        console.error("Error al procesar la ruta:", error);
-        return res.status(500).json({ exito: false, error: error.message });
-    }
-}); 
-
-// --- ENCENDIDO DEL SERVIDOR ---
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
-});
+            return
