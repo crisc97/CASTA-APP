@@ -100,7 +100,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
 
             // Por ahora, solo cerramos el navegador y mandamos un mensaje de prueba
             await browser.close();
-            return res.json({ exito: true, mensaje: "Bot ejecutado, pero falta completar la lógica de extracción." });
+            return res.json({ exito: true, url: datosCanal.urlScraping });
 
         } else if (datosCanal.dominio && datosCanal.token && datosCanal.ruta) {
             // 📡 CASO 2: CANAL COMPLEJO (Con Token separado)
