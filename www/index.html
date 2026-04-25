@@ -2,16 +2,319 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=https://crisc97.github.io/CASTA-APP/">
-    <title>Cargando CASTA-APP...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="origin">
+    <title>📺CASTA-APP⚽</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
+    
     <style>
-        body { background-color: black; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
+        /* Ocultar barra de scroll en el menú para un look más limpio */
+        #sidebar::-webkit-scrollbar { display: none; }
+        #sidebar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body>
-    <div style="text-align: center;">
-        <h2>Conectando con CASTA-APP...</h2>
-        <p>Buscando actualizaciones...</p>
+<body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen relative font-sans select-none">
+
+    <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
+        <video id="reproductor" class="w-full h-full outline-none object-contain" controls tabindex="-1" autoplay playsinline></video>
+        
+        <iframe id="reproductorIframe" class="w-full h-full border-none hidden" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="no-referrer"></iframe>
+
+        <div id="loading" class="absolute hidden z-10">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+        </div>
+
+        <div id="mensajeError" class="absolute z-10 bottom-10 left-1/2 transform -translate-x-1/2 hidden bg-red-900/80 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center max-w-lg"></div>
     </div>
+
+    <div class="absolute top-6 left-6 right-6 z-40 flex justify-between items-start pointer-events-none">
+        <button id="btnMenu" class="pointer-events-auto bg-black/60 hover:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+
+        <div class="flex gap-4 pointer-events-auto">
+            <button id="btnCast" class="bg-black/60 hover:bg-purple-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none" title="Transmitir a TV">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            </button>
+
+            <button id="btnReportar" class="bg-black/60 hover:bg-red-600 focus:ring-4 focus:ring-white text-white px-4 py-3 rounded-full border border-gray-700 transition duration-300 font-bold flex items-center gap-2 hidden outline-none" title="Reportar Falla">
+                <span>⚠️</span> <span class="hidden sm:inline">Reportar NO funcional</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="sidebar" class="absolute top-0 left-0 h-full w-72 sm:w-80 bg-black/95 backdrop-blur-md z-50 p-6 transform translate-x-0 transition-transform duration-300 ease-in-out border-r border-gray-800 shadow-[20px_0_30px_rgba(0,0,0,0.7)] flex flex-col overflow-y-auto">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-black text-blue-500 tracking-wider">📺CASTA-APP</h1>
+                <p class="text-xs text-gray-400 tracking-widest mt-1 uppercase">Selecciona un canal de la lista</p>
+            </div>
+            <button id="btnCerrar" class="text-gray-400 hover:text-white text-3xl font-bold focus:outline-none">&times;</button>
+        </div>
+        <div id="listaCanales" class="flex flex-col gap-2 pb-10"></div>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('reproductor');
+        const iframeElement = document.getElementById('reproductorIframe');
+        const listaCanalesDiv = document.getElementById('listaCanales');
+        const mensajeError = document.getElementById('mensajeError');
+        const loader = document.getElementById('loading');
+
+        const sidebar = document.getElementById('sidebar');
+        const btnMenu = document.getElementById('btnMenu');
+        const btnCerrar = document.getElementById('btnCerrar');
+        const btnCast = document.getElementById('btnCast');
+        const btnReportar = document.getElementById('btnReportar');
+
+        // Variables globales para los reproductores
+        let hls;
+        let dashPlayer;
+        let canalActualNombre = ""; 
+
+        // CONFIGURACIÓN: Tu URL de Render
+       const API_URL = "https://casta-app.onrender.com";
+
+        const misCanales = [
+            {
+                nombre: "TNT Sports",
+                opciones: [
+                    { nombre: "Opción 1", id: "tnt_1" },
+                    { nombre: "Opción 2", id: "tnt_2" },
+                    { nombre: "Opción 3", id: "tnt_3" }
+                ]
+            },
+            {
+                nombre: "ESPN Premium",
+                opciones: [
+                    { nombre: "Opción 1", id: "espn_1" },
+                    { nombre: "Opción 2", id: "espn_2" },
+                    { nombre: "Opción 3", id: "espn_3" },
+                    { nombre: "Opción Automática (Bot)", id: "espn_scraper" } 
+                ]
+            },
+            {
+                nombre: "DirecTv Sports",
+                opciones: [
+                    { nombre: "Opción 1", id: "dsports_1" },
+                    { nombre: "Opción 2", id: "dsports_2" },
+                    { nombre: "Opción 3", id: "dsports_3" }
+                ]
+            }
+        ];
+
+        function abrirMenu() {
+            sidebar.classList.remove('-translate-x-full');
+            const primerBoton = listaCanalesDiv.querySelector('button');
+            if(primerBoton) primerBoton.focus();
+        }
+
+        function cerrarMenu() {
+            sidebar.classList.add('-translate-x-full');
+            videoElement.focus();
+        }
+
+        btnMenu.addEventListener('click', abrirMenu);
+        btnCerrar.addEventListener('click', cerrarMenu);
+
+       function renderizarCanales() {
+            listaCanalesDiv.innerHTML = '';
+            
+            // Estas dos listas nos ayudarán a controlar las solapas y los colores
+            const todasLasSolapas = [];
+            const todosLosBotonesOpcion = [];
+
+            misCanales.forEach((canal) => {
+                const canalContainer = document.createElement('div');
+                canalContainer.className = "flex flex-col gap-1 mb-2";
+
+                const btnPrincipal = document.createElement('button');
+                btnPrincipal.className = "w-full text-left bg-gray-800 hover:bg-gray-700 focus:bg-gray-700 outline-none text-white font-bold py-3 px-4 rounded-lg transition border border-gray-700 flex justify-between items-center";
+                btnPrincipal.innerHTML = `<span>${canal.nombre}</span> <span class="text-xs">▼</span>`;
+
+                const subOpcionesDiv = document.createElement('div');
+                subOpcionesDiv.className = "hidden flex-col gap-1 pl-4 mt-1 border-l-2 border-blue-500";
+                
+                // Guardamos la solapa en nuestra lista
+                todasLasSolapas.push(subOpcionesDiv);
+
+                canal.opciones.forEach(opcion => {
+                    const btnOpcion = document.createElement('button');
+                    // Le quitamos colores fijos para poder jugar con ellos al hacer clic
+                    btnOpcion.className = "w-full text-left bg-gray-900 outline-none text-gray-300 hover:text-white py-2 px-3 rounded-md transition text-sm";
+                    btnOpcion.innerText = opcion.nombre;
+                    
+                    // Guardamos el botón en nuestra lista
+                    todosLosBotonesOpcion.push(btnOpcion);
+
+                    btnOpcion.onclick = () => {
+                        // 1. LÓGICA DE RESALTADO (Color)
+                        // Primero, le quitamos el color azul a todos los botones
+                        todosLosBotonesOpcion.forEach(b => {
+                            b.classList.remove('bg-blue-600', 'text-white', 'font-bold');
+                            b.classList.add('bg-gray-900', 'text-gray-300');
+                        });
+                        // Luego, le ponemos el color azul SOLO al que tocamos
+                        btnOpcion.classList.remove('bg-gray-900', 'text-gray-300');
+                        btnOpcion.classList.add('bg-blue-600', 'text-white', 'font-bold');
+
+                        // Tu lógica original de reproducción
+                        canalActualNombre = `${canal.nombre} - ${opcion.nombre}`;
+                        obtenerEnlaceServidor(opcion.id);
+                        cerrarMenu();
+                        btnReportar.classList.remove('hidden');
+                    };
+                    subOpcionesDiv.appendChild(btnOpcion);
+                });
+
+                btnPrincipal.onclick = () => {
+                    // 2. LÓGICA DE CERRAR OTRAS SOLAPAS
+                    // Verificamos si la solapa que tocamos estaba oculta o abierta
+                    const estabaOculta = subOpcionesDiv.classList.contains('hidden');
+                    
+                    // Cerramos TODAS las solapas sin excepción
+                    todasLasSolapas.forEach(solapa => solapa.classList.add('hidden'));
+
+                    // Si la que tocamos estaba oculta, la abrimos (si estaba abierta, queda cerrada)
+                    if (estabaOculta) {
+                        subOpcionesDiv.classList.remove('hidden');
+                    }
+                };
+
+                canalContainer.appendChild(btnPrincipal);
+                canalContainer.appendChild(subOpcionesDiv);
+                listaCanalesDiv.appendChild(canalContainer);
+            });
+
+            // 3. LÓGICA DE REPRODUCCIÓN AUTOMÁTICA DEL PRIMER CANAL
+            // Si hay canales en la lista...
+            if (todosLosBotonesOpcion.length > 0) {
+                // Abrimos la primera solapa
+                todasLasSolapas[0].classList.remove('hidden');
+                // Hacemos "clic" virtual en el primer botón de canal
+                todosLosBotonesOpcion[0].click();
+            }
+        }
+        async function obtenerEnlaceServidor(canalId) {
+            mensajeError.classList.add('hidden');
+            loader.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${API_URL}/api/get-stream/${canalId}`);
+                const data = await res.json();
+
+                if (data.exito) {
+                    ejecutarVideo(data.url);
+                } else {
+                    throw new Error("No se pudo obtener el enlace");
+                }
+            } catch (err) {
+                loader.classList.add('hidden');
+                mensajeError.classList.remove('hidden');
+                mensajeError.innerText = "Error: El servidor no responde o el canal no está disponible.";
+                abrirMenu();
+            }
+        }
+
+        // CAMBIO 2: EL CEREBRO DEL NUEVO REPRODUCTOR DUAL
+        function ejecutarVideo(url) {
+            // Limpiar reproductores anteriores de video puro
+            if (hls) { hls.destroy(); hls = null; }
+            if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
+            videoElement.pause();
+            
+            // Si la URL tiene "?get=" o es ".html", sabemos que viene del Bot y es una página web
+            const esPaginaWeb = url.includes('?get=') || url.includes('.html') || url.includes('tvlibr3');
+
+            if (esPaginaWeb) {
+                console.log("Cargando Iframe del Bot...");
+                // Apagamos el video normal, prendemos el Iframe
+                videoElement.classList.add('hidden');
+                iframeElement.classList.remove('hidden');
+                
+                // INTENTO DE AUTOPLAY: Le inyectamos los parámetros a la URL por si el reproductor los acepta
+                let urlConAutoplay = url;
+                if (!url.includes('autoplay')) {
+                    urlConAutoplay += url.includes('?') ? '&autoplay=1&muted=1' : '?autoplay=1&muted=1';
+                }
+
+                iframeElement.src = urlConAutoplay;
+                loader.classList.add('hidden');
+            } else {
+                console.log("Cargando video puro...");
+                // Apagamos el Iframe, prendemos el video normal
+                iframeElement.classList.add('hidden');
+                iframeElement.src = "";
+                videoElement.classList.remove('hidden');
+
+                videoElement.volume = 1.0;
+                videoElement.muted = false;
+
+                // 1. FORMATO MPEG-DASH (.mpd)
+                if (url.includes('.mpd')) {
+                    dashPlayer = dashjs.MediaPlayer().create();
+                    dashPlayer.initialize(videoElement, url, true);
+                    dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => loader.classList.add('hidden'));
+                    dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
+                        loader.classList.add('hidden');
+                        mensajeError.classList.remove('hidden');
+                        mensajeError.innerText = "💥 Error en DASH.";
+                    });
+                } 
+                // 2. FORMATO HLS (.m3u8)
+                else if (url.includes('.m3u8')) {
+                    if (Hls.isSupported()) {
+                        hls = new Hls({ debug: false });
+                        hls.loadSource(url);
+                        hls.attachMedia(videoElement);
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                            loader.classList.add('hidden');
+                            videoElement.play().catch(() => {
+                                videoElement.muted = true;
+                                videoElement.play();
+                            });
+                        });
+                    } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                        videoElement.src = url;
+                        videoElement.play();
+                        loader.classList.add('hidden');
+                    }
+                } 
+                // 3. OTROS FORMATOS
+                else {
+                    videoElement.src = url;
+                    videoElement.play();
+                    loader.classList.add('hidden');
+                }
+            }
+        }
+
+        // Navegación remota...
+        document.addEventListener('keydown', (e) => {
+            const isMenuAbierto = !sidebar.classList.contains('-translate-x-full');
+            if (e.key === 'ArrowLeft' && !isMenuAbierto) { abrirMenu(); return; }
+            if (e.key === 'ArrowRight' && isMenuAbierto) { cerrarMenu(); return; }
+            if (isMenuAbierto) {
+                const botones = Array.from(sidebar.querySelectorAll('button:not(.hidden)'));
+                const currentIndex = botones.indexOf(document.activeElement);
+                if (currentIndex > -1) {
+                    if (e.key === 'ArrowDown' && currentIndex < botones.length - 1) { e.preventDefault(); botones[currentIndex + 1].focus(); }
+                    if (e.key === 'ArrowUp' && currentIndex > 0) { e.preventDefault(); botones[currentIndex - 1].focus(); }
+                }
+            }
+        });
+
+        // Reportar y Cast...
+        btnCast.addEventListener('click', () => alert("Tu dispositivo no soporta o canceló la transmisión."));
+        btnReportar.addEventListener('click', async () => { /* Código de reporte... */ });
+
+        window.onload = () => {
+            renderizarCanales();
+            abrirMenu(); 
+        };
+    </script>
 </body>
 </html>
