@@ -21,11 +21,11 @@ app.get('/', (req, res) => {
 const dbCanales = {
     // --- TNT SPORTS ---
     'tnt_1': {
-        base: 'https://serviciosatv78.ddns.net/live/stream.m3u8',
-        parametros: ''
+        base: 'https://anden26.ddns.net/live/stream.m3u8',
+        parametros: 'v=1777146764944'
     },
     'tnt_2': {
-        base: 'https://tk0hz.envivoslatam.org/hotflix/tntsports/index.m3u8',
+        base: 'https://edge-live03-hr.cvattv.com.ar/',
         parametros: 'token=2d31ee61fa39e8f26d1ae2817536cdfaa0304243-1e-1776893748-1776839748'
     },
     'tnt_3': {
@@ -35,8 +35,8 @@ const dbCanales = {
 
     // --- ESPN PREMIUM ---
     'espn_1': {
-        base: 'https://deportes.ksdjugfsddeports.com:9092/MTgxLjIyOC45MC4xOTU=/5_.m3u8',
-        parametros: 'token=_hoXlZBpvnPFpXqkXpj5Tg&expires=1777011046'
+        base: 'https://serviciosatv78.ddns.net/live/stream.m3u8',
+        parametros: ''
     },
     'espn_2': {
         dominio: 'https://edge-live03-hr.cvattv.com.ar/',
