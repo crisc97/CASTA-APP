@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <meta name="referrer" content="no-referrer">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="origin">
@@ -21,7 +22,7 @@
     <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
         <video id="reproductor" class="w-full h-full outline-none object-contain" controls tabindex="-1" autoplay playsinline></video>
         
-        <iframe id="reproductorIframe" class="w-full h-full border-none hidden" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="no-referrer"></iframe>
+       <iframe id="reproductorIframe" class="w-full h-full border-none hidden" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
 
         <div id="loading" class="absolute hidden z-10">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
