@@ -81,8 +81,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
         // 🤖 CASO 1: ES UN CANAL AUTOMÁTICO (SCRAPER CON PUPPETEER)
         if (datosCanal.urlScraping) {
             
-            // ⚡ REVISAMOS LA MEMORIA PRIMERO (Ahorra 30 segundos)
-            // Si ya buscamos este link hace menos de 2 horas (7200000 ms), lo mandamos al instante.
+            // ⚡ REVISAMOS LA MEMORIA PRIMERO
             const ahora = Date.now();
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
                 console.log(`⚡ Entregando link de ${canalId} desde la memoria (¡Instántaneo!)`);
@@ -94,3 +93,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
             const browser = await puppeteer.launch({
                 headless: true,
                 args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+            }); // <-- ¡AQUÍ FALTABA ESTO PARA CERRAR EL LAUNCH!
+
+            // Aquí dentro deberías poner el resto de la lógica de Puppeteer (abrir página, buscar iframe, etc.)
+            // Por ahora, solo cerramos el navegador y mandamos un mensaje de prueba
