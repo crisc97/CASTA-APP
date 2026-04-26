@@ -69,10 +69,18 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 
                 let linkVideoPuro = null;
 
-                // ⚡ MAGIA: Interceptamos el tráfico de red
+                // ⚡ MAGIA Y OPTIMIZACIÓN: Interceptamos el tráfico de red
                 await page.setRequestInterception(true);
                 page.on('request', (req) => {
                     const url = req.url();
+                    const resourceType = req.resourceType();
+
+                    // BLOQUEAMOS imágenes, estilos y fuentes para que Render no explote y cargue rápido
+                    if (['image', 'stylesheet', 'font'].includes(resourceType)) {
+                        req.abort();
+                        return;
+                    }
+
                     // Buscamos el archivo de video (.m3u8)
                     if (url.includes('.m3u8') && !linkVideoPuro) {
                         linkVideoPuro = url;
@@ -81,8 +89,8 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     req.continue();
                 });
 
-                // Entramos a la página y esperamos hasta 20 segundos a que la red cargue el video
-                await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 20000 });
+                // ⏱️ AUMENTAMOS EL TIMEOUT a 60 segundos (60000 ms)
+                await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 60000 });
 
                 await browser.close();
                 
