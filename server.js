@@ -89,8 +89,37 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     req.continue();
                 });
 
-                // ⏱️ AUMENTAMOS EL TIMEOUT a 60 segundos (60000 ms)
-                await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 60000 });
+                // ⏱️ Entramos a la página (domcontentloaded es más rápido que networkidle2)
+                await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+                console.log(`👆 Intentando hacer clic en el centro de la pantalla para despertar el video...`);
+                
+                // Le damos 3 segundos al reproductor para que termine de aparecer en pantalla
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
+                // Calculamos el centro exacto de la pantalla del bot
+                const viewport = page.viewport();
+                const centroX = viewport.width / 2;
+                const centroY = viewport.height / 2;
+
+                // 🎯 PRIMER CLIC: Suele cerrar los anuncios invisibles (pop-ups) que ponen encima del video
+                await page.mouse.click(centroX, centroY);
+                console.log("Clic 1 realizado...");
+
+                // Esperamos 2 segundos
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 🎯 SEGUNDO CLIC: Este debería darle al botón de Play real
+                await page.mouse.click(centroX, centroY);
+                console.log("Clic 2 realizado...");
+
+                // ⏳ Ahora nos quedamos esperando hasta 15 segundos a ver si el enlace m3u8 aparece en la red
+                console.log("Esperando a que el video suelte el enlace...");
+                let paciencia = 0;
+                while (!linkVideoPuro && paciencia < 15) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    paciencia++;
+                }
 
                 await browser.close();
                 
@@ -98,13 +127,13 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     memoriaCache[canalId] = { url: linkVideoPuro, tiempo: Date.now() };
                     return res.json({ exito: true, url: linkVideoPuro });
                 } else {
-                    return res.status(500).json({ exito: false, mensaje: "El bot no pudo interceptar el .m3u8." });
+                    return res.status(500).json({ exito: false, mensaje: "El bot hizo los clics pero no apareció ningún .m3u8." });
                 }
 
             } catch (errorBot) {
                 await browser.close();
                 console.error("Error dentro del Bot Puppeteer:", errorBot.message);
-                return res.status(500).json({ exito: false, mensaje: "El bot no pudo extraer el video." });
+                return res.status(500).json({ exito: false, mensaje: "El bot falló al intentar hacer los clics." });
             }
 
         } else if (datosCanal.dominio && datosCanal.token && datosCanal.ruta) {
