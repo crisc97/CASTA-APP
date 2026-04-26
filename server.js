@@ -56,6 +56,8 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 return res.json({ exito: true, url: memoriaCache[canalId].url });
             }
 
+            console.log(`🕵️‍♂️ Iniciando intercepción de red para: ${canalId}...`);
+
             const browser = await puppeteer.launch({
                 headless: true,
                 args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
@@ -64,14 +66,32 @@ app.get('/api/get-stream/:canal', async (req, res) => {
             try {
                 const page = await browser.newPage();
                 await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
-                await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 15000 });
-                await page.waitForSelector(datosCanal.selectorScraping, { timeout: 10000 });
-                const linkLimpio = await page.$eval(datosCanal.selectorScraping, iframe => iframe.src);
+                
+                let linkVideoPuro = null;
 
-                memoriaCache[canalId] = { url: linkLimpio, tiempo: Date.now() };
+                // ⚡ MAGIA: Interceptamos el tráfico de red
+                await page.setRequestInterception(true);
+                page.on('request', (req) => {
+                    const url = req.url();
+                    // Buscamos el archivo de video (.m3u8)
+                    if (url.includes('.m3u8') && !linkVideoPuro) {
+                        linkVideoPuro = url;
+                        console.log(`🎯 ¡VIDEO INTERCEPTADO!: ${linkVideoPuro}`);
+                    }
+                    req.continue();
+                });
+
+                // Entramos a la página y esperamos hasta 20 segundos a que la red cargue el video
+                await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 20000 });
+
                 await browser.close();
                 
-                return res.json({ exito: true, url: linkLimpio });
+                if (linkVideoPuro) {
+                    memoriaCache[canalId] = { url: linkVideoPuro, tiempo: Date.now() };
+                    return res.json({ exito: true, url: linkVideoPuro });
+                } else {
+                    return res.status(500).json({ exito: false, mensaje: "El bot no pudo interceptar el .m3u8." });
+                }
 
             } catch (errorBot) {
                 await browser.close();
