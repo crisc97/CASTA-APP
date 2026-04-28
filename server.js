@@ -39,7 +39,28 @@ const dbCanales = {
  
 const memoriaCache = {};
  
-// --- PROXY DE STREAM (soluciona error 241403) ---
+// Helper: detecta si una URL es un stream válido
+function esStreamValido(url) {
+    return url.includes('.m3u8') || url.includes('.mpd');
+}
+ 
+// Helper: intenta decodificar base64 del parámetro ?get= de frames tipo mpdk
+function decodificarMpdk(frameUrl) {
+    try {
+        const urlObj = new URL(frameUrl);
+        const encoded = urlObj.searchParams.get('get');
+        if (encoded) {
+            const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
+            console.log(`🔓 URL decodificada del frame mpdk: ${decoded}`);
+            if (esStreamValido(decoded)) {
+                return decoded;
+            }
+        }
+    } catch (e) {}
+    return null;
+}
+ 
+// --- PROXY DE STREAM (soluciona errores CORS / 241403) ---
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
@@ -101,7 +122,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
                 let linkVideoPuro = null;
  
-                // 🔑 CLAVE: Escuchamos TODAS las páginas/frames que cree el browser, no solo la principal
+                // 🔑 Escuchamos TODAS las páginas/targets que cree el browser
                 browser.on('targetcreated', async (target) => {
                     const newPage = await target.page();
                     if (!newPage) return;
@@ -110,23 +131,23 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
                     newPage.on('request', (req) => {
                         const url = req.url();
-                        if (url.includes('.m3u8') && !linkVideoPuro) {
+                        if (esStreamValido(url) && !linkVideoPuro) {
                             linkVideoPuro = url;
-                            console.log(`🎯 m3u8 encontrado en TARGET nuevo: ${url}`);
+                            console.log(`🎯 Stream encontrado en TARGET nuevo: ${url}`);
                         }
                         req.continue().catch(() => {});
                     });
  
                     newPage.on('response', async (response) => {
                         const url = response.url();
-                        if (url.includes('.m3u8') && !linkVideoPuro) {
+                        if (esStreamValido(url) && !linkVideoPuro) {
                             linkVideoPuro = url;
-                            console.log(`🎯 m3u8 encontrado en RESPONSE de TARGET: ${url}`);
+                            console.log(`🎯 Stream encontrado en RESPONSE de TARGET: ${url}`);
                         }
                     });
                 });
  
-                // Interceptamos la página principal también
+                // Interceptamos la página principal
                 await page.setRequestInterception(true);
  
                 page.on('request', (req) => {
@@ -138,43 +159,54 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                         return;
                     }
  
-                    if (url.includes('.m3u8') && !linkVideoPuro) {
+                    if (esStreamValido(url) && !linkVideoPuro) {
                         linkVideoPuro = url;
-                        console.log(`🎯 m3u8 en página principal REQUEST: ${url}`);
+                        console.log(`🎯 Stream en página principal REQUEST: ${url}`);
                     }
                     req.continue().catch(() => {});
                 });
  
                 page.on('response', async (response) => {
                     const url = response.url();
-                    if (url.includes('.m3u8') && !linkVideoPuro) {
+                    if (esStreamValido(url) && !linkVideoPuro) {
                         linkVideoPuro = url;
-                        console.log(`🎯 m3u8 en página principal RESPONSE: ${url}`);
+                        console.log(`🎯 Stream en página principal RESPONSE: ${url}`);
                     }
                 });
  
-                // 🔍 También buscamos dentro de iframes manualmente
+                // 🔍 Escuchamos frames navegados — incluyendo decodificación de mpdk
                 page.on('framenavigated', async (frame) => {
                     const frameUrl = frame.url();
                     console.log(`📄 Frame navegado: ${frameUrl}`);
-                    if (frameUrl.includes('.m3u8') && !linkVideoPuro) {
+ 
+                    if (esStreamValido(frameUrl) && !linkVideoPuro) {
                         linkVideoPuro = frameUrl;
+                        return;
+                    }
+ 
+                    // 🆕 Frame tipo mpdk: decodificamos base64 del parámetro ?get=
+                    if (frameUrl.includes('mpdk') && frameUrl.includes('get=') && !linkVideoPuro) {
+                        const decoded = decodificarMpdk(frameUrl);
+                        if (decoded) {
+                            linkVideoPuro = decoded;
+                            console.log(`✅ Stream extraído del frame mpdk: ${linkVideoPuro}`);
+                        }
                     }
                 });
  
                 console.log(`🌐 Navegando a: ${datosCanal.urlScraping}`);
                 await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 60000 });
  
-                // Esperamos que cargue bien
                 await new Promise(resolve => setTimeout(resolve, 4000));
  
-                // 🔍 Buscamos iframes en el DOM y los visitamos directamente
+                // 🔍 Buscamos iframes en el DOM
                 const iframeSrcs = await page.evaluate(() => {
                     return Array.from(document.querySelectorAll('iframe')).map(f => f.src).filter(Boolean);
                 });
  
                 console.log(`🖼️ Iframes encontrados: ${JSON.stringify(iframeSrcs)}`);
  
+                // Visitamos cada iframe directamente
                 for (const iframeSrc of iframeSrcs) {
                     if (!linkVideoPuro && iframeSrc && iframeSrc.startsWith('http')) {
                         console.log(`➡️ Visitando iframe: ${iframeSrc}`);
@@ -188,7 +220,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     }
                 }
  
-                // Si todavía no encontramos nada, hacemos clic en la página principal
+                // Si todavía no encontramos nada, volvemos a la página principal y hacemos clic
                 if (!linkVideoPuro) {
                     console.log(`👆 Intentando clics en página principal...`);
                     await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
@@ -199,8 +231,8 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     await page.mouse.click(viewport.width / 2, viewport.height / 2);
                 }
  
-                // Esperamos hasta 20 segundos
-                console.log(`⏳ Esperando m3u8...`);
+                // Esperamos hasta 20 segundos más
+                console.log(`⏳ Esperando stream...`);
                 let paciencia = 0;
                 while (!linkVideoPuro && paciencia < 20) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -215,7 +247,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     console.log(`✅ Listo: ${urlProxeada}`);
                     return res.json({ exito: true, url: urlProxeada });
                 } else {
-                    return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún .m3u8 después de revisar todos los frames." });
+                    return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún stream (.m3u8 o .mpd) después de revisar todos los frames." });
                 }
  
             } catch (errorBot) {
