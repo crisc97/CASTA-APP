@@ -79,7 +79,8 @@ app.get('/api/get-stream/:canal', async (req, res) => {
     }
  
     try {
-        // 🤖 MODO BOT (Puppeteer + intercepción de red)
+ 
+        // 🤖 MODO BOT (Puppeteer + intercepción de red mejorada)
         if (datosCanal.urlScraping) {
             const ahora = Date.now();
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
@@ -100,8 +101,34 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
                 let linkVideoPuro = null;
  
-                // ⚡ Interceptamos requests para bloquear recursos pesados
+                // 🔑 CLAVE: Escuchamos TODAS las páginas/frames que cree el browser, no solo la principal
+                browser.on('targetcreated', async (target) => {
+                    const newPage = await target.page();
+                    if (!newPage) return;
+ 
+                    await newPage.setRequestInterception(true).catch(() => {});
+ 
+                    newPage.on('request', (req) => {
+                        const url = req.url();
+                        if (url.includes('.m3u8') && !linkVideoPuro) {
+                            linkVideoPuro = url;
+                            console.log(`🎯 m3u8 encontrado en TARGET nuevo: ${url}`);
+                        }
+                        req.continue().catch(() => {});
+                    });
+ 
+                    newPage.on('response', async (response) => {
+                        const url = response.url();
+                        if (url.includes('.m3u8') && !linkVideoPuro) {
+                            linkVideoPuro = url;
+                            console.log(`🎯 m3u8 encontrado en RESPONSE de TARGET: ${url}`);
+                        }
+                    });
+                });
+ 
+                // Interceptamos la página principal también
                 await page.setRequestInterception(true);
+ 
                 page.on('request', (req) => {
                     const url = req.url();
                     const resourceType = req.resourceType();
@@ -113,40 +140,69 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
                     if (url.includes('.m3u8') && !linkVideoPuro) {
                         linkVideoPuro = url;
-                        console.log(`🎯 ¡m3u8 interceptado en REQUEST!: ${linkVideoPuro}`);
+                        console.log(`🎯 m3u8 en página principal REQUEST: ${url}`);
                     }
-                    req.continue();
+                    req.continue().catch(() => {});
                 });
  
-                // 🔍 También escuchamos RESPONSES para mayor cobertura
                 page.on('response', async (response) => {
                     const url = response.url();
                     if (url.includes('.m3u8') && !linkVideoPuro) {
                         linkVideoPuro = url;
-                        console.log(`🎯 ¡m3u8 interceptado en RESPONSE!: ${linkVideoPuro}`);
+                        console.log(`🎯 m3u8 en página principal RESPONSE: ${url}`);
                     }
                 });
  
-                await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
+                // 🔍 También buscamos dentro de iframes manualmente
+                page.on('framenavigated', async (frame) => {
+                    const frameUrl = frame.url();
+                    console.log(`📄 Frame navegado: ${frameUrl}`);
+                    if (frameUrl.includes('.m3u8') && !linkVideoPuro) {
+                        linkVideoPuro = frameUrl;
+                    }
+                });
  
-                console.log(`⏳ Esperando 3 segundos para que cargue el reproductor...`);
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                console.log(`🌐 Navegando a: ${datosCanal.urlScraping}`);
+                await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 60000 });
  
-                const viewport = page.viewport();
-                const centroX = viewport.width / 2;
-                const centroY = viewport.height / 2;
+                // Esperamos que cargue bien
+                await new Promise(resolve => setTimeout(resolve, 4000));
  
-                console.log(`👆 Clic 1 (cerrar posibles pop-ups)...`);
-                await page.mouse.click(centroX, centroY);
+                // 🔍 Buscamos iframes en el DOM y los visitamos directamente
+                const iframeSrcs = await page.evaluate(() => {
+                    return Array.from(document.querySelectorAll('iframe')).map(f => f.src).filter(Boolean);
+                });
  
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                console.log(`🖼️ Iframes encontrados: ${JSON.stringify(iframeSrcs)}`);
  
-                console.log(`👆 Clic 2 (activar play)...`);
-                await page.mouse.click(centroX, centroY);
+                for (const iframeSrc of iframeSrcs) {
+                    if (!linkVideoPuro && iframeSrc && iframeSrc.startsWith('http')) {
+                        console.log(`➡️ Visitando iframe: ${iframeSrc}`);
+                        await page.goto(iframeSrc, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
+                        await new Promise(resolve => setTimeout(resolve, 3000));
  
-                console.log(`⏳ Esperando hasta 15 segundos a que aparezca el .m3u8...`);
+                        const viewport = page.viewport();
+                        await page.mouse.click(viewport.width / 2, viewport.height / 2);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        await page.mouse.click(viewport.width / 2, viewport.height / 2);
+                    }
+                }
+ 
+                // Si todavía no encontramos nada, hacemos clic en la página principal
+                if (!linkVideoPuro) {
+                    console.log(`👆 Intentando clics en página principal...`);
+                    await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    const viewport = page.viewport();
+                    await page.mouse.click(viewport.width / 2, viewport.height / 2);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await page.mouse.click(viewport.width / 2, viewport.height / 2);
+                }
+ 
+                // Esperamos hasta 20 segundos
+                console.log(`⏳ Esperando m3u8...`);
                 let paciencia = 0;
-                while (!linkVideoPuro && paciencia < 15) {
+                while (!linkVideoPuro && paciencia < 20) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     paciencia++;
                 }
@@ -154,19 +210,18 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 await browser.close();
  
                 if (linkVideoPuro) {
-                    // 🔀 Devolvemos la URL pasada por nuestro proxy para evitar errores CORS/241403
                     const urlProxeada = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
                     memoriaCache[canalId] = { url: urlProxeada, tiempo: Date.now() };
-                    console.log(`✅ URL proxeada lista: ${urlProxeada}`);
+                    console.log(`✅ Listo: ${urlProxeada}`);
                     return res.json({ exito: true, url: urlProxeada });
                 } else {
-                    return res.status(500).json({ exito: false, mensaje: "El bot hizo los clics pero no apareció ningún .m3u8." });
+                    return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún .m3u8 después de revisar todos los frames." });
                 }
  
             } catch (errorBot) {
                 await browser.close();
-                console.error("❌ Error dentro del Bot Puppeteer:", errorBot.message);
-                return res.status(500).json({ exito: false, mensaje: "El bot falló al intentar hacer los clics." });
+                console.error("❌ Error Puppeteer:", errorBot.message);
+                return res.status(500).json({ exito: false, mensaje: "El bot falló." });
             }
  
         // 🎬 MODO DASH (dominio + token + ruta)
@@ -191,4 +246,3 @@ app.get('/api/get-stream/:canal', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
 });
- 
