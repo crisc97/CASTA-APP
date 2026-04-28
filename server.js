@@ -44,7 +44,7 @@ function esStreamValido(url) {
     return url.includes('.m3u8') || url.includes('.mpd');
 }
  
-// Helper: intenta decodificar base64 del parámetro ?get= de frames tipo mpdk
+// Helper: decodifica base64 del parámetro ?get= de frames tipo mpdk
 function decodificarMpdk(frameUrl) {
     try {
         const urlObj = new URL(frameUrl);
@@ -60,11 +60,19 @@ function decodificarMpdk(frameUrl) {
     return null;
 }
  
-// --- PROXY DE STREAM (soluciona errores CORS / 241403) ---
+// --- PROXY DE STREAM ---
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
  
+    // Para archivos .mpd (DASH), redirigimos directo al cliente
+    // DASH maneja sus propios segmentos y no se puede pipear como stream simple
+    if (targetUrl.includes('.mpd')) {
+        console.log(`↪️ Redireccionando MPD directo: ${targetUrl}`);
+        return res.redirect(302, targetUrl);
+    }
+ 
+    // Para HLS (.m3u8) y otros, proxeamos el stream normalmente
     try {
         const response = await axios.get(targetUrl, {
             responseType: 'stream',
@@ -75,7 +83,7 @@ app.get('/proxy/stream', async (req, res) => {
                 'Accept': '*/*',
                 'Accept-Language': 'es-AR,es;q=0.9',
             },
-            timeout: 15000
+            timeout: 30000
         });
  
         res.setHeader('Content-Type', response.headers['content-type'] || 'application/vnd.apple.mpegurl');
@@ -184,7 +192,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                         return;
                     }
  
-                    // 🆕 Frame tipo mpdk: decodificamos base64 del parámetro ?get=
+                    // Frame tipo mpdk: decodificamos base64 del parámetro ?get=
                     if (frameUrl.includes('mpdk') && frameUrl.includes('get=') && !linkVideoPuro) {
                         const decoded = decodificarMpdk(frameUrl);
                         if (decoded) {
@@ -220,7 +228,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     }
                 }
  
-                // Si todavía no encontramos nada, volvemos a la página principal y hacemos clic
+                // Si todavía no encontramos nada, volvemos a la página principal
                 if (!linkVideoPuro) {
                     console.log(`👆 Intentando clics en página principal...`);
                     await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
@@ -242,10 +250,15 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 await browser.close();
  
                 if (linkVideoPuro) {
-                    const urlProxeada = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
-                    memoriaCache[canalId] = { url: urlProxeada, tiempo: Date.now() };
-                    console.log(`✅ Listo: ${urlProxeada}`);
-                    return res.json({ exito: true, url: urlProxeada });
+                    // Para .mpd devolvemos la URL directa (el redirect del proxy se encarga)
+                    // Para .m3u8 la proxeamos normalmente
+                    const urlFinal = linkVideoPuro.includes('.mpd')
+                        ? `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`
+                        : `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+ 
+                    memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
+                    console.log(`✅ Listo: ${urlFinal}`);
+                    return res.json({ exito: true, url: urlFinal });
                 } else {
                     return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún stream (.m3u8 o .mpd) después de revisar todos los frames." });
                 }
@@ -278,3 +291,4 @@ app.get('/api/get-stream/:canal', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
 });
+ 
