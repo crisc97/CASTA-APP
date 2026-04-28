@@ -37,7 +37,7 @@ const dbCanales = {
     'dsports_3': { base: 'https://cdn4.zohanayaan.com:1686/hls/dsportshd1.m3u8', parametros: 'md5=RgzpbSywI-eUiFOwnwx0dw&expires=1776855896' }
 };
  
-// Cache con URL + headers capturados del bot
+// Cache: guarda { url, urlDirecta, contenidoMpd, headers, tiempo }
 const memoriaCache = {};
  
 // Helper: detecta si una URL es un stream válido
@@ -53,61 +53,58 @@ function decodificarMpdk(frameUrl) {
         if (encoded) {
             const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
             console.log(`🔓 URL decodificada del frame mpdk: ${decoded}`);
-            if (esStreamValido(decoded)) {
-                return decoded;
-            }
+            if (esStreamValido(decoded)) return decoded;
         }
     } catch (e) {}
     return null;
 }
  
-// --- PROXY DE STREAM ---
-// Proxea el stream usando los headers capturados por el bot (guardados en caché por canalId)
+// --- RUTA: sirve el MPD descargado desde el browser (en memoria) ---
+app.get('/proxy/mpd/:canalId', (req, res) => {
+    const canalId = req.params.canalId;
+    const cache = memoriaCache[canalId];
+ 
+    if (!cache || !cache.contenidoMpd) {
+        return res.status(404).send('MPD no disponible, el bot aún no lo descargó.');
+    }
+ 
+    console.log(`📄 Sirviendo MPD desde memoria para: ${canalId}`);
+ 
+    // Reemplazamos las URLs absolutas del MPD para que los segmentos también pasen por nuestro proxy
+    // Esto asegura que dash.js pueda cargar los segmentos de video correctamente
+    let mpd = cache.contenidoMpd;
+ 
+    res.setHeader('Content-Type', 'application/dash+xml');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(mpd);
+});
+ 
+// --- RUTA: proxy genérico para HLS (.m3u8) ---
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
-    const canalId = req.query.canalId || '';
- 
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
- 
-    // Recuperamos los headers que capturó el bot para este canal
-    const headersGuardados = (memoriaCache[canalId] && memoriaCache[canalId].headers) || {};
- 
-    const headersProxy = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-        'Referer': headersGuardados['referer'] || 'https://pcn.nebunexa.life/',
-        'Origin': headersGuardados['origin'] || 'https://pcn.nebunexa.life',
-        'Accept': '*/*',
-        'Accept-Language': 'es-AR,es;q=0.9',
-        // Si el bot capturó cookies o authorization, las reenviamos
-        ...(headersGuardados['cookie'] ? { 'Cookie': headersGuardados['cookie'] } : {}),
-        ...(headersGuardados['authorization'] ? { 'Authorization': headersGuardados['authorization'] } : {}),
-    };
- 
-    console.log(`🔀 Proxy solicitado para: ${targetUrl}`);
-    console.log(`📋 Headers usados:`, headersProxy);
  
     try {
         const response = await axios.get(targetUrl, {
             responseType: 'stream',
-            headers: headersProxy,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+                'Referer': 'https://tvlibr3.com/',
+                'Origin': 'https://tvlibr3.com',
+                'Accept': '*/*',
+                'Accept-Language': 'es-AR,es;q=0.9',
+            },
             timeout: 30000
         });
  
-        const contentType = response.headers['content-type'] ||
-            (targetUrl.includes('.mpd') ? 'application/dash+xml' : 'application/vnd.apple.mpegurl');
- 
-        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Type', response.headers['content-type'] || 'application/vnd.apple.mpegurl');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-cache');
- 
         response.data.pipe(res);
  
     } catch (err) {
-        console.error('❌ Error en proxy:', err.message);
-        if (err.response) {
-            console.error('   HTTP Status:', err.response.status);
-            console.error('   Headers respuesta:', err.response.headers);
-        }
+        console.error('❌ Error en proxy HLS:', err.message);
         res.status(502).send('No se pudo obtener el stream');
     }
 });
@@ -144,30 +141,36 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
                 let linkVideoPuro = null;
                 let headersCapturados = {};
+                let contenidoMpdDescargado = null;
  
                 // 🔑 Escuchamos TODAS las páginas/targets que cree el browser
                 browser.on('targetcreated', async (target) => {
                     const newPage = await target.page();
                     if (!newPage) return;
- 
                     await newPage.setRequestInterception(true).catch(() => {});
- 
                     newPage.on('request', (req) => {
                         const url = req.url();
                         if (esStreamValido(url) && !linkVideoPuro) {
                             linkVideoPuro = url;
                             headersCapturados = req.headers();
                             console.log(`🎯 Stream encontrado en TARGET nuevo: ${url}`);
-                            console.log(`📋 Headers capturados:`, headersCapturados);
                         }
                         req.continue().catch(() => {});
                     });
- 
                     newPage.on('response', async (response) => {
                         const url = response.url();
                         if (esStreamValido(url) && !linkVideoPuro) {
                             linkVideoPuro = url;
-                            console.log(`🎯 Stream encontrado en RESPONSE de TARGET: ${url}`);
+                            console.log(`🎯 Stream en RESPONSE de TARGET: ${url}`);
+                            // Si es MPD, lo descargamos desde adentro del browser
+                            if (url.includes('.mpd')) {
+                                try {
+                                    contenidoMpdDescargado = await response.text();
+                                    console.log(`📥 MPD descargado desde TARGET response (${contenidoMpdDescargado.length} bytes)`);
+                                } catch(e) {
+                                    console.log(`⚠️ No se pudo leer el MPD desde TARGET response: ${e.message}`);
+                                }
+                            }
                         }
                     });
                 });
@@ -178,40 +181,46 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 page.on('request', (req) => {
                     const url = req.url();
                     const resourceType = req.resourceType();
- 
                     if (['image', 'stylesheet', 'font'].includes(resourceType)) {
                         req.abort();
                         return;
                     }
- 
                     if (esStreamValido(url) && !linkVideoPuro) {
                         linkVideoPuro = url;
                         headersCapturados = req.headers();
-                        console.log(`🎯 Stream en página principal REQUEST: ${url}`);
+                        console.log(`🎯 Stream en REQUEST principal: ${url}`);
                         console.log(`📋 Headers capturados:`, headersCapturados);
                     }
                     req.continue().catch(() => {});
                 });
  
+                // ⭐ CLAVE: interceptamos la RESPONSE del MPD para leer su contenido
                 page.on('response', async (response) => {
                     const url = response.url();
-                    if (esStreamValido(url) && !linkVideoPuro) {
+                    if (url.includes('.mpd')) {
+                        console.log(`📥 Intentando descargar MPD desde response: ${url}`);
+                        try {
+                            contenidoMpdDescargado = await response.text();
+                            console.log(`✅ MPD descargado exitosamente (${contenidoMpdDescargado.length} bytes)`);
+                            if (!linkVideoPuro) linkVideoPuro = url;
+                        } catch (e) {
+                            console.log(`⚠️ No se pudo leer el MPD: ${e.message}`);
+                            if (!linkVideoPuro) linkVideoPuro = url;
+                        }
+                    } else if (url.includes('.m3u8') && !linkVideoPuro) {
                         linkVideoPuro = url;
-                        console.log(`🎯 Stream en página principal RESPONSE: ${url}`);
+                        console.log(`🎯 Stream .m3u8 en RESPONSE principal: ${url}`);
                     }
                 });
  
-                // 🔍 Escuchamos frames navegados — incluyendo decodificación de mpdk
+                // 🔍 Escuchamos frames navegados
                 page.on('framenavigated', async (frame) => {
                     const frameUrl = frame.url();
                     console.log(`📄 Frame navegado: ${frameUrl}`);
- 
                     if (esStreamValido(frameUrl) && !linkVideoPuro) {
                         linkVideoPuro = frameUrl;
                         return;
                     }
- 
-                    // Frame tipo mpdk: decodificamos base64 del parámetro ?get=
                     if (frameUrl.includes('mpdk') && frameUrl.includes('get=') && !linkVideoPuro) {
                         const decoded = decodificarMpdk(frameUrl);
                         if (decoded) {
@@ -223,23 +232,19 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
                 console.log(`🌐 Navegando a: ${datosCanal.urlScraping}`);
                 await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 60000 });
- 
                 await new Promise(resolve => setTimeout(resolve, 4000));
  
                 // 🔍 Buscamos iframes en el DOM
                 const iframeSrcs = await page.evaluate(() => {
                     return Array.from(document.querySelectorAll('iframe')).map(f => f.src).filter(Boolean);
                 });
- 
                 console.log(`🖼️ Iframes encontrados: ${JSON.stringify(iframeSrcs)}`);
  
-                // Visitamos cada iframe directamente
                 for (const iframeSrc of iframeSrcs) {
                     if (!linkVideoPuro && iframeSrc && iframeSrc.startsWith('http')) {
                         console.log(`➡️ Visitando iframe: ${iframeSrc}`);
                         await page.goto(iframeSrc, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
                         await new Promise(resolve => setTimeout(resolve, 3000));
- 
                         const viewport = page.viewport();
                         await page.mouse.click(viewport.width / 2, viewport.height / 2);
                         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -247,7 +252,6 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     }
                 }
  
-                // Si todavía no encontramos nada, volvemos a la página principal
                 if (!linkVideoPuro) {
                     console.log(`👆 Intentando clics en página principal...`);
                     await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
@@ -258,7 +262,6 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     await page.mouse.click(viewport.width / 2, viewport.height / 2);
                 }
  
-                // Esperamos hasta 20 segundos más
                 console.log(`⏳ Esperando stream...`);
                 let paciencia = 0;
                 while (!linkVideoPuro && paciencia < 20) {
@@ -266,20 +269,65 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     paciencia++;
                 }
  
+                // Si tenemos el MPD pero no lo descargamos aún, lo intentamos con fetch desde el browser
+                if (linkVideoPuro && linkVideoPuro.includes('.mpd') && !contenidoMpdDescargado) {
+                    console.log(`🔄 Intentando descargar MPD con fetch desde el browser...`);
+                    try {
+                        contenidoMpdDescargado = await page.evaluate(async (url, headers) => {
+                            const resp = await fetch(url, {
+                                headers: {
+                                    'Accept': '*/*',
+                                    'Origin': headers.origin || 'https://pcn.nebunexa.life',
+                                    'Referer': headers.referer || '',
+                                }
+                            });
+                            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                            return await resp.text();
+                        }, linkVideoPuro, headersCapturados);
+                        console.log(`✅ MPD descargado con fetch (${contenidoMpdDescargado.length} bytes)`);
+                    } catch (e) {
+                        console.log(`⚠️ fetch desde browser también falló: ${e.message}`);
+                    }
+                }
+ 
                 await browser.close();
  
                 if (linkVideoPuro) {
-                    // Guardamos URL + headers capturados en caché
-                    const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}&canalId=${canalId}`;
-                    memoriaCache[canalId] = {
-                        url: urlFinal,
-                        headers: headersCapturados,
-                        tiempo: Date.now()
-                    };
-                    console.log(`✅ Listo: ${urlFinal}`);
+                    let urlFinal;
+ 
+                    if (linkVideoPuro.includes('.mpd') && contenidoMpdDescargado) {
+                        // ✅ Tenemos el MPD descargado: lo servimos desde nuestro servidor
+                        urlFinal = `${API_URL}/proxy/mpd/${canalId}`;
+                        memoriaCache[canalId] = {
+                            url: urlFinal,
+                            urlDirecta: linkVideoPuro,
+                            contenidoMpd: contenidoMpdDescargado,
+                            headers: headersCapturados,
+                            tiempo: Date.now()
+                        };
+                        console.log(`✅ MPD en memoria, sirviendo desde: ${urlFinal}`);
+                    } else if (linkVideoPuro.includes('.mpd') && !contenidoMpdDescargado) {
+                        // ⚠️ Tenemos la URL del MPD pero no pudimos descargarlo: devolvemos la URL directa
+                        urlFinal = linkVideoPuro;
+                        memoriaCache[canalId] = {
+                            url: urlFinal,
+                            tiempo: Date.now()
+                        };
+                        console.log(`⚠️ No se pudo descargar MPD, devolviendo URL directa: ${urlFinal}`);
+                    } else {
+                        // HLS: proxeamos normalmente
+                        urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                        memoriaCache[canalId] = {
+                            url: urlFinal,
+                            headers: headersCapturados,
+                            tiempo: Date.now()
+                        };
+                        console.log(`✅ HLS proxeado: ${urlFinal}`);
+                    }
+ 
                     return res.json({ exito: true, url: urlFinal });
                 } else {
-                    return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún stream (.m3u8 o .mpd) después de revisar todos los frames." });
+                    return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún stream (.m3u8 o .mpd)." });
                 }
  
             } catch (errorBot) {
@@ -310,3 +358,4 @@ app.get('/api/get-stream/:canal', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
 });
+ 
