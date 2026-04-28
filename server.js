@@ -37,6 +37,7 @@ const dbCanales = {
     'dsports_3': { base: 'https://cdn4.zohanayaan.com:1686/hls/dsportshd1.m3u8', parametros: 'md5=RgzpbSywI-eUiFOwnwx0dw&expires=1776855896' }
 };
  
+// Cache con URL + headers capturados del bot
 const memoriaCache = {};
  
 // Helper: detecta si una URL es un stream válido
@@ -61,39 +62,52 @@ function decodificarMpdk(frameUrl) {
 }
  
 // --- PROXY DE STREAM ---
+// Proxea el stream usando los headers capturados por el bot (guardados en caché por canalId)
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
+    const canalId = req.query.canalId || '';
+ 
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
  
-    // Para archivos .mpd (DASH), redirigimos directo al cliente
-    // DASH maneja sus propios segmentos y no se puede pipear como stream simple
-    if (targetUrl.includes('.mpd')) {
-        console.log(`↪️ Redireccionando MPD directo: ${targetUrl}`);
-        return res.redirect(302, targetUrl);
-    }
+    // Recuperamos los headers que capturó el bot para este canal
+    const headersGuardados = (memoriaCache[canalId] && memoriaCache[canalId].headers) || {};
  
-    // Para HLS (.m3u8) y otros, proxeamos el stream normalmente
+    const headersProxy = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+        'Referer': headersGuardados['referer'] || 'https://pcn.nebunexa.life/',
+        'Origin': headersGuardados['origin'] || 'https://pcn.nebunexa.life',
+        'Accept': '*/*',
+        'Accept-Language': 'es-AR,es;q=0.9',
+        // Si el bot capturó cookies o authorization, las reenviamos
+        ...(headersGuardados['cookie'] ? { 'Cookie': headersGuardados['cookie'] } : {}),
+        ...(headersGuardados['authorization'] ? { 'Authorization': headersGuardados['authorization'] } : {}),
+    };
+ 
+    console.log(`🔀 Proxy solicitado para: ${targetUrl}`);
+    console.log(`📋 Headers usados:`, headersProxy);
+ 
     try {
         const response = await axios.get(targetUrl, {
             responseType: 'stream',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-                'Referer': 'https://tvlibr3.com/',
-                'Origin': 'https://tvlibr3.com',
-                'Accept': '*/*',
-                'Accept-Language': 'es-AR,es;q=0.9',
-            },
+            headers: headersProxy,
             timeout: 30000
         });
  
-        res.setHeader('Content-Type', response.headers['content-type'] || 'application/vnd.apple.mpegurl');
+        const contentType = response.headers['content-type'] ||
+            (targetUrl.includes('.mpd') ? 'application/dash+xml' : 'application/vnd.apple.mpegurl');
+ 
+        res.setHeader('Content-Type', contentType);
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-cache');
  
         response.data.pipe(res);
  
     } catch (err) {
-        console.error('Error en proxy:', err.message);
+        console.error('❌ Error en proxy:', err.message);
+        if (err.response) {
+            console.error('   HTTP Status:', err.response.status);
+            console.error('   Headers respuesta:', err.response.headers);
+        }
         res.status(502).send('No se pudo obtener el stream');
     }
 });
@@ -129,6 +143,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
  
                 let linkVideoPuro = null;
+                let headersCapturados = {};
  
                 // 🔑 Escuchamos TODAS las páginas/targets que cree el browser
                 browser.on('targetcreated', async (target) => {
@@ -141,7 +156,9 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                         const url = req.url();
                         if (esStreamValido(url) && !linkVideoPuro) {
                             linkVideoPuro = url;
+                            headersCapturados = req.headers();
                             console.log(`🎯 Stream encontrado en TARGET nuevo: ${url}`);
+                            console.log(`📋 Headers capturados:`, headersCapturados);
                         }
                         req.continue().catch(() => {});
                     });
@@ -169,7 +186,9 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
                     if (esStreamValido(url) && !linkVideoPuro) {
                         linkVideoPuro = url;
+                        headersCapturados = req.headers();
                         console.log(`🎯 Stream en página principal REQUEST: ${url}`);
+                        console.log(`📋 Headers capturados:`, headersCapturados);
                     }
                     req.continue().catch(() => {});
                 });
@@ -250,13 +269,13 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 await browser.close();
  
                 if (linkVideoPuro) {
-                    // Para .mpd devolvemos la URL directa (el redirect del proxy se encarga)
-                    // Para .m3u8 la proxeamos normalmente
-                    const urlFinal = linkVideoPuro.includes('.mpd')
-                        ? `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`
-                        : `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
- 
-                    memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
+                    // Guardamos URL + headers capturados en caché
+                    const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}&canalId=${canalId}`;
+                    memoriaCache[canalId] = {
+                        url: urlFinal,
+                        headers: headersCapturados,
+                        tiempo: Date.now()
+                    };
                     console.log(`✅ Listo: ${urlFinal}`);
                     return res.json({ exito: true, url: urlFinal });
                 } else {
@@ -291,4 +310,3 @@ app.get('/api/get-stream/:canal', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
 });
- 
