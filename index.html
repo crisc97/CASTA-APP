@@ -6,44 +6,42 @@
     <meta name="referrer" content="no-referrer">
     <title>📺CASTA-APP⚽</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
-    
     <style>
-        /* Ocultar barra de scroll en el menú para un look más limpio */
         #sidebar::-webkit-scrollbar { display: none; }
         #sidebar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen relative font-sans select-none">
-
+ 
     <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
         <video id="reproductor" class="w-full h-full outline-none object-contain" controls tabindex="-1" autoplay playsinline></video>
         
-        <div id="loading" class="absolute hidden z-10">
+        <div id="loading" class="absolute hidden z-10 flex-col items-center gap-3">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+            <p id="loadingMsg" class="text-white text-sm font-semibold text-center px-4"></p>
         </div>
-
+ 
         <div id="mensajeError" class="absolute z-10 bottom-10 left-1/2 transform -translate-x-1/2 hidden bg-red-900/80 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center max-w-lg"></div>
     </div>
-
+ 
     <div class="absolute top-6 left-6 right-6 z-40 flex justify-between items-start pointer-events-none">
         <button id="btnMenu" class="pointer-events-auto bg-black/60 hover:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
-
+ 
         <div class="flex gap-4 pointer-events-auto">
             <button id="btnCast" class="bg-black/60 hover:bg-purple-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none" title="Transmitir a TV">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
             </button>
-
+ 
             <button id="btnReportar" class="bg-black/60 hover:bg-red-600 focus:ring-4 focus:ring-white text-white px-4 py-3 rounded-full border border-gray-700 transition duration-300 font-bold flex items-center gap-2 hidden outline-none" title="Reportar Falla">
                 <span>⚠️</span> <span class="hidden sm:inline">Reportar NO funcional</span>
             </button>
         </div>
     </div>
-
+ 
     <div id="sidebar" class="absolute top-0 left-0 h-full w-72 sm:w-80 bg-black/95 backdrop-blur-md z-50 p-6 transform translate-x-0 transition-transform duration-300 ease-in-out border-r border-gray-800 shadow-[20px_0_30px_rgba(0,0,0,0.7)] flex flex-col overflow-y-auto">
         <div class="flex justify-between items-center mb-8">
             <div>
@@ -54,27 +52,29 @@
         </div>
         <div id="listaCanales" class="flex flex-col gap-2 pb-10"></div>
     </div>
-
+ 
     <script>
         const videoElement = document.getElementById('reproductor');
         const listaCanalesDiv = document.getElementById('listaCanales');
         const mensajeError = document.getElementById('mensajeError');
         const loader = document.getElementById('loading');
-
+        const loadingMsg = document.getElementById('loadingMsg');
+ 
         const sidebar = document.getElementById('sidebar');
         const btnMenu = document.getElementById('btnMenu');
         const btnCerrar = document.getElementById('btnCerrar');
         const btnCast = document.getElementById('btnCast');
         const btnReportar = document.getElementById('btnReportar');
-
-        // Variables globales para los reproductores
+ 
         let hls;
         let dashPlayer;
-        let canalActualNombre = ""; 
-
-        // CONFIGURACIÓN: Tu URL de Render
+        let canalActualNombre = "";
+ 
+        // IDs de canales que usan bot (tardan más)
+        const canalesBot = ['espn_scraper', 'dsports_scraper', 'tnt_scraper'];
+ 
         const API_URL = "https://casta-app.onrender.com";
-
+ 
         const misCanales = [
             {
                 nombre: "ESPN Premium",
@@ -82,69 +82,85 @@
                     { nombre: "Opción 1", id: "espn_1" },
                     { nombre: "Opción 2", id: "espn_2" },
                     { nombre: "Opción 3", id: "espn_3" },
-                    { nombre: "Opción Automática (Bot)", id: "espn_scraper" } 
+                    { nombre: "Opción Automática (Bot)", id: "espn_scraper" }
                 ]
             },
             {
-    nombre: "TNT Sports",
-    opciones: [
-        { nombre: "Opción 1", id: "tnt_1" },
-        { nombre: "Opción 2", id: "tnt_2" },
-        { nombre: "Opción 3", id: "tnt_3" },
-        { nombre: "Opción Automática (Bot)", id: "tnt_scraper" }  // 🆕
-    ]
-},
-{
-    nombre: "DirecTv Sports",
-    opciones: [
-        { nombre: "Opción 1", id: "dsports_1" },
-        { nombre: "Opción 2", id: "dsports_2" },
-        { nombre: "Opción 3", id: "dsports_3" },
-        { nombre: "Opción Automática (Bot)", id: "dsports_scraper" }  // 🆕
-    ]
-}
+                nombre: "TNT Sports",
+                opciones: [
+                    { nombre: "Opción 1", id: "tnt_1" },
+                    { nombre: "Opción 2", id: "tnt_2" },
+                    { nombre: "Opción 3", id: "tnt_3" },
+                    { nombre: "Opción Automática (Bot)", id: "tnt_scraper" }
+                ]
+            },
+            {
+                nombre: "DirecTv Sports",
+                opciones: [
+                    { nombre: "Opción 1", id: "dsports_1" },
+                    { nombre: "Opción 2", id: "dsports_2" },
+                    { nombre: "Opción 3", id: "dsports_3" },
+                    { nombre: "Opción Automática (Bot)", id: "dsports_scraper" }
+                ]
+            }
         ];
-
+ 
+        function mostrarLoader(esBot = false) {
+            loader.classList.remove('hidden');
+            loader.classList.add('flex');
+            if (esBot) {
+                loadingMsg.innerText = "🤖 El bot está buscando el enlace...\nEsto puede tardar hasta 40 segundos.";
+            } else {
+                loadingMsg.innerText = "";
+            }
+        }
+ 
+        function ocultarLoader() {
+            loader.classList.add('hidden');
+            loader.classList.remove('flex');
+            loadingMsg.innerText = "";
+        }
+ 
         function abrirMenu() {
             sidebar.classList.remove('-translate-x-full');
             const primerBoton = listaCanalesDiv.querySelector('button');
-            if(primerBoton) primerBoton.focus();
+            if (primerBoton) primerBoton.focus();
         }
-
+ 
         function cerrarMenu() {
             sidebar.classList.add('-translate-x-full');
             videoElement.focus();
         }
-
+ 
         btnMenu.addEventListener('click', abrirMenu);
         btnCerrar.addEventListener('click', cerrarMenu);
-
-       function renderizarCanales() {
+ 
+        function renderizarCanales() {
             listaCanalesDiv.innerHTML = '';
-            
+ 
             const todasLasSolapas = [];
             const todosLosBotonesOpcion = [];
-
+ 
             misCanales.forEach((canal) => {
                 const canalContainer = document.createElement('div');
                 canalContainer.className = "flex flex-col gap-1 mb-2";
-
+ 
                 const btnPrincipal = document.createElement('button');
                 btnPrincipal.className = "w-full text-left bg-gray-800 hover:bg-gray-700 focus:bg-gray-700 outline-none text-white font-bold py-3 px-4 rounded-lg transition border border-gray-700 flex justify-between items-center";
                 btnPrincipal.innerHTML = `<span>${canal.nombre}</span> <span class="text-xs">▼</span>`;
-
+ 
                 const subOpcionesDiv = document.createElement('div');
                 subOpcionesDiv.className = "hidden flex-col gap-1 pl-4 mt-1 border-l-2 border-blue-500";
-                
+ 
                 todasLasSolapas.push(subOpcionesDiv);
-
+ 
                 canal.opciones.forEach(opcion => {
                     const btnOpcion = document.createElement('button');
                     btnOpcion.className = "w-full text-left bg-gray-900 outline-none text-gray-300 hover:text-white py-2 px-3 rounded-md transition text-sm";
                     btnOpcion.innerText = opcion.nombre;
-                    
+ 
                     todosLosBotonesOpcion.push(btnOpcion);
-
+ 
                     btnOpcion.onclick = () => {
                         todosLosBotonesOpcion.forEach(b => {
                             b.classList.remove('bg-blue-600', 'text-white', 'font-bold');
@@ -152,7 +168,7 @@
                         });
                         btnOpcion.classList.remove('bg-gray-900', 'text-gray-300');
                         btnOpcion.classList.add('bg-blue-600', 'text-white', 'font-bold');
-
+ 
                         canalActualNombre = `${canal.nombre} - ${opcion.nombre}`;
                         obtenerEnlaceServidor(opcion.id);
                         cerrarMenu();
@@ -160,79 +176,85 @@
                     };
                     subOpcionesDiv.appendChild(btnOpcion);
                 });
-
+ 
                 btnPrincipal.onclick = () => {
                     const estabaOculta = subOpcionesDiv.classList.contains('hidden');
                     todasLasSolapas.forEach(solapa => solapa.classList.add('hidden'));
-
-                    if (estabaOculta) {
-                        subOpcionesDiv.classList.remove('hidden');
-                    }
+                    if (estabaOculta) subOpcionesDiv.classList.remove('hidden');
                 };
-
+ 
                 canalContainer.appendChild(btnPrincipal);
                 canalContainer.appendChild(subOpcionesDiv);
                 listaCanalesDiv.appendChild(canalContainer);
             });
-
+ 
             if (todosLosBotonesOpcion.length > 0) {
                 todasLasSolapas[0].classList.remove('hidden');
                 todosLosBotonesOpcion[0].click();
             }
         }
-
+ 
         async function obtenerEnlaceServidor(canalId) {
             mensajeError.classList.add('hidden');
-            loader.classList.remove('hidden');
-
+            const esBot = canalesBot.includes(canalId);
+            mostrarLoader(esBot);
+ 
             try {
-                const res = await fetch(`${API_URL}/api/get-stream/${canalId}`);
+                // Timeout de 90 segundos para canales bot, 15 para el resto
+                const timeoutMs = esBot ? 90000 : 15000;
+ 
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+ 
+                const res = await fetch(`${API_URL}/api/get-stream/${canalId}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+ 
                 const data = await res.json();
-
+ 
                 if (data.exito) {
                     ejecutarVideo(data.url);
                 } else {
                     throw new Error("No se pudo obtener el enlace");
                 }
             } catch (err) {
-                loader.classList.add('hidden');
+                ocultarLoader();
                 mensajeError.classList.remove('hidden');
-                mensajeError.innerText = "Error: El servidor no responde o el canal no está disponible.";
+                if (err.name === 'AbortError') {
+                    mensajeError.innerText = "⏱️ El bot tardó demasiado. Intentá de nuevo en unos segundos.";
+                } else {
+                    mensajeError.innerText = "Error: El servidor no responde o el canal no está disponible.";
+                }
                 abrirMenu();
             }
         }
-
-        // CEREBRO DEL REPRODUCTOR ACTUALIZADO (Sin Iframe)
+ 
         function ejecutarVideo(url) {
-            // Limpiar reproductores anteriores
             if (hls) { hls.destroy(); hls = null; }
             if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
             videoElement.pause();
-            
-            console.log("Cargando video puro...");
+ 
             videoElement.classList.remove('hidden');
             videoElement.volume = 1.0;
             videoElement.muted = false;
-
-            // 1. FORMATO MPEG-DASH (.mpd)
+ 
             if (url.includes('.mpd')) {
                 dashPlayer = dashjs.MediaPlayer().create();
                 dashPlayer.initialize(videoElement, url, true);
-                dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => loader.classList.add('hidden'));
+                dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => ocultarLoader());
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                    loader.classList.add('hidden');
+                    ocultarLoader();
                     mensajeError.classList.remove('hidden');
                     mensajeError.innerText = "💥 Error en DASH.";
                 });
-            } 
-            // 2. FORMATO HLS (.m3u8)
-            else if (url.includes('.m3u8')) {
+            } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
                     hls = new Hls({ debug: false });
                     hls.loadSource(url);
                     hls.attachMedia(videoElement);
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        loader.classList.add('hidden');
+                        ocultarLoader();
                         videoElement.play().catch(() => {
                             videoElement.muted = true;
                             videoElement.play();
@@ -240,7 +262,7 @@
                     });
                     hls.on(Hls.Events.ERROR, function (event, data) {
                         if (data.fatal) {
-                            loader.classList.add('hidden');
+                            ocultarLoader();
                             mensajeError.classList.remove('hidden');
                             mensajeError.innerText = "💥 Error de conexión con el video.";
                         }
@@ -248,18 +270,15 @@
                 } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
                     videoElement.src = url;
                     videoElement.play();
-                    loader.classList.add('hidden');
+                    ocultarLoader();
                 }
-            } 
-            // 3. OTROS FORMATOS
-            else {
+            } else {
                 videoElement.src = url;
                 videoElement.play();
-                loader.classList.add('hidden');
+                ocultarLoader();
             }
         }
-
-        // Navegación remota...
+ 
         document.addEventListener('keydown', (e) => {
             const isMenuAbierto = !sidebar.classList.contains('-translate-x-full');
             if (e.key === 'ArrowLeft' && !isMenuAbierto) { abrirMenu(); return; }
@@ -273,14 +292,13 @@
                 }
             }
         });
-
-        // Reportar y Cast...
+ 
         btnCast.addEventListener('click', () => alert("Tu dispositivo no soporta o canceló la transmisión."));
         btnReportar.addEventListener('click', async () => { /* Código de reporte... */ });
-
+ 
         window.onload = () => {
             renderizarCanales();
-            abrirMenu(); 
+            abrirMenu();
         };
     </script>
 </body>

@@ -29,12 +29,26 @@ const dbCanales = {
     'espn_2': { dominio: 'https://edge-live03-hr.cvattv.com.ar/', token: 'tok_eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNzc3MTUxNjE2Iiwic2lwIjoiMTgxLjIyOC45MC4xOTUiLCJwYXRoIjoiL2xpdmUvYzdlZHMvRm94X1Nwb3J0c19QcmVtaXVuX0hEL1NBX0xpdmVfZGFzaF9lbmNfQy8iLCJzZXNzaW9uX2Nkbl9pZCI6IjM0NTUyMGVkYjUxMDFhYTIiLCJzZXNzaW9uX2lkIjoiIiwiY2xpZW50X2lkIjoiIiwiZGV2aWNlX2lkIjoiIiwibWF4X3Nlc3Npb25zIjowLCJzZXNzaW9uX2R1cmF0aW9uIjowLCJ1cmwiOiJodHRwczovLzE4MS4xMi4zNi4xNTAiLCJhdWQiOiIyOTYiLCJzb3VyY2VzIjpbODUsMTQ0LDg2LDg4XX0=.7jnZqLSgob2q-NhgBBrAD8MNwd5Lpwjo3xlmLqWEzQ835_Q9p6YLZRohnJFpbog3SUitFdnpnlBh6QxLwtcAIQ==/', ruta: 'live/c7eds/Fox_Sports_Premiun_HD/SA_Live_dash_enc_C/Fox_Sports_Premiun_HD.mpd' },
     'espn_3': { base: 'https://cdn4.zohanayaan.com:1686/hls/espnar.m3u8', parametros: 'md5=iJutx_apVGzpxL9Chcs-kA&expires=1776856173' },
  
-    // 🔥 CANAL AUTOMÁTICO (BOT SCRAPER)
+    // 🔥 CANALES BOT (Puppeteer scraper)
     'espn_scraper': {
         urlScraping: 'https://tvlibr3.com/en-vivo/espn-premium/',
         opcionesBotones: [
             ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3', 'opción 3', 'opcion 3'],
             ['Opción 2', 'Opcion 2', 'Opción2', 'Opcion2', 'opción 2', 'opcion 2'],
+        ]
+    },
+    'dsports_scraper': {
+        urlScraping: 'https://tvlibr3.com/en-vivo/dsports/',
+        opcionesBotones: [
+            ['Opción 2', 'Opcion 2', 'Opción2', 'Opcion2', 'opción 2', 'opcion 2'],
+            ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3', 'opción 3', 'opcion 3'],
+        ]
+    },
+    'tnt_scraper': {
+        urlScraping: 'https://tvlibr3.com/en-vivo/tnt-sports/',
+        opcionesBotones: [
+            ['Opción 2', 'Opcion 2', 'Opción2', 'Opcion2', 'opción 2', 'opcion 2'],
+            ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3', 'opción 3', 'opcion 3'],
         ]
     },
  
@@ -50,7 +64,7 @@ function esM3u8(url) {
     return url.includes('.m3u8');
 }
  
-// Helper: arma headers para el proxy según el dominio origen
+// Helper: arma headers correctos según el dominio del stream
 function armarHeaders(targetUrl) {
     let referer = 'https://tvlibr3.com/';
     let origin = 'https://tvlibr3.com';
@@ -73,7 +87,7 @@ function armarHeaders(targetUrl) {
     };
 }
  
-// Helper: clic en botón por variantes de texto
+// Helper: clic en botón buscando múltiples variantes de texto
 async function clickBotonPorVariantes(page, variantes) {
     try {
         const resultado = await page.evaluate((textos) => {
@@ -94,13 +108,13 @@ async function clickBotonPorVariantes(page, variantes) {
         if (resultado) {
             console.log(`✅ Clic exitoso en botón: "${resultado}"`);
         } else {
-            console.log(`⚠️ No se encontró ninguna variante: ${JSON.stringify(variantes)}`);
+            console.log(`⚠️ No se encontró: ${JSON.stringify(variantes)}`);
             const textos = await page.evaluate(() => {
                 return Array.from(document.querySelectorAll('button, a'))
                     .map(e => (e.innerText || '').trim())
                     .filter(t => t.length > 0 && t.length < 50);
             });
-            console.log(`🔍 Botones disponibles:`, textos);
+            console.log(`🔍 Botones disponibles en la página:`, textos);
         }
         return resultado;
     } catch (e) {
@@ -110,7 +124,7 @@ async function clickBotonPorVariantes(page, variantes) {
 }
  
 // --- PROXY PARA HLS (.m3u8) ---
-// Este proxy también reescribe el .m3u8 para que los segmentos pasen por él
+// Reescribe las URLs de segmentos para que también pasen por el proxy (evita CORS)
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
@@ -129,15 +143,14 @@ app.get('/proxy/stream', async (req, res) => {
  
         const contentType = response.headers['content-type'] || '';
  
-        // Si es un .m3u8 (playlist), reescribimos las URLs de segmentos para que también pasen por el proxy
+        // Si es playlist .m3u8, reescribimos URLs de segmentos
         if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL')) {
             const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
             let contenido = response.data;
  
-            // Reescribimos cada línea que sea una URL de segmento o sub-playlist
             contenido = contenido.split('\n').map(linea => {
                 const l = linea.trim();
-                if (!l || l.startsWith('#')) return linea; // comentarios/directivas, no tocar
+                if (!l || l.startsWith('#')) return linea;
  
                 let urlSegmento;
                 if (l.startsWith('http://') || l.startsWith('https://')) {
@@ -155,7 +168,7 @@ app.get('/proxy/stream', async (req, res) => {
             return res.send(contenido);
         }
  
-        // Si es un segmento de video (.ts, .aac, etc.), lo streameamos binario
+        // Si es segmento de video (.ts, .aac, etc.), lo streameamos en binario
         const binaryResponse = await axios.get(targetUrl, {
             responseType: 'stream',
             headers,
@@ -209,7 +222,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
                 let linkVideoPuro = null;
  
-                // Escuchamos todos los targets nuevos
+                // Escuchamos todos los targets nuevos que cree el browser
                 browser.on('targetcreated', async (target) => {
                     const newPage = await target.page();
                     if (!newPage) return;
@@ -265,7 +278,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 60000 });
                 await new Promise(resolve => setTimeout(resolve, 3000));
  
-                // 🎯 Intentamos cada grupo de botones en orden
+                // 🎯 Intentamos cada grupo de botones en orden de prioridad
                 const gruposBotones = datosCanal.opcionesBotones || [];
  
                 for (const variantes of gruposBotones) {
@@ -286,7 +299,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     }
                 }
  
-                // Fallback: clics en el centro
+                // Fallback: clics en el centro de la pantalla
                 if (!linkVideoPuro) {
                     console.log(`👆 Fallback clics centro...`);
                     const viewport = page.viewport();
@@ -317,12 +330,12 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 return res.status(500).json({ exito: false, mensaje: "El bot falló." });
             }
  
-        // 🎬 MODO DASH
+        // 🎬 MODO DASH (dominio + token + ruta)
         } else if (datosCanal.dominio && datosCanal.token && datosCanal.ruta) {
             const urlCompleta = `${datosCanal.dominio}${datosCanal.token}${datosCanal.ruta}`;
             return res.json({ exito: true, url: urlCompleta });
  
-        // 📡 MODO DIRECTO
+        // 📡 MODO DIRECTO (base + parámetros)
         } else {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
