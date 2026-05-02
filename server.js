@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
 // --- BASE DE DATOS DE CANALES ---
 const dbCanales = {
     'tnt_1': { base: 'https://anden26.ddns.net/live/stream.m3u8', parametros: 'v=1777146764944' },
-
+ 
     // 🔥 CANALES BOT (Puppeteer scraper)
     'espn_scraper': {
         urlScraping: 'https://tvlibr3.com/en-vivo/espn-premium/',
@@ -44,35 +44,71 @@ const dbCanales = {
             ['Opción 2', 'Opcion 2', 'Opción2', 'Opcion2', 'opción 2', 'opcion 2'],
             ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3', 'opción 3', 'opcion 3'],
         ]
-    },'fox_scraper': {
-    urlScraping: 'https://tvlibr3.com/en-vivo/fox-sports/',
-    opcionesBotones: [
-        ['Opción 1 (FL)', 'Opcion 1 (FL)'],
-        ['Opción 3', 'Opcion 3'],
-    ]
-},
-'telefe_scraper': {
-    urlScraping: 'https://tvlibr3.com/en-vivo/telefe/',
-    opcionesBotones: [
-        ['Opción 1 (FL)', 'Opcion 1 (FL)'],
-        ['Opción PC (Extensión)','Opcion PC (Extensión)'],
-    ]
-},
-'eltrece_scraper': {
-    urlScraping: 'https://tvlibr3.com/en-vivo/el-trece/',
-    opcionesBotones: [
-        ['Opción 1 (FL)', 'Opcion 1 (FL)'],
-    ]
-},
-'elnueve_scraper': {
-    urlScraping: 'https://tvlibr3.com/en-vivo/el-nueve/',
-    opcionesBotones: [
-        ['Opción 1 (FL)', 'Opcion 1 (FL)'],
-    ]
-},
+    },
+    'fox_scraper': {
+        urlScraping: 'https://tvlibr3.com/en-vivo/fox-sports/',
+        opcionesBotones: [
+            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
+            ['Opción 3', 'Opcion 3'],
+        ]
+    },
+    'telefe_scraper': {
+        urlScraping: 'https://tvlibr3.com/en-vivo/telefe/',
+        opcionesBotones: [
+            ['Opción 2', 'Opcion 2', 'Opción2', 'Opcion2'],
+            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
+        ]
+    },
+    'eltrece_scraper': {
+        urlScraping: 'https://tvlibr3.com/en-vivo/el-trece/',
+        opcionesBotones: [
+            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
+        ]
+    },
+    'elnueve_scraper': {
+        urlScraping: 'https://tvlibr3.com/en-vivo/el-nueve/',
+        opcionesBotones: [
+            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
+        ]
+    },
 };
  
 const memoriaCache = {};
+ 
+// ============================================================
+// 🧠 COLA DE BOTS — solo un browser a la vez para ahorrar RAM
+// ============================================================
+let botEnEjecucion = false;
+const colaDeBots = [];
+ 
+function ejecutarSiguienteBot() {
+    if (botEnEjecucion || colaDeBots.length === 0) return;
+    botEnEjecucion = true;
+    const siguiente = colaDeBots.shift();
+    siguiente();
+}
+ 
+function encolarBot(fn) {
+    return new Promise((resolve, reject) => {
+        colaDeBots.push(async () => {
+            try {
+                const resultado = await fn();
+                resolve(resultado);
+            } catch (e) {
+                reject(e);
+            } finally {
+                botEnEjecucion = false;
+                // Forzamos garbage collection si está disponible
+                if (global.gc) {
+                    global.gc();
+                    console.log('🧹 Garbage collection forzado');
+                }
+                ejecutarSiguienteBot();
+            }
+        });
+        ejecutarSiguienteBot();
+    });
+}
  
 // Helper: detecta si una URL es HLS
 function esM3u8(url) {
@@ -139,7 +175,6 @@ async function clickBotonPorVariantes(page, variantes) {
 }
  
 // --- PROXY PARA HLS (.m3u8) ---
-// Reescribe las URLs de segmentos para que también pasen por el proxy (evita CORS)
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
@@ -158,7 +193,6 @@ app.get('/proxy/stream', async (req, res) => {
  
         const contentType = response.headers['content-type'] || '';
  
-        // Si es playlist .m3u8, reescribimos URLs de segmentos
         if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL')) {
             const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
             let contenido = response.data;
@@ -183,7 +217,6 @@ app.get('/proxy/stream', async (req, res) => {
             return res.send(contenido);
         }
  
-        // Si es segmento de video (.ts, .aac, etc.), lo streameamos en binario
         const binaryResponse = await axios.get(targetUrl, {
             responseType: 'stream',
             headers,
@@ -205,6 +238,159 @@ app.get('/proxy/stream', async (req, res) => {
     }
 });
  
+// --- FUNCIÓN DEL BOT (aislada para la cola) ---
+async function correrBot(datosCanal, canalId) {
+    console.log(`🕵️‍♂️ Bot iniciando para: ${canalId}...`);
+    console.log(`📊 RAM antes del bot: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+ 
+    // 🧠 Argumentos para Chromium ultra liviano
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-extensions',
+            '--disable-background-networking',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-breakpad',
+            '--disable-client-side-phishing-detection',
+            '--disable-component-update',
+            '--disable-default-apps',
+            '--disable-hang-monitor',
+            '--disable-ipc-flooding-protection',
+            '--disable-popup-blocking',
+            '--disable-prompt-on-repost',
+            '--disable-renderer-backgrounding',
+            '--disable-sync',
+            '--disable-translate',
+            '--metrics-recording-only',
+            '--no-first-run',
+            '--safebrowsing-disable-auto-update',
+            '--mute-audio',
+            '--single-process',         // ⭐ un solo proceso = mucha menos RAM
+            '--memory-pressure-off',
+            '--js-flags=--max-old-space-size=128', // limita JS heap a 128MB
+        ]
+    });
+ 
+    let linkVideoPuro = null;
+ 
+    try {
+        const page = await browser.newPage();
+ 
+        // Viewport mínimo para ahorrar RAM
+        await page.setViewport({ width: 800, height: 600 });
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
+ 
+        // Escuchamos targets nuevos
+        browser.on('targetcreated', async (target) => {
+            const newPage = await target.page();
+            if (!newPage) return;
+            await newPage.setRequestInterception(true).catch(() => {});
+            newPage.on('request', (req) => {
+                const url = req.url();
+                if (esM3u8(url) && !linkVideoPuro) {
+                    linkVideoPuro = url;
+                    console.log(`🎯 .m3u8 en TARGET nuevo: ${url}`);
+                }
+                req.continue().catch(() => {});
+            });
+            newPage.on('response', async (response) => {
+                const url = response.url();
+                if (esM3u8(url) && !linkVideoPuro) {
+                    linkVideoPuro = url;
+                    console.log(`🎯 .m3u8 en RESPONSE TARGET: ${url}`);
+                }
+            });
+        });
+ 
+        await page.setRequestInterception(true);
+ 
+        page.on('request', (req) => {
+            const url = req.url();
+            const resourceType = req.resourceType();
+            // Bloqueamos todo lo que no sea necesario para ahorrar RAM
+            if (['image', 'stylesheet', 'font', 'media', 'websocket'].includes(resourceType)) {
+                req.abort();
+                return;
+            }
+            if (esM3u8(url) && !linkVideoPuro) {
+                linkVideoPuro = url;
+                console.log(`🎯 .m3u8 en REQUEST principal: ${url}`);
+            }
+            req.continue().catch(() => {});
+        });
+ 
+        page.on('response', async (response) => {
+            const url = response.url();
+            if (esM3u8(url) && !linkVideoPuro) {
+                linkVideoPuro = url;
+                console.log(`🎯 .m3u8 en RESPONSE principal: ${url}`);
+            }
+        });
+ 
+        page.on('framenavigated', async (frame) => {
+            const frameUrl = frame.url();
+            console.log(`📄 Frame: ${frameUrl}`);
+            if (esM3u8(frameUrl) && !linkVideoPuro) linkVideoPuro = frameUrl;
+        });
+ 
+        console.log(`🌐 Navegando a: ${datosCanal.urlScraping}`);
+        await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 60000 });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+ 
+        // Intentamos cada grupo de botones
+        const gruposBotones = datosCanal.opcionesBotones || [];
+ 
+        for (const variantes of gruposBotones) {
+            if (linkVideoPuro) break;
+ 
+            console.log(`\n🖱️ Intentando: ${JSON.stringify(variantes)}`);
+            const clicOk = await clickBotonPorVariantes(page, variantes);
+ 
+            if (clicOk) {
+                console.log(`⏳ Esperando .m3u8 hasta 8s...`);
+                let espera = 0;
+                while (!linkVideoPuro && espera < 8) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    espera++;
+                }
+                if (linkVideoPuro) break;
+                console.log(`⚠️ Sin .m3u8 con "${clicOk}", probando siguiente...`);
+            }
+        }
+ 
+        // Fallback clics centro
+        if (!linkVideoPuro) {
+            console.log(`👆 Fallback clics centro...`);
+            const viewport = page.viewport();
+            await page.mouse.click(viewport.width / 2, viewport.height / 2);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            await page.mouse.click(viewport.width / 2, viewport.height / 2);
+            let espera = 0;
+            while (!linkVideoPuro && espera < 5) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                espera++;
+            }
+        }
+ 
+    } finally {
+        // ⭐ Siempre cerramos el browser, pase lo que pase
+        try {
+            await browser.close();
+            console.log(`🔒 Browser cerrado para: ${canalId}`);
+            console.log(`📊 RAM después del bot: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+        } catch (e) {
+            console.error(`⚠️ Error al cerrar browser: ${e.message}`);
+        }
+    }
+ 
+    return linkVideoPuro;
+}
+ 
 // --- RUTA INTELIGENTE PARA OBTENER ENLACES ---
 app.get('/api/get-stream/:canal', async (req, res) => {
     const canalId = req.params.canal;
@@ -216,7 +402,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
     try {
  
-        // 🤖 MODO BOT (Puppeteer)
+        // 🤖 MODO BOT (Puppeteer con cola)
         if (datosCanal.urlScraping) {
             const ahora = Date.now();
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
@@ -224,133 +410,26 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 return res.json({ exito: true, url: memoriaCache[canalId].url });
             }
  
-            console.log(`🕵️‍♂️ Iniciando bot para: ${canalId}...`);
+            console.log(`📥 Encolando bot para: ${canalId} (bots en cola: ${colaDeBots.length}, activo: ${botEnEjecucion})`);
  
-            const browser = await puppeteer.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-            });
+            // Encolamos el bot — si hay otro corriendo, espera su turno
+            const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
  
-            try {
-                const page = await browser.newPage();
-                await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
- 
-                let linkVideoPuro = null;
- 
-                // Escuchamos todos los targets nuevos que cree el browser
-                browser.on('targetcreated', async (target) => {
-                    const newPage = await target.page();
-                    if (!newPage) return;
-                    await newPage.setRequestInterception(true).catch(() => {});
-                    newPage.on('request', (req) => {
-                        const url = req.url();
-                        if (esM3u8(url) && !linkVideoPuro) {
-                            linkVideoPuro = url;
-                            console.log(`🎯 .m3u8 en TARGET nuevo: ${url}`);
-                        }
-                        req.continue().catch(() => {});
-                    });
-                    newPage.on('response', async (response) => {
-                        const url = response.url();
-                        if (esM3u8(url) && !linkVideoPuro) {
-                            linkVideoPuro = url;
-                            console.log(`🎯 .m3u8 en RESPONSE TARGET: ${url}`);
-                        }
-                    });
-                });
- 
-                await page.setRequestInterception(true);
- 
-                page.on('request', (req) => {
-                    const url = req.url();
-                    const resourceType = req.resourceType();
-                    if (['image', 'stylesheet', 'font'].includes(resourceType)) {
-                        req.abort();
-                        return;
-                    }
-                    if (esM3u8(url) && !linkVideoPuro) {
-                        linkVideoPuro = url;
-                        console.log(`🎯 .m3u8 en REQUEST principal: ${url}`);
-                    }
-                    req.continue().catch(() => {});
-                });
- 
-                page.on('response', async (response) => {
-                    const url = response.url();
-                    if (esM3u8(url) && !linkVideoPuro) {
-                        linkVideoPuro = url;
-                        console.log(`🎯 .m3u8 en RESPONSE principal: ${url}`);
-                    }
-                });
- 
-                page.on('framenavigated', async (frame) => {
-                    const frameUrl = frame.url();
-                    console.log(`📄 Frame: ${frameUrl}`);
-                    if (esM3u8(frameUrl) && !linkVideoPuro) linkVideoPuro = frameUrl;
-                });
- 
-                console.log(`🌐 Navegando a: ${datosCanal.urlScraping}`);
-                await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 60000 });
-                await new Promise(resolve => setTimeout(resolve, 2000));
- 
-                // 🎯 Intentamos cada grupo de botones en orden de prioridad
-                const gruposBotones = datosCanal.opcionesBotones || [];
- 
-                for (const variantes of gruposBotones) {
-                    if (linkVideoPuro) break;
- 
-                    console.log(`\n🖱️ Intentando: ${JSON.stringify(variantes)}`);
-                    const clicOk = await clickBotonPorVariantes(page, variantes);
- 
-                    if (clicOk) {
-                        console.log(`⏳ Esperando .m3u8 hasta 15s...`);
-                        let espera = 0;
-                        while (!linkVideoPuro && espera < 8) {
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                            espera++;
-                        }
-                        if (linkVideoPuro) break;
-                        console.log(`⚠️ Sin .m3u8 con "${clicOk}", probando siguiente...`);
-                    }
-                }
- 
-                // Fallback: clics en el centro de la pantalla
-                if (!linkVideoPuro) {
-                    console.log(`👆 Fallback clics centro...`);
-                    const viewport = page.viewport();
-                    await page.mouse.click(viewport.width / 2, viewport.height / 2);
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    await page.mouse.click(viewport.width / 2, viewport.height / 2);
-                    let espera = 0;
-                    while (!linkVideoPuro && espera < 5) {
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        espera++;
-                    }
-                }
- 
-                await browser.close();
- 
-                if (linkVideoPuro) {
-                    const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
-                    memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
-                    console.log(`✅ Listo: ${urlFinal}`);
-                    return res.json({ exito: true, url: urlFinal });
-                } else {
-                    return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún .m3u8." });
-                }
- 
-            } catch (errorBot) {
-                await browser.close();
-                console.error("❌ Error Puppeteer:", errorBot.message);
-                return res.status(500).json({ exito: false, mensaje: "El bot falló." });
+            if (linkVideoPuro) {
+                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
+                console.log(`✅ Listo: ${urlFinal}`);
+                return res.json({ exito: true, url: urlFinal });
+            } else {
+                return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún .m3u8." });
             }
  
-        // 🎬 MODO DASH (dominio + token + ruta)
+        // 🎬 MODO DASH
         } else if (datosCanal.dominio && datosCanal.token && datosCanal.ruta) {
             const urlCompleta = `${datosCanal.dominio}${datosCanal.token}${datosCanal.ruta}`;
             return res.json({ exito: true, url: urlCompleta });
  
-        // 📡 MODO DIRECTO (base + parámetros)
+        // 📡 MODO DIRECTO
         } else {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
