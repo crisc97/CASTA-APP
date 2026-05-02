@@ -47,7 +47,7 @@ const dbCanales = {
     },'fox_scraper': {
     urlScraping: 'https://tvlibr3.com/en-vivo/fox-sports/',
     opcionesBotones: [
-        ['Opción 1' (FL), 'Opcion 1' (FL)],
+        ['Opción 1 (FL)', 'Opcion 1 (FL)'],
         ['Opción 3', 'Opcion 3'],
     ]
 },
