@@ -217,7 +217,7 @@
  
             try {
                 // Timeout de 90 segundos para canales bot, 15 para el resto
-                const timeoutMs = esBot ? 90000 : 15000;
+                const timeoutMs = esBot ? 45000 : 15000;
  
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), timeoutMs);

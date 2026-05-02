@@ -293,7 +293,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
                 console.log(`🌐 Navegando a: ${datosCanal.urlScraping}`);
                 await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 60000 });
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                await new Promise(resolve => setTimeout(resolve, 2000));
  
                 // 🎯 Intentamos cada grupo de botones en orden de prioridad
                 const gruposBotones = datosCanal.opcionesBotones || [];
@@ -307,7 +307,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     if (clicOk) {
                         console.log(`⏳ Esperando .m3u8 hasta 15s...`);
                         let espera = 0;
-                        while (!linkVideoPuro && espera < 15) {
+                        while (!linkVideoPuro && espera < 8) {
                             await new Promise(resolve => setTimeout(resolve, 1000));
                             espera++;
                         }
@@ -324,7 +324,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     await page.mouse.click(viewport.width / 2, viewport.height / 2);
                     let espera = 0;
-                    while (!linkVideoPuro && espera < 10) {
+                    while (!linkVideoPuro && espera < 5) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         espera++;
                     }
