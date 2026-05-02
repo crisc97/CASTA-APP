@@ -71,7 +71,7 @@
         let canalActualNombre = "";
  
         // IDs de canales que usan bot (tardan más)
-        const canalesBot = ['espn_scraper', 'dsports_scraper', 'tnt_scraper'];
+        const canalesBot = ['espn_scraper', 'dsports_scraper', 'tnt_scraper', 'fox_scraper', 'telefe_scraper', 'eltrece_scraper', 'elnueve_scraper'];
  
         const API_URL = "https://casta-app.onrender.com";
  
@@ -94,14 +94,38 @@
                 opciones: [
                     { nombre: "Opción Automática (Bot)", id: "dsports_scraper" }
                 ]
-            }
+            },
+            {
+                nombre: "Fox Sports",
+                opciones: [
+                   { nombre: "Opción Automática (Bot)", id: "fox_scraper" }
+    ]
+           },
+{
+    nombre: "Telefe",
+    opciones: [
+        { nombre: "Opción Automática (Bot)", id: "telefe_scraper" }
+    ]
+},
+{
+    nombre: "El Trece",
+    opciones: [
+        { nombre: "Opción Automática (Bot)", id: "eltrece_scraper" }
+    ]
+},
+{
+    nombre: "El Nueve",
+    opciones: [
+        { nombre: "Opción Automática (Bot)", id: "elnueve_scraper" }
+    ]
+}
         ];
  
         function mostrarLoader(esBot = false) {
             loader.classList.remove('hidden');
             loader.classList.add('flex');
             if (esBot) {
-                loadingMsg.innerText = "🤖 El bot está buscando el enlace...\nEsto puede tardar hasta 40 segundos.";
+                loadingMsg.innerText = "🤖 Se está buscando el canal...\nEsto puede tardar hasta 60 segundos, gracias por esperar.";
             } else {
                 loadingMsg.innerText = "";
             }

@@ -44,7 +44,34 @@ const dbCanales = {
             ['Opción 2', 'Opcion 2', 'Opción2', 'Opcion2', 'opción 2', 'opcion 2'],
             ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3', 'opción 3', 'opcion 3'],
         ]
-    },
+    },'fox_scraper': {
+    urlScraping: 'https://tvlibr3.com/en-vivo/fox-sports/',
+    opcionesBotones: [
+        ['Opción 1', 'Opcion 1', 'Opción1', 'Opcion1'],
+        ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3'],
+    ]
+},
+'telefe_scraper': {
+    urlScraping: 'https://tvlibr3.com/en-vivo/telefe/',
+    opcionesBotones: [
+        ['Opción 1', 'Opcion 1', 'Opción1', 'Opcion1'],
+        ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3'],
+    ]
+},
+'eltrece_scraper': {
+    urlScraping: 'https://tvlibr3.com/en-vivo/el-trece/',
+    opcionesBotones: [
+        ['Opción 1', 'Opcion 1', 'Opción1', 'Opcion1'],
+        ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3'],
+    ]
+},
+'elnueve_scraper': {
+    urlScraping: 'https://tvlibr3.com/en-vivo/el-nueve/',
+    opcionesBotones: [
+        ['Opción 2', 'Opcion 2', 'Opción2', 'Opcion2'],
+        ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3'],
+    ]
+},
 };
  
 const memoriaCache = {};
