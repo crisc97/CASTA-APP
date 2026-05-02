@@ -22,8 +22,8 @@ app.get('/', (req, res) => {
 // --- BASE DE DATOS DE CANALES ---
 const dbCanales = {
     'tnt_1': { base: 'https://anden26.ddns.net/live/stream.m3u8', parametros: 'v=1777146764944' },
-    'eltrece_directo': { base: 'https://live-01-02-eltrece.vodgc.net/eltrecetv/index.m3u8', parametros: '' },
-    'elnueve_directo': { base: 'https://octubre-live.cdn.vustreams.com/live/channel09/live.isml/live.m3u8', parametros: '' },
+    'eltrece_directo': { base: 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8', parametros: '' },
+    'elnueve_directo': { base: 'http://107.152.39.199:8030/hls/canal7.m3u8', parametros: '' },
     'telefe_directo': { base: 'https://telefe.com/Api/Videos/GetSourceUrl/694564/0/HLS?.m3u8', parametros: '' },
     // 🔥 CANALES BOT (Puppeteer scraper)
     'espn_scraper': {
