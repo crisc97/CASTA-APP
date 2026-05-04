@@ -19,12 +19,16 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
  
+// 🏓 Ruta de ping para mantener el servidor despierto
+app.get('/ping', (req, res) => res.send('ok'));
+ 
 // --- BASE DE DATOS DE CANALES ---
 const dbCanales = {
     'tnt_1': { base: 'https://anden26.ddns.net/live/stream.m3u8', parametros: 'v=1777146764944' },
     'eltrece_directo': { base: 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8', parametros: '' },
     'elnueve_directo': { base: 'http://107.152.39.199:8030/hls/canal7.m3u8', parametros: '' },
     'telefe_directo': { base: 'https://telefe.com/Api/Videos/GetSourceUrl/694564/0/HLS?.m3u8', parametros: '' },
+ 
     // 🔥 CANALES BOT (Puppeteer scraper)
     'espn_scraper': {
         urlScraping: 'https://tvlibr3.com/en-vivo/espn-premium/',
@@ -81,7 +85,6 @@ function encolarBot(fn) {
                 reject(e);
             } finally {
                 botEnEjecucion = false;
-                // Forzamos garbage collection si está disponible
                 if (global.gc) {
                     global.gc();
                     console.log('🧹 Garbage collection forzado');
@@ -226,7 +229,6 @@ async function correrBot(datosCanal, canalId) {
     console.log(`🕵️‍♂️ Bot iniciando para: ${canalId}...`);
     console.log(`📊 RAM antes del bot: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
  
-    // 🧠 Argumentos para Chromium ultra liviano
     const browser = await puppeteer.launch({
         headless: true,
         args: [
@@ -253,9 +255,9 @@ async function correrBot(datosCanal, canalId) {
             '--no-first-run',
             '--safebrowsing-disable-auto-update',
             '--mute-audio',
-            '--single-process',         // ⭐ un solo proceso = mucha menos RAM
+            '--single-process',
             '--memory-pressure-off',
-            '--js-flags=--max-old-space-size=128', // limita JS heap a 128MB
+            '--js-flags=--max-old-space-size=128',
         ]
     });
  
@@ -263,12 +265,9 @@ async function correrBot(datosCanal, canalId) {
  
     try {
         const page = await browser.newPage();
- 
-        // Viewport mínimo para ahorrar RAM
         await page.setViewport({ width: 800, height: 600 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
  
-        // Escuchamos targets nuevos
         browser.on('targetcreated', async (target) => {
             const newPage = await target.page();
             if (!newPage) return;
@@ -295,7 +294,6 @@ async function correrBot(datosCanal, canalId) {
         page.on('request', (req) => {
             const url = req.url();
             const resourceType = req.resourceType();
-            // Bloqueamos todo lo que no sea necesario para ahorrar RAM
             if (['image', 'stylesheet', 'font', 'media', 'websocket'].includes(resourceType)) {
                 req.abort();
                 return;
@@ -322,10 +320,11 @@ async function correrBot(datosCanal, canalId) {
         });
  
         console.log(`🌐 Navegando a: ${datosCanal.urlScraping}`);
-        await page.goto(datosCanal.urlScraping, { waitUntil: 'networkidle2', timeout: 60000 });
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // ⚡ domcontentloaded es más rápido que networkidle2
+        await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        // ⚡ Reducido de 2000 a 1000ms
+        await new Promise(resolve => setTimeout(resolve, 1000));
  
-        // Intentamos cada grupo de botones
         const gruposBotones = datosCanal.opcionesBotones || [];
  
         for (const variantes of gruposBotones) {
@@ -335,9 +334,10 @@ async function correrBot(datosCanal, canalId) {
             const clicOk = await clickBotonPorVariantes(page, variantes);
  
             if (clicOk) {
-                console.log(`⏳ Esperando .m3u8 hasta 8s...`);
+                // ⚡ Reducido de 8s a 6s
+                console.log(`⏳ Esperando .m3u8 hasta 6s...`);
                 let espera = 0;
-                while (!linkVideoPuro && espera < 8) {
+                while (!linkVideoPuro && espera < 6) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     espera++;
                 }
@@ -351,17 +351,17 @@ async function correrBot(datosCanal, canalId) {
             console.log(`👆 Fallback clics centro...`);
             const viewport = page.viewport();
             await page.mouse.click(viewport.width / 2, viewport.height / 2);
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 1500));
             await page.mouse.click(viewport.width / 2, viewport.height / 2);
+            // ⚡ Reducido de 5s a 3s
             let espera = 0;
-            while (!linkVideoPuro && espera < 5) {
+            while (!linkVideoPuro && espera < 3) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 espera++;
             }
         }
  
     } finally {
-        // ⭐ Siempre cerramos el browser, pase lo que pase
         try {
             await browser.close();
             console.log(`🔒 Browser cerrado para: ${canalId}`);
@@ -395,7 +395,6 @@ app.get('/api/get-stream/:canal', async (req, res) => {
  
             console.log(`📥 Encolando bot para: ${canalId} (bots en cola: ${colaDeBots.length}, activo: ${botEnEjecucion})`);
  
-            // Encolamos el bot — si hay otro corriendo, espera su turno
             const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
  
             if (linkVideoPuro) {
@@ -428,4 +427,15 @@ app.get('/api/get-stream/:canal', async (req, res) => {
 // --- ENCENDIDO DEL SERVIDOR ---
 app.listen(PORT, () => {
     console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
+ 
+    // 🔄 Auto-ping cada 14 minutos para mantener Render despierto
+    setInterval(async () => {
+        try {
+            await axios.get(`${API_URL}/ping`);
+            console.log('🏓 Ping enviado — servidor activo');
+        } catch (e) {
+            console.log('⚠️ Ping fallido:', e.message);
+        }
+    }, 14 * 60 * 1000);
 });
+ 

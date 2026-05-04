@@ -75,6 +75,9 @@
  
         const API_URL = "https://casta-app.onrender.com";
  
+        // 🏓 Ping al servidor al cargar la página para despertarlo antes de que el usuario toque algo
+        fetch(`${API_URL}/ping`).catch(() => {});
+ 
         const misCanales = [
             {
                 nombre: "ESPN Premium",
@@ -98,9 +101,9 @@
             {
                 nombre: "Fox Sports",
                 opciones: [
-                   { nombre: "Opción Automática (Bot)", id: "fox_scraper" }
-    ]
-           }
+                    { nombre: "Opción Automática (Bot)", id: "fox_scraper" }
+                ]
+            }
         ];
  
         function mostrarLoader(esBot = false) {
@@ -198,7 +201,6 @@
             mostrarLoader(esBot);
  
             try {
-                // Timeout de 90 segundos para canales bot, 15 para el resto
                 const timeoutMs = esBot ? 45000 : 15000;
  
                 const controller = new AbortController();
