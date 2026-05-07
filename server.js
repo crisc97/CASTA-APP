@@ -22,6 +22,16 @@ app.get('/', (req, res) => {
 // 🏓 Ruta de ping para mantener el servidor despierto
 app.get('/ping', (req, res) => res.send('ok'));
  
+// 🗑️ Ruta para limpiar caché de un canal (usada en reintento automático)
+app.get('/api/clear-cache/:canal', (req, res) => {
+    const canalId = req.params.canal;
+    if (memoriaCache[canalId]) {
+        delete memoriaCache[canalId];
+        console.log(`🗑️ Caché borrada para: ${canalId}`);
+    }
+    res.json({ ok: true });
+});
+ 
 // --- BASE DE DATOS DE CANALES ---
 const dbCanales = {
     'tnt_1': { base: 'https://anden26.ddns.net/live/stream.m3u8', parametros: 'v=1777146764944' },
@@ -320,9 +330,7 @@ async function correrBot(datosCanal, canalId) {
         });
  
         console.log(`🌐 Navegando a: ${datosCanal.urlScraping}`);
-        // ⚡ domcontentloaded es más rápido que networkidle2
         await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        // ⚡ Reducido de 2000 a 1000ms
         await new Promise(resolve => setTimeout(resolve, 1000));
  
         const gruposBotones = datosCanal.opcionesBotones || [];
@@ -334,7 +342,6 @@ async function correrBot(datosCanal, canalId) {
             const clicOk = await clickBotonPorVariantes(page, variantes);
  
             if (clicOk) {
-                // ⚡ Reducido de 8s a 6s
                 console.log(`⏳ Esperando .m3u8 hasta 6s...`);
                 let espera = 0;
                 while (!linkVideoPuro && espera < 6) {
@@ -353,7 +360,6 @@ async function correrBot(datosCanal, canalId) {
             await page.mouse.click(viewport.width / 2, viewport.height / 2);
             await new Promise(resolve => setTimeout(resolve, 1500));
             await page.mouse.click(viewport.width / 2, viewport.height / 2);
-            // ⚡ Reducido de 5s a 3s
             let espera = 0;
             while (!linkVideoPuro && espera < 3) {
                 await new Promise(resolve => setTimeout(resolve, 1000));

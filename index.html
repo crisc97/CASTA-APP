@@ -69,13 +69,14 @@
         let hls;
         let dashPlayer;
         let canalActualNombre = "";
+        let canalActualId = ""; // 🆕 guardamos el id para el reintento automático
  
         // IDs de canales que usan bot (tardan más)
         const canalesBot = ['espn_scraper', 'dsports_scraper', 'tnt_scraper', 'fox_scraper', 'telefe_scraper', 'eltrece_scraper', 'elnueve_scraper'];
  
         const API_URL = "https://casta-app.onrender.com";
  
-        // 🏓 Ping al servidor al cargar la página para despertarlo antes de que el usuario toque algo
+        // 🏓 Ping al servidor al cargar la página para despertarlo
         fetch(`${API_URL}/ping`).catch(() => {});
  
         const misCanales = [
@@ -106,11 +107,13 @@
             }
         ];
  
-        function mostrarLoader(esBot = false) {
+        function mostrarLoader(esBot = false, mensaje = '') {
             loader.classList.remove('hidden');
             loader.classList.add('flex');
-            if (esBot) {
-                loadingMsg.innerText = "🤖 Se está buscando el canal...\nEsto puede tardar hasta 60 segundos, gracias por esperar.";
+            if (mensaje) {
+                loadingMsg.innerText = mensaje;
+            } else if (esBot) {
+                loadingMsg.innerText = "🤖 Se está buscando el canal...\nEsto puede tardar hasta 30 segundos, gracias por esperar.";
             } else {
                 loadingMsg.innerText = "";
             }
@@ -171,6 +174,7 @@
                         btnOpcion.classList.add('bg-blue-600', 'text-white', 'font-bold');
  
                         canalActualNombre = `${canal.nombre} - ${opcion.nombre}`;
+                        canalActualId = opcion.id; // 🆕 guardamos el id actual
                         obtenerEnlaceServidor(opcion.id);
                         cerrarMenu();
                         btnReportar.classList.remove('hidden');
@@ -202,7 +206,6 @@
  
             try {
                 const timeoutMs = esBot ? 45000 : 15000;
- 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
  
@@ -214,7 +217,7 @@
                 const data = await res.json();
  
                 if (data.exito) {
-                    ejecutarVideo(data.url);
+                    ejecutarVideo(data.url, canalId);
                 } else {
                     throw new Error("No se pudo obtener el enlace");
                 }
@@ -230,7 +233,23 @@
             }
         }
  
-        function ejecutarVideo(url) {
+        // 🆕 Reintento automático: borra caché y vuelve a buscar
+        async function reintentarCanal(canalId) {
+            console.log(`🔄 Reintentando canal: ${canalId}`);
+            mostrarLoader(canalesBot.includes(canalId), "🔄 Enlace caído, buscando nuevo enlace...");
+ 
+            try {
+                // Borramos la caché del servidor para ese canal
+                await fetch(`${API_URL}/api/clear-cache/${canalId}`).catch(() => {});
+            } catch (e) {}
+ 
+            // Esperamos 1 segundo y pedimos nuevo enlace
+            setTimeout(() => {
+                obtenerEnlaceServidor(canalId);
+            }, 1000);
+        }
+ 
+        function ejecutarVideo(url, canalId) {
             if (hls) { hls.destroy(); hls = null; }
             if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
             videoElement.pause();
@@ -245,8 +264,13 @@
                 dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => ocultarLoader());
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
                     ocultarLoader();
-                    mensajeError.classList.remove('hidden');
-                    mensajeError.innerText = "💥 Error en DASH.";
+                    // 🆕 Reintento automático para DASH
+                    if (canalId && canalesBot.includes(canalId)) {
+                        reintentarCanal(canalId);
+                    } else {
+                        mensajeError.classList.remove('hidden');
+                        mensajeError.innerText = "💥 Error en DASH.";
+                    }
                 });
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
@@ -262,9 +286,15 @@
                     });
                     hls.on(Hls.Events.ERROR, function (event, data) {
                         if (data.fatal) {
-                            ocultarLoader();
-                            mensajeError.classList.remove('hidden');
-                            mensajeError.innerText = "💥 Error de conexión con el video.";
+                            console.log('💥 Error fatal HLS, reintentando...');
+                            // 🆕 Reintento automático para HLS
+                            if (canalId && canalesBot.includes(canalId)) {
+                                reintentarCanal(canalId);
+                            } else {
+                                ocultarLoader();
+                                mensajeError.classList.remove('hidden');
+                                mensajeError.innerText = "💥 Error de conexión con el video.";
+                            }
                         }
                     });
                 } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
@@ -303,3 +333,4 @@
     </script>
 </body>
 </html>
+ 
