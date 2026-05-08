@@ -40,32 +40,84 @@ const dbCanales = {
     'telefe_directo': { base: 'https://telefe.com/Api/Videos/GetSourceUrl/694564/0/HLS?.m3u8', parametros: '' },
  
     // 🔥 CANALES BOT (Puppeteer scraper)
-    'espn_scraper': {
+    'espn_scraper1': {
         urlScraping: 'https://tvlibr3.com/en-vivo/espn-premium/',
         opcionesBotones: [
-            ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3', 'opción 3', 'opcion 3'],
-            ['Opción 2', 'Opcion 2', 'Opción2', 'Opcion2', 'opción 2', 'opcion 2'],
+            ['Opción 3', 'Opción3'],
+            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
         ]
     },
-    'dsports_scraper': {
+    'espn_scraper2': {
+        urlScraping: 'https://pelotalibretv.su/espn-premium/',
+        opcionesBotones: [
+            ['Opción 1', 'Opción1'],
+        ]
+    },
+    'dsports_scraper1': {
         urlScraping: 'https://tvlibr3.com/en-vivo/dsports/',
         opcionesBotones: [
-            ['Opción 2', 'Opcion 2', 'Opción2', 'Opcion2', 'opción 2', 'opcion 2'],
-            ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3', 'opción 3', 'opcion 3'],
+            ['Opción 2', 'Opción2'],
         ]
     },
-    'tnt_scraper': {
+    'dsports_scraper2': {
+        urlScraping: 'https://pelotalibretv.su/directv-sports/',
+        opcionesBotones: [
+            ['Opción 1', 'Opción1'],
+        ]
+    },
+    'tnt_scraper1': {
         urlScraping: 'https://tvlibr3.com/en-vivo/tnt-sports/',
         opcionesBotones: [
-            ['Opción 2', 'Opcion 2', 'Opción2', 'Opcion2', 'opción 2', 'opcion 2'],
-            ['Opción 3', 'Opcion 3', 'Opción3', 'Opcion3', 'opción 3', 'opcion 3'],
+            ['Opción 2', 'Opción2'],
+            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
         ]
     },
-    'fox_scraper': {
+    'tnt_scraper2': {
+        urlScraping: https://pelotalibretv.su/tnt-sports/',
+        opcionesBotones: [
+           ['Opción 1', 'Opción1'],
+        ]
+    },
+    'fox_scraper1': {
         urlScraping: 'https://tvlibr3.com/en-vivo/fox-sports/',
         opcionesBotones: [
             ['Opción 1 (FL)', 'Opcion 1 (FL)'],
             ['Opción 3', 'Opcion 3'],
+        ]
+    },
+    'fox_scraper2': {
+        urlScraping: 'https://pelotalibretv.su/fox-sports/',
+        
+    },
+    'tyc_scraper1': {
+        urlScraping: 'https://tvlibr3.com/en-vivo/tyc-sports/',
+        opcionesBotones: [
+            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
+            ['Opción 3', 'Opcion 3'],
+        ]
+    },
+    'tyc_scraper2': {
+        urlScraping: 'https://pelotalibretv.su/tyc-sports/',
+        opcionesBotones: [
+            ['Opción 1', 'Opción1'],
+        ]
+    },
+    'telefe_scraper': {
+        urlScraping: 'https://tvlibr3.com/en-vivo/telefe/',
+        opcionesBotones: [
+            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
+        ]
+    }, 
+    'eltrece_scraper': {
+        urlScraping: 'https://tvlibr3.com/en-vivo/el-trece/',
+        opcionesBotones: [
+            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
+        ]
+    },
+    'elnueve_scraper': {
+        urlScraping: 'https://tvlibr3.com/en-vivo/el-nueve/',
+        opcionesBotones: [
+            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
         ]
     },
 };
