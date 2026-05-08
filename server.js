@@ -73,7 +73,7 @@ const dbCanales = {
         ]
     },
     'tnt_scraper2': {
-        urlScraping: https://pelotalibretv.su/tnt-sports/',
+        urlScraping: 'https://pelotalibretv.su/tnt-sports/',
         opcionesBotones: [
            ['Opción 1', 'Opción1'],
         ]
