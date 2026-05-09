@@ -73,23 +73,23 @@ const dbCanales = {
     opcionesBotones: []
 },
     'fox_scraper1': {
-        urlScraping: 'https://tvlibr3.com/en-vivo/fox-sports/',
-        opcionesBotones: [
-            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
-            ['Opción 3', 'Opcion 3'],
-        ]
-    },
+    urlScraping: 'https://tvlibr3.com/en-vivo/fox-sports/',
+    opcionesBotones: [
+        ['Opción 3', 'Opcion 3', 'Opción3'],  // 🆕 Opción 3 primero — da .m3u8
+        ['Opción 2', 'Opcion 2', 'Opción2'],  // 🆕 Opción 2 como fallback
+    ]
+},
     'fox_scraper2': {
     urlScraping: 'https://latamvidz1.com/canal.php?stream=foxsports',
     opcionesBotones: []
 },
-    'tyc_scraper1': {
-        urlScraping: 'https://tvlibr3.com/en-vivo/tyc-sports/',
-        opcionesBotones: [
-            ['Opción 1 (FL)', 'Opcion 1 (FL)'],
-            ['Opción 3', 'Opcion 3'],
-        ]
-    },
+   'tyc_scraper1': {
+    urlScraping: 'https://tvlibr3.com/en-vivo/tyc-sports/',
+    opcionesBotones: [
+        ['Opción 3', 'Opcion 3', 'Opción3'],
+        ['Opción 2', 'Opcion 2', 'Opción2'],
+    ]
+},
     'tyc_scraper2': {
     urlScraping: 'https://latamvidz1.com/canal.php?stream=tycsports',
     opcionesBotones: []
