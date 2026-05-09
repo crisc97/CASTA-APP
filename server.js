@@ -47,12 +47,10 @@ const dbCanales = {
             ['Opción 1 (FL)', 'Opcion 1 (FL)'],
         ]
     },
-    'espn_scraper2': {
-        urlScraping: 'https://pelotalibretv.su/espn-premium/',
-        opcionesBotones: [
-            ['Opción 1', 'Opción1'],
-        ]
-    },
+ 'espn_scraper2': {
+    urlScraping: 'https://latamvidz1.com/canal.php?stream=espnpremium',
+    opcionesBotones: [] // sin botones, el stream sale solo al cargar
+},
     'dsports_scraper1': {
         urlScraping: 'https://tvlibr3.com/en-vivo/dsports/',
         opcionesBotones: [
@@ -60,11 +58,9 @@ const dbCanales = {
         ]
     },
     'dsports_scraper2': {
-        urlScraping: 'https://pelotalibretv.su/directv-sports/',
-        opcionesBotones: [
-            ['Opción 1', 'Opción1'],
-        ]
-    },
+    urlScraping: 'https://latamvidz1.com/canal.php?stream=dsports',
+    opcionesBotones: []
+},
     'tnt_scraper1': {
         urlScraping: 'https://tvlibr3.com/en-vivo/tnt-sports/',
         opcionesBotones: [
@@ -73,11 +69,9 @@ const dbCanales = {
         ]
     },
     'tnt_scraper2': {
-        urlScraping: 'https://pelotalibretv.su/tnt-sports/',
-        opcionesBotones: [
-            ['Opción 1', 'Opción1'],
-        ]
-    },
+    urlScraping: 'https://latamvidz1.com/canal.php?stream=tntsports',
+    opcionesBotones: []
+},
     'fox_scraper1': {
         urlScraping: 'https://tvlibr3.com/en-vivo/fox-sports/',
         opcionesBotones: [
@@ -86,9 +80,9 @@ const dbCanales = {
         ]
     },
     'fox_scraper2': {
-        urlScraping: 'https://pelotalibretv.su/fox-sports/',
-        opcionesBotones: []
-    },
+    urlScraping: 'https://latamvidz1.com/canal.php?stream=foxsports',
+    opcionesBotones: []
+},
     'tyc_scraper1': {
         urlScraping: 'https://tvlibr3.com/en-vivo/tyc-sports/',
         opcionesBotones: [
@@ -97,11 +91,9 @@ const dbCanales = {
         ]
     },
     'tyc_scraper2': {
-        urlScraping: 'https://pelotalibretv.su/tyc-sports/',
-        opcionesBotones: [
-            ['Opción 1', 'Opción1'],
-        ]
-    },
+    urlScraping: 'https://latamvidz1.com/canal.php?stream=tycsports',
+    opcionesBotones: []
+},
     'telefe_scraper': {
         urlScraping: 'https://tvlibr3.com/en-vivo/telefe/',
         opcionesBotones: [
