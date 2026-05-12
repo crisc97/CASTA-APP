@@ -111,11 +111,11 @@
         fetch(`${API_URL}/ping`).catch(() => {});
 
         const misCanales = [
-            { nombre: "ESPN Premium", opciones: [{ nombre: "Opción Automática", id: "espn_scraper1" }] },
-            { nombre: "TNT Sports", opciones: [{ nombre: "Opción 1", id: "tnt_1" }, { nombre: "Opción Automática", id: "tnt_scraper1" }] },
-            { nombre: "DirecTv Sports", opciones: [{ nombre: "Opción Automática", id: "dsports_scraper1" }] },
-            { nombre: "Fox Sports", opciones: [{ nombre: "Opción Automática", id: "fox_scraper1" }] },
-            { nombre: "TyC Sports Int", opciones: [{ nombre: "Opción Automática", id: "tyc_scraper1" }] }
+            { nombre: "ESPN Premium", logo: "logos_canales/ESPN_Premium.png" , opciones: [{ nombre: "Opción Automática", id: "espn_scraper1" }] },
+            { nombre: "TNT Sports", logo: "logos_canales/TNT_Sports_Premium.png" , opciones: [{ nombre: "Opción 1", id: "tnt_1" }, { nombre: "Opción Automática", id: "tnt_scraper1" }] },
+            { nombre: "DirecTv Sports", logo: "logos_canales/dsports.png" , opciones: [{ nombre: "Opción Automática", id: "dsports_scraper1" }] },
+            { nombre: "Fox Sports", logo: "logos_canales/Fox_Sports_Argentina.png" , opciones: [{ nombre: "Opción Automática", id: "fox_scraper1" }] },
+            { nombre: "TyC Sports", logo: "logos_canales/tyc.png" , opciones: [{ nombre: "Opción Automática", id: "tyc_scraper1" }] }
         ];
 
         // --- MÓDULO WIDGET: RELOJ (Con segundos) ---
@@ -164,7 +164,7 @@
             if (mensaje) {
                 loadingMsg.innerText = mensaje;
             } else if (esBot) {
-                loadingMsg.innerText = "🤖 Buscando enlace del canal...\nEsto puede tardar hasta 60s.";
+                loadingMsg.innerText = "🤖 Se está buscando el canal...\nEsto puede tardar hasta 60 segundos, gracias por esperar. \n(si no encontro el canal volver a seleccionarlo)";
             } else {
                 loadingMsg.innerText = "";
             }
@@ -204,17 +204,19 @@
                 const btnPrincipal = document.createElement('button');
                 btnPrincipal.className = "w-full text-left bg-[#131538] hover:bg-[#1a1d4f] focus:bg-[#282c75] focus:ring-2 focus:ring-blue-400 outline-none text-white font-semibold py-2 px-3 rounded-md transition border border-[#1e204a] flex items-center justify-between group";
                 
-                // Iniciales para el logo falso si no hay imagen
-                const iniciales = canal.nombre.substring(0, 3).toUpperCase();
-                
+                // Si el canal tiene logo, armamos la etiqueta <img>. Si no, usamos iniciales.
+                const logoHtml = canal.logo 
+                    ? `<img src="${canal.logo}" alt="${canal.nombre}" class="w-full h-full object-contain p-1">`
+                    : `<span class="text-xs font-black tracking-tighter text-gray-200">${canal.nombre.substring(0, 3).toUpperCase()}</span>`;
+
                 btnPrincipal.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-9 bg-gradient-to-br from-blue-900 to-black border border-gray-600 rounded flex items-center justify-center text-xs font-black tracking-tighter text-gray-200 shrink-0 shadow-inner group-hover:border-blue-400 transition">
-                            ${iniciales}
+                    <div class="flex items-center gap-3 overflow-hidden w-full">
+                        <div class="w-14 h-10 bg-white/5 border border-gray-600 rounded flex items-center justify-center shrink-0 shadow-inner group-hover:border-blue-400 transition overflow-hidden">
+                            ${logoHtml}
                         </div>
-                        <span class="text-sm md:text-base truncate tracking-wide">${canal.nombre}</span>
+                        <span class="text-sm md:text-base truncate tracking-wide w-full">${canal.nombre}</span>
                     </div>
-                    <span class="text-xs text-[#5c6bc0]">▼</span>
+                    <span class="text-xs text-[#5c6bc0] ml-2 shrink-0">▼</span>
                 `;
 
                 const subOpcionesDiv = document.createElement('div');
