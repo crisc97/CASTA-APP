@@ -52,16 +52,21 @@
             <h1 class="text-xl sm:text-2xl font-black text-blue-500 tracking-wider mt-2">📺CASTA-APP⚽</h1>
             <p class="text-[10px] sm:text-xs text-gray-400 tracking-widest uppercase">Seleccione un canal</p>
             
-            <div class="flex justify-between items-end mt-4 bg-black/30 p-3 rounded-lg border border-white/5 shadow-inner">
-                <div id="relojLocal" class="text-white font-mono font-bold text-2xl tracking-widest">--:--:--</div>
+            <div class="flex justify-between items-center mt-4 bg-black/30 p-3 rounded-lg border border-white/5 shadow-inner">
+                
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-[#5c6bc0] font-semibold uppercase tracking-wider mb-1">Horario</span>
+                    <div id="relojLocal" class="text-white font-mono font-bold text-2xl tracking-widest leading-none">--:--:--</div>
+                </div>
                 
                 <div class="flex flex-col items-end">
-                    <span id="climaCiudad" class="text-[10px] text-[#5c6bc0] font-semibold uppercase tracking-wider">Ubicación...</span>
-                    <div class="flex items-center gap-1 text-gray-300">
-                        <span id="climaIcono" class="text-sm">🌍</span>
-                        <span id="climaTemp" class="font-bold text-sm">--°C</span>
+                    <span id="climaCiudad" class="text-[10px] text-[#5c6bc0] font-semibold uppercase tracking-wider mb-1">Ubicación...</span>
+                    <div class="flex items-center gap-2 text-gray-300">
+                        <span id="climaTemp" class="font-bold text-xl leading-none">--°C</span>
+                        <span id="climaIcono" class="text-2xl leading-none">🌍</span>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -71,7 +76,7 @@
 
         <div id="listaCanales" class="flex-1 overflow-y-auto p-3 flex flex-col gap-2 pb-6"></div>
         
-        </div>
+    </div>
 
     <script>
         const videoElement = document.getElementById('reproductor');
@@ -105,7 +110,6 @@
 
         fetch(`${API_URL}/ping`).catch(() => {});
 
-        // RECUERDA PONER BIEN TU RUTA ACÁ:
         const misCanales = [
             { nombre: "ESPN Premium", logo: "https://es.wikipedia.org/wiki/Archivo:ESPN_Premium_logo.svg.png", opciones: [{ nombre: "Opción Automática", id: "espn_scraper1" }] },
             { nombre: "TNT Sports", logo: "logos_canales/tnt.png", opciones: [{ nombre: "Opción 1", id: "tnt_1" }, { nombre: "Opción Automática", id: "tnt_scraper1" }] },
@@ -137,18 +141,26 @@
 
                 const temp = Math.round(dataClima.current_weather.temperature);
                 const code = dataClima.current_weather.weathercode;
+                const isDay = dataClima.current_weather.is_day; // 1 = Día, 0 = Noche
 
                 document.getElementById('climaTemp').innerText = `${temp}°C`;
 
-                let icono = "🌤️";
-                if (code >= 51) icono = "🌧️";
-                else if (code >= 3) icono = "☁️";
-                else if (code === 0) icono = "☀️";
+                // LOGICA DE ICONOS DE CLIMA DÍA/NOCHE MODIFICADA
+                let icono = "🌍";
+                if (code === 0) icono = isDay ? "☀️" : "🌙"; // Despejado
+                else if (code === 1 || code === 2) icono = isDay ? "⛅" : "☁️"; // Parcialmente nublado
+                else if (code === 3) icono = "☁️"; // Muy nublado
+                else if (code >= 45 && code <= 48) icono = "🌫️"; // Niebla
+                else if (code >= 51 && code <= 67) icono = "🌧️"; // Llovizna o Lluvia
+                else if (code >= 71 && code <= 77) icono = "❄️"; // Nieve
+                else if (code >= 80 && code <= 82) icono = isDay ? "🌦️" : "🌧️"; // Chubascos
+                else if (code >= 95) icono = "⛈️"; // Tormenta eléctrica
 
                 document.getElementById('climaIcono').innerText = icono;
             } catch (error) {
                 document.getElementById('climaCiudad').innerText = "Offline";
                 document.getElementById('climaTemp').innerText = "--";
+                document.getElementById('climaIcono').innerText = "⚠️";
             }
         }
 
@@ -199,7 +211,6 @@
                 
                 const iniciales = canal.nombre.substring(0, 3).toUpperCase();
                 
-                // SISTEMA ANTI IMAGEN ROTA APLICADO AQUÍ
                 const logoHtml = canal.logo 
                     ? `<img src="${canal.logo}" alt="${iniciales}" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.outerHTML='<span class=\\'text-xs font-black tracking-tighter text-gray-200\\'>${iniciales}</span>';">`
                     : `<span class="text-xs font-black tracking-tighter text-gray-200">${iniciales}</span>`;
