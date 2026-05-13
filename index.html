@@ -54,13 +54,15 @@
             
             <div class="flex justify-between items-center mt-4 bg-black/30 p-3 rounded-lg border border-white/5 shadow-inner">
                 
-                <div class="flex flex-col">
+                <div class="flex flex-col w-[45%]">
                     <span class="text-[10px] text-[#5c6bc0] font-semibold uppercase tracking-wider mb-1">Horario</span>
-                    <div id="relojLocal" class="text-white font-mono font-bold text-2xl tracking-widest leading-none">--:--:--</div>
+                    <div id="relojLocal" class="text-white font-mono font-bold text-xl sm:text-2xl tracking-widest leading-none">--:--:--</div>
                 </div>
+
+                <div class="w-[1px] h-10 bg-[#1e204a]"></div>
                 
-                <div class="flex flex-col items-end">
-                    <span id="climaCiudad" class="text-[10px] text-[#5c6bc0] font-semibold uppercase tracking-wider mb-1">Ubicación...</span>
+                <div class="flex flex-col items-end w-[45%]">
+                    <span id="climaCiudad" class="text-[10px] text-[#5c6bc0] font-semibold uppercase tracking-wider mb-1 text-right truncate w-full">Ubicación...</span>
                     <div class="flex items-center gap-2 text-gray-300">
                         <span id="climaTemp" class="font-bold text-xl leading-none">--°C</span>
                         <span id="climaIcono" class="text-2xl leading-none">🌍</span>
@@ -110,6 +112,7 @@
 
         fetch(`${API_URL}/ping`).catch(() => {});
 
+        // Asegúrate de que las rutas sean relativas para que funcionen en el servidor (ej: logos_canales/tu_imagen.png)
         const misCanales = [
             { nombre: "ESPN Premium", logo: "logos_canales/espn.png", opciones: [{ nombre: "Opción Automática", id: "espn_scraper1" }] },
             { nombre: "TNT Sports", logo: "logos_canales/tnt.png", opciones: [{ nombre: "Opción 1", id: "tnt_1" }, { nombre: "Opción Automática", id: "tnt_scraper1" }] },
@@ -145,16 +148,15 @@
 
                 document.getElementById('climaTemp').innerText = `${temp}°C`;
 
-                // LOGICA DE ICONOS DE CLIMA DÍA/NOCHE MODIFICADA
                 let icono = "🌍";
-                if (code === 0) icono = isDay ? "☀️" : "🌙"; // Despejado
-                else if (code === 1 || code === 2) icono = isDay ? "⛅" : "☁️"; // Parcialmente nublado
-                else if (code === 3) icono = "☁️"; // Muy nublado
-                else if (code >= 45 && code <= 48) icono = "🌫️"; // Niebla
-                else if (code >= 51 && code <= 67) icono = "🌧️"; // Llovizna o Lluvia
-                else if (code >= 71 && code <= 77) icono = "❄️"; // Nieve
-                else if (code >= 80 && code <= 82) icono = isDay ? "🌦️" : "🌧️"; // Chubascos
-                else if (code >= 95) icono = "⛈️"; // Tormenta eléctrica
+                if (code === 0) icono = isDay ? "☀️" : "🌙";
+                else if (code === 1 || code === 2) icono = isDay ? "⛅" : "☁️";
+                else if (code === 3) icono = "☁️";
+                else if (code >= 45 && code <= 48) icono = "🌫️";
+                else if (code >= 51 && code <= 67) icono = "🌧️";
+                else if (code >= 71 && code <= 77) icono = "❄️";
+                else if (code >= 80 && code <= 82) icono = isDay ? "🌦️" : "🌧️";
+                else if (code >= 95) icono = "⛈️";
 
                 document.getElementById('climaIcono').innerText = icono;
             } catch (error) {
@@ -212,12 +214,12 @@
                 const iniciales = canal.nombre.substring(0, 3).toUpperCase();
                 
                 const logoHtml = canal.logo 
-                    ? `<img src="${canal.logo}" alt="${iniciales}" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.outerHTML='<span class=\\'text-xs font-black tracking-tighter text-gray-200\\'>${iniciales}</span>';">`
-                    : `<span class="text-xs font-black tracking-tighter text-gray-200">${iniciales}</span>`;
+                    ? `<img src="${canal.logo}" alt="${iniciales}" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.outerHTML='<span class=\\'text-xs font-black tracking-tighter text-gray-800\\'>${iniciales}</span>';">`
+                    : `<span class="text-xs font-black tracking-tighter text-gray-800">${iniciales}</span>`;
 
                 btnPrincipal.innerHTML = `
                     <div class="flex items-center gap-3 overflow-hidden w-full">
-                        <div class="w-14 h-10 bg-white/5 border border-gray-600 rounded flex items-center justify-center shrink-0 shadow-inner group-hover:border-blue-400 transition overflow-hidden">
+                        <div class="w-14 h-10 bg-white rounded flex items-center justify-center shrink-0 shadow-inner group-hover:border-blue-400 border border-gray-300 transition overflow-hidden">
                             ${logoHtml}
                         </div>
                         <span class="text-sm md:text-base truncate tracking-wide w-full">${canal.nombre}</span>
