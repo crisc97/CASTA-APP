@@ -421,7 +421,25 @@
             }
         });
 
-        btnCast.addEventListener('click', () => alert("Tu dispositivo no soporta o canceló la transmisión."));
+        btnCast.addEventListener('click', async () => {
+    // Verificar si el navegador soporta Remote Playback (Chrome/Android)
+    if (videoElement.remote) {
+        try {
+            await videoElement.remote.prompt();
+        } catch (error) {
+            console.warn("Error o cancelación del Cast:", error);
+            // Fallback si cancela o no encuentra
+        }
+    } 
+    // Verificar si soporta AirPlay (Safari/iOS)
+    else if (videoElement.webkitShowPlaybackTargetPicker) {
+        videoElement.webkitShowPlaybackTargetPicker();
+    } 
+    // Fallback si el navegador no soporta nada nativo
+    else {
+        alert("Tu navegador no soporta transmisión nativa. Probá usar Google Chrome o Safari para enviar a tu TV.");
+    }
+});
 
         window.onload = () => {
             renderizarCanales();

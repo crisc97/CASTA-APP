@@ -150,8 +150,14 @@ function encolarBot(fn) {
     });
 }
  
-// ⭐ Helper: detecta si una URL es un stream válido (.m3u8 O .mpd)
+// ⭐ Helper: detecta si una URL es un stream válido y descarta basura
 function esStream(url) {
+    if (!url || url === 'about:blank' || url === 'about:srcdoc') return false;
+    
+    // Ignorar típicas URLs de ads o tracking que a veces camuflan como m3u8
+    const basura = ['ad', 'tracker', 'dummy', 'blank', 'pixel'];
+    if (basura.some(palabra => url.toLowerCase().includes(palabra))) return false;
+
     return url.includes('.m3u8') || url.includes('.mpd');
 }
  
@@ -362,7 +368,9 @@ async function correrBot(datosCanal, canalId) {
         page.on('request', (req) => {
             const url = req.url();
             const resourceType = req.resourceType();
-            if (['image', 'stylesheet', 'font', 'media', 'websocket'].includes(resourceType)) {
+            
+            // ⚠️ Quitamos 'media' para no bloquear la petición del playlist del video
+            if (['image', 'stylesheet', 'font', 'websocket'].includes(resourceType)) {
                 req.abort();
                 return;
             }
@@ -383,6 +391,9 @@ async function correrBot(datosCanal, canalId) {
  
         page.on('framenavigated', async (frame) => {
             const frameUrl = frame.url();
+            // Ignorar frames en blanco explícitamente
+            if (frameUrl === 'about:blank' || frameUrl === '') return;
+            
             console.log(`📄 Frame: ${frameUrl}`);
             if (esStream(frameUrl) && !linkVideoPuro) linkVideoPuro = frameUrl;
         });
@@ -402,8 +413,9 @@ async function correrBot(datosCanal, canalId) {
             if (clicOk) {
                 console.log(`⏳ Esperando stream hasta 6s...`);
                 let espera = 0;
-                while (!linkVideoPuro && espera < 6) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                // Cambiamos a pasos de 100ms. 60 pasos = 6 segundos máximo.
+                while (!linkVideoPuro && espera < 60) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
                     espera++;
                 }
                 if (linkVideoPuro) break;
@@ -416,11 +428,13 @@ async function correrBot(datosCanal, canalId) {
             console.log(`👆 Fallback clics centro...`);
             const viewport = page.viewport();
             await page.mouse.click(viewport.width / 2, viewport.height / 2);
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 500)); // Espera más corta entre clics
             await page.mouse.click(viewport.width / 2, viewport.height / 2);
+            
             let espera = 0;
-            while (!linkVideoPuro && espera < 3) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+            // 30 pasos de 100ms = 3 segundos máximo
+            while (!linkVideoPuro && espera < 30) {
+                await new Promise(resolve => setTimeout(resolve, 100));
                 espera++;
             }
         }
