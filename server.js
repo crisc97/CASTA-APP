@@ -172,6 +172,7 @@ function armarHeaders(targetUrl) {
     if (targetUrl.includes('latinapro.net')) {
         return {
             'User-Agent': 'bocatvplay.beta/9.8 (Linux;Android 15) AndroidXMedia3/1.1.1',
+            'Referer': '', // Dejar vacío para evitar bloqueos por referer inválido
             'Connection': 'keep-alive'
         };
     }
@@ -236,77 +237,75 @@ async function clickBotonPorVariantes(page, variantes) {
     }
 }
  
-// --- PROXY PARA HLS (.m3u8) y DASH (.mpd) ---
+// --- PROXY PARA HLS (.m3u8), DASH (.mpd) y TS ---
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
- 
+
     const headers = armarHeaders(targetUrl);
-    console.log(`🔀 Proxy: ${targetUrl}`);
- 
+    
+    // IMPORTANTE: Forward del header 'Range' que envía el navegador
+    if (req.headers.range) {
+        headers['Range'] = req.headers.range;
+    }
+
     try {
         const response = await axios.get(targetUrl, {
-            responseType: 'text',
+            responseType: 'stream', 
             headers,
-            timeout: 30000
+            timeout: 30000,
+            maxRedirects: 10, // Necesario para seguir el 302 a la IP real
+            validateStatus: (status) => status >= 200 && status < 400
         });
- 
-        console.log(`✅ Proxy HTTP ${response.status} para: ${targetUrl}`);
- 
+
         const contentType = response.headers['content-type'] || '';
- 
-        // Si es playlist .m3u8 — reescribimos URLs de segmentos
-        if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL')) {
-            const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
-            let contenido = response.data;
- 
-            contenido = contenido.split('\n').map(linea => {
-                const l = linea.trim();
-                if (!l || l.startsWith('#')) return linea;
- 
-                let urlSegmento;
-                if (l.startsWith('http://') || l.startsWith('https://')) {
-                    urlSegmento = l;
+        console.log(`🔀 Proxy HTTP ${response.status}: ${targetUrl} [${contentType}]`);
+
+        // A. SI ES UNA PLAYLIST (.m3u8) o DASH (.mpd) -> Leemos como texto y modificamos si hace falta
+        if (targetUrl.includes('.m3u8') || targetUrl.includes('.mpd') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL') || contentType.includes('dash+xml')) {
+            let data = '';
+            response.data.on('data', chunk => data += chunk);
+            response.data.on('end', () => {
+                // Si es m3u8 reescribimos
+                if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL')) {
+                    const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
+                    let contenido = data.split('\n').map(linea => {
+                        const l = linea.trim();
+                        if (!l || l.startsWith('#')) return linea;
+                        let urlSegmento = (l.startsWith('http://') || l.startsWith('https://')) ? l : baseUrl + l;
+                        return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
+                    }).join('\n');
+
+                    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+                    res.setHeader('Access-Control-Allow-Origin', '*');
+                    res.setHeader('Cache-Control', 'no-cache');
+                    res.send(contenido);
                 } else {
-                    urlSegmento = baseUrl + l;
+                    // Si es DASH, mandamos directo sin reescribir por ahora (o agregar lógica similar si falla)
+                    res.setHeader('Content-Type', 'application/dash+xml');
+                    res.setHeader('Access-Control-Allow-Origin', '*');
+                    res.setHeader('Cache-Control', 'no-cache');
+                    res.send(data);
                 }
- 
-                return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
-            }).join('\n');
- 
-            res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.setHeader('Cache-Control', 'no-cache');
-            return res.send(contenido);
+            });
+            return;
         }
- 
-        // Si es .mpd (DASH) — lo proxeamos directo con los headers correctos
-        if (targetUrl.includes('.mpd') || contentType.includes('dash+xml')) {
-            res.setHeader('Content-Type', 'application/dash+xml');
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.setHeader('Cache-Control', 'no-cache');
-            return res.send(response.data);
-        }
- 
-        // Si es segmento de video (.ts, .aac, etc.) — lo streameamos en binario
-        const binaryResponse = await axios.get(targetUrl, {
-            responseType: 'stream',
-            headers,
-            timeout: 30000
-        });
- 
-        res.setHeader('Content-Type', binaryResponse.headers['content-type'] || 'video/mp2t');
+
+        // B. SI ES SEGMENTO DE VIDEO (.ts, .mp4, etc) -> Pipe directo en binario
+        res.setHeader('Content-Type', contentType || 'video/mp2t');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-cache');
-        binaryResponse.data.pipe(res);
- 
+        
+        // Mantener headers para soporte de saltos/búsqueda en el video
+        if (response.headers['content-length']) res.setHeader('Content-Length', response.headers['content-length']);
+        if (response.headers['content-range']) res.setHeader('Content-Range', response.headers['content-range']);
+        if (response.status === 206) res.status(206);
+
+        response.data.pipe(res);
+
     } catch (err) {
         console.error(`❌ Error en proxy: ${err.message}`);
-        if (err.response) {
-            console.error(`   HTTP Status: ${err.response.status}`);
-            console.error(`   URL: ${targetUrl}`);
-        }
-        res.status(502).send('No se pudo obtener el stream');
+        res.status(502).send('Error al obtener el stream');
     }
 });
  
