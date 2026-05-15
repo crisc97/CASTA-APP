@@ -39,7 +39,7 @@ const dbCanales = {
     'elnueve_directo': { base: 'http://107.152.39.199:8030/hls/canal7.m3u8', parametros: '' },
     'telefe_directo': { base: 'https://telefe.com/Api/Videos/GetSourceUrl/694564/0/HLS?.m3u8', parametros: '' },
     'espn_premium_HD': { 
-        base: 'http://latinapro.net:25461/lazaroperez/perez3/40234.ts', 
+        base: 'http://latinapro.net:25461/live/lazaroperez/perez3/40234.m3u8', 
         parametros: '',
         usarProxy: true // Esto obliga al server a inyectar las credenciales
     },
