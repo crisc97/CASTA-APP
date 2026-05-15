@@ -38,6 +38,11 @@ const dbCanales = {
     'eltrece_directo': { base: 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8', parametros: '' },
     'elnueve_directo': { base: 'http://107.152.39.199:8030/hls/canal7.m3u8', parametros: '' },
     'telefe_directo': { base: 'https://telefe.com/Api/Videos/GetSourceUrl/694564/0/HLS?.m3u8', parametros: '' },
+    'espn_premium_HD': { 
+        base: 'http://latinapro.net:25461/lazaroperez/perez3/40234.ts', 
+        parametros: '',
+        usarProxy: true // Esto obliga al server a inyectar las credenciales
+    },
  
     // 🔥 CANALES BOT (Puppeteer scraper)
     'espn_scraper1': {
@@ -163,6 +168,14 @@ function esStream(url) {
  
 // Helper: arma headers correctos según el dominio del stream
 function armarHeaders(targetUrl) {
+    // 🔥 NUEVO: Si la URL es de la app que capturamos, usamos su User-Agent obligatorio
+    if (targetUrl.includes('latinapro.net')) {
+        return {
+            'User-Agent': 'bocatvplay.beta/9.8 (Linux;Android 15) AndroidXMedia3/1.1.1',
+            'Connection': 'keep-alive'
+        };
+    }
+
     let referer = 'https://tvlibr3.com/';
     let origin = 'https://tvlibr3.com';
  
@@ -489,10 +502,17 @@ app.get('/api/get-stream/:canal', async (req, res) => {
             const urlCompleta = `${datosCanal.dominio}${datosCanal.token}${datosCanal.ruta}`;
             return res.json({ exito: true, url: urlCompleta });
  
-        // 📡 MODO DIRECTO
+       // 📡 MODO DIRECTO
         } else {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
+            
+            // 🔥 Si el canal exige pasar por nuestro proxy para inyectar headers
+            if (datosCanal.usarProxy) {
+                const urlProxy = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
+                return res.json({ exito: true, url: urlProxy });
+            }
+
             return res.json({ exito: true, url: urlCompleta });
         }
  
