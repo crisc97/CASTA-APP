@@ -9,11 +9,14 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
     <style>
-        /* 🔥 NUEVO: Forzar fondo negro instantáneo para evitar flasheo blanco inicial */
+        /* Fondo negro por defecto para evitar el pantallazo blanco al cargar */
         body { background-color: black !important; }
         
-        /* 🔥 NUEVO: Asegurar que el nav superior empiece oculto por CSS inline antes de JS */
+        /* Ocultar barra superior hasta que haya interacción */
         #topNav { opacity: 0; pointer-events: none; }
+
+        /* 🔥 NUEVO: Forzamos la desaparición de cualquier control fantasma del televisor */
+        video::-webkit-media-controls { display: none !important; }
 
         #sidebar::-webkit-scrollbar { width: 6px; }
         #sidebar::-webkit-scrollbar-track { background: transparent; }
@@ -23,13 +26,8 @@
 </head>
 <body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen relative font-sans select-none">
 
-    <div id="splashScreen" class="fixed inset-0 w-full h-full bg-black z-[60] flex flex-col items-center justify-center transition-opacity duration-1000 opacity-100">
-        <h1 class="text-6xl sm:text-8xl font-black text-blue-500 tracking-wider">📺</h1>
-        <h1 class="text-2xl sm:text-4xl font-black text-blue-500 tracking-wider mt-4">CASTA-APP⚽</h1>
-    </div>
-
     <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
-        <video id="reproductor" class="w-full h-full outline-none object-contain" controls tabindex="-1" autoplay playsinline></video>
+        <video id="reproductor" class="w-full h-full outline-none object-contain" tabindex="-1" autoplay playsinline></video>
         
         <div id="loading" class="absolute hidden z-10 flex-col items-center gap-3">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
@@ -40,16 +38,16 @@
     </div>
 
     <div id="topNav" class="absolute top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 xl:top-10 xl:left-10 xl:right-10 z-40 flex justify-between items-start pointer-events-none transition-opacity duration-500">
-        <button id="btnMenu" class="pointer-events-auto bg-black/60 hover:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none backdrop-blur-sm">
+        <button id="btnMenu" class="pointer-events-auto bg-black/60 hover:bg-blue-600 focus:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none backdrop-blur-sm">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
 
         <div class="flex gap-4 pointer-events-auto">
-            <button id="btnCast" class="bg-black/60 hover:bg-purple-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none backdrop-blur-sm" title="Transmitir a TV">
+            <button id="btnCast" class="bg-black/60 hover:bg-purple-600 focus:bg-purple-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none backdrop-blur-sm" title="Transmitir a TV">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
             </button>
 
-            <button id="btnReportar" class="bg-black/60 hover:bg-red-600 focus:ring-4 focus:ring-white text-white px-4 py-3 rounded-full border border-gray-700 transition duration-300 font-bold flex items-center gap-2 hidden outline-none backdrop-blur-sm" title="Reportar Falla">
+            <button id="btnReportar" class="hidden bg-black/60 hover:bg-red-600 focus:bg-red-600 focus:ring-4 focus:ring-white text-white px-4 py-3 rounded-full border border-gray-700 transition duration-300 font-bold flex items-center gap-2 outline-none backdrop-blur-sm" title="Reportar Falla">
                 <span>⚠️</span> <span class="hidden sm:inline">Reportar NO funcional</span>
             </button>
         </div>
@@ -58,7 +56,7 @@
     <div id="sidebar" class="absolute top-0 left-0 h-full w-[85vw] max-w-xs sm:w-72 bg-[#050514]/95 backdrop-blur-lg z-50 transform -translate-x-[130%] transition-transform duration-300 ease-in-out border-r border-[#1e204a] shadow-[20px_0_40px_rgba(0,0,0,0.9)] flex flex-col">
         
         <div class="p-5 border-b border-[#1e204a] flex flex-col gap-1 relative">
-            <button id="btnCerrar" class="absolute top-3 right-4 text-gray-500 hover:text-white text-3xl font-bold focus:outline-none transition">&times;</button>
+            <button id="btnCerrar" class="absolute top-3 right-4 text-gray-500 hover:text-white focus:text-white text-3xl font-bold focus:outline-none transition">&times;</button>
             
             <h1 class="text-xl sm:text-2xl font-black text-blue-500 tracking-wider mt-2">📺CASTA-APP⚽</h1>
             <p class="text-[10px] sm:text-xs text-gray-400 tracking-widest uppercase">Seleccione un canal</p>
@@ -99,7 +97,7 @@
         const loadingMsg = document.getElementById('loadingMsg');
 
         const sidebar = document.getElementById('sidebar');
-        const topNav = document.getElementById('topNav'); // Referencia añadida
+        const topNav = document.getElementById('topNav'); 
         const btnMenu = document.getElementById('btnMenu');
         const btnCerrar = document.getElementById('btnCerrar');
         const btnCast = document.getElementById('btnCast');
@@ -110,7 +108,7 @@
         let canalActualNombre = "";
         let canalActualId = "";
         let ultimoReintento = 0;
-        let timeoutInactividad; // 🔥 NUEVO: Timer para ocultar botones
+        let timeoutInactividad; 
 
         const canalesBot = [
             'espn_scraper1', 'espn_scraper2',
@@ -125,7 +123,6 @@
 
         fetch(`${API_URL}/ping`).catch(() => {});
 
-        // Asegúrate de que las rutas sean relativas para que funcionen en el servidor (ej: logos_canales/tu_imagen.png)
         const misCanales = [
             { nombre: "ESPN Premium", logo: "logos_canales/espn.png", opciones: [{ nombre: "Opción Automática 1", id: "espn_scraper1" }, { nombre:"Opción Automática 2", id: "espn_premium_HD"}]},
             { nombre: "TNT Sports", logo: "logos_canales/tnt.png", opciones: [{ nombre: "Opción 1", id: "tnt_1" }, { nombre: "Opción Automática", id: "tnt_scraper1" }] },
@@ -157,7 +154,7 @@
 
                 const temp = Math.round(dataClima.current_weather.temperature);
                 const code = dataClima.current_weather.weathercode;
-                const isDay = dataClima.current_weather.is_day; // 1 = Día, 0 = Noche
+                const isDay = dataClima.current_weather.is_day;
 
                 document.getElementById('climaTemp').innerText = `${temp}°C`;
 
@@ -197,26 +194,23 @@
             loadingMsg.innerText = "";
         }
 
-        // 🔥 NUEVO: Función para reaparecer Nav superior al haber actividad y resetear timer
         function resetearInactividad() {
-            topNav.classList.remove('opacity-0');
-            topNav.classList.remove('pointer-events-none');
+            topNav.classList.remove('opacity-0', 'pointer-events-none');
             clearTimeout(timeoutInactividad);
 
-            // Solo programar auto-ocultado si el menú lateral está cerrado
+            // Se vuelve a ocultar automáticamente a los 4 segundos si el menú está cerrado
             if (sidebar.classList.contains('-translate-x-[130%]')) {
                 timeoutInactividad = setTimeout(() => {
-                    topNav.classList.add('opacity-0');
-                    topNav.classList.add('pointer-events-none');
-                }, 3000); // 3 segundos de inactividad
+                    topNav.classList.add('opacity-0', 'pointer-events-none');
+                    // Devolvemos el foco al reproductor para que no queden seleccionados botones invisibles
+                    videoElement.focus();
+                }, 4000);
             }
         }
 
         function abrirMenu() {
             sidebar.classList.remove('-translate-x-[130%]');
-            // Al abrir menú lateral, asegurar que Nav superior esté visible pero NO programar ocultado
-            topNav.classList.remove('opacity-0');
-            topNav.classList.remove('pointer-events-none');
+            topNav.classList.remove('opacity-0', 'pointer-events-none');
             clearTimeout(timeoutInactividad);
 
             const primerBoton = listaCanalesDiv.querySelector('button');
@@ -225,16 +219,21 @@
 
         function cerrarMenu() {
             sidebar.classList.add('-translate-x-[130%]');
-            resetearInactividad(); // Al cerrar lateral, empezar timer para Nav superior
+            resetearInactividad(); 
             videoElement.focus();
         }
 
         btnMenu.addEventListener('click', abrirMenu);
         btnCerrar.addEventListener('click', cerrarMenu);
         
-        // 🔥 NUEVO: Detectar actividad en pantalla completa para mostrar Nav superior
         document.addEventListener('mousemove', resetearInactividad);
         document.addEventListener('touchstart', resetearInactividad);
+        
+        // Pausar/Reproducir al hacer clic en el video (para mouses/táctil)
+        videoElement.addEventListener('click', () => {
+            if (videoElement.paused) videoElement.play();
+            else videoElement.pause();
+        });
 
         function renderizarCanales() {
             listaCanalesDiv.innerHTML = '';
@@ -290,6 +289,8 @@
                         ultimoReintento = 0;
                         obtenerEnlaceServidor(opcion.id);
                         cerrarMenu();
+                        
+                        // 🔥 Hacemos visible el botón de reportar ahora que hay un canal activo
                         btnReportar.classList.remove('hidden');
                     };
                     subOpcionesDiv.appendChild(btnOpcion);
@@ -425,7 +426,7 @@
         document.addEventListener('keydown', (e) => {
             const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
             
-            // 🔥 NUEVO: Si tocan cualquier tecla, reaparecer controles superiores
+            // Reaparecen los botones de arriba cuando tocás el control
             resetearInactividad();
 
             if (e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009) {
@@ -436,11 +437,10 @@
                 return;
             }
 
-            if (e.key === 'ArrowLeft' && !isMenuAbierto) { abrirMenu(); return; }
-            if (e.key === 'ArrowRight' && isMenuAbierto) { cerrarMenu(); return; }
-
             if (isMenuAbierto) {
-                // 🔥 NUEVO: Filtro inteligente -> offsetParent !== null asegura atrapar SÓLO botones visibles en pantalla
+                // Navegación dentro del menú lateral (solo botones visibles en pantalla)
+                if (e.key === 'ArrowRight') { cerrarMenu(); return; }
+
                 const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
                 const currentIndex = botones.indexOf(document.activeElement);
                 if (currentIndex > -1) {
@@ -456,53 +456,56 @@
                     }
                 }
             } else {
+                // 🔥 NUEVO: Lógica de navegación cuando estás VIENDO UN PARTIDO
+                if (e.key === 'ArrowLeft') { 
+                    abrirMenu(); 
+                    return; 
+                }
+                
+                // Si presionan la flecha de ARRIBA estando en el video, enfocamos el botón de reportar
+                if (e.key === 'ArrowUp') {
+                    if (!btnReportar.classList.contains('hidden')) {
+                        btnReportar.focus();
+                    } else {
+                        btnMenu.focus();
+                    }
+                    return;
+                }
+
+                // Reproducir / Pausar con la tecla OK, a menos que un botón de arriba esté seleccionado
                 if (e.key === 'Enter') {
-                    if (videoElement.paused) videoElement.play();
-                    else videoElement.pause();
+                    if (document.activeElement.tagName === 'BUTTON') {
+                        document.activeElement.click(); // Ejecuta el botón de arriba que tengas seleccionado
+                    } else {
+                        if (videoElement.paused) videoElement.play();
+                        else videoElement.pause();
+                    }
                 }
             }
         });
 
         btnCast.addEventListener('click', async () => {
-    // Verificar si el navegador soporta Remote Playback (Chrome/Android)
-    if (videoElement.remote) {
-        try {
-            await videoElement.remote.prompt();
-        } catch (error) {
-            console.warn("Error o cancelación del Cast:", error);
-            // Fallback si cancela o no encuentra
-        }
-    } 
-    // Verificar si soporta AirPlay (Safari/iOS)
-    else if (videoElement.webkitShowPlaybackTargetPicker) {
-        videoElement.webkitShowPlaybackTargetPicker();
-    } 
-    // Fallback si el navegador no soporta nada nativo
-    else {
-        alert("Tu navegador no soporta transmisión nativa. Probá usar Google Chrome o Safari para enviar a tu TV.");
-    }
-});
+            if (videoElement.remote) {
+                try {
+                    await videoElement.remote.prompt();
+                } catch (error) {
+                    console.warn("Error o cancelación del Cast:", error);
+                }
+            } 
+            else if (videoElement.webkitShowPlaybackTargetPicker) {
+                videoElement.webkitShowPlaybackTargetPicker();
+            } 
+            else {
+                alert("Tu navegador no soporta transmisión nativa.");
+            }
+        });
 
         window.onload = () => {
             renderizarCanales();
+            abrirMenu(); // Abre el menú directamente al iniciar
             
-            // 🔥 NUEVO: Lógica del Splash Screen
-            const splash = document.getElementById('splashScreen');
-            // Dar un tiempo para que se vea el splash, luego abrir menú lateral
-            setTimeout(() => {
-                // Iniciar Nav superior suavemente
-                topNav.classList.remove('opacity-0');
-                topNav.classList.remove('pointer-events-none');
-                
-                // Abrir menú por defecto al inicio
-                abrirMenu(); 
-
-                // Desvanecer splash screen suavemente
-                splash.classList.add('opacity-0');
-                // Eliminar del DOM después de la transición para liberar recursos
-                setTimeout(() => splash.remove(), 1000); 
-            }, 1000); // 1 segundo de splash puro
-
+            topNav.classList.remove('opacity-0', 'pointer-events-none');
+            
             iniciarReloj();
             iniciarClima();
         };
