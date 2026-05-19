@@ -9,6 +9,12 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
     <style>
+        /* 🔥 NUEVO: Forzar fondo negro instantáneo para evitar flasheo blanco inicial */
+        body { background-color: black !important; }
+        
+        /* 🔥 NUEVO: Asegurar que el nav superior empiece oculto por CSS inline antes de JS */
+        #topNav { opacity: 0; pointer-events: none; }
+
         #sidebar::-webkit-scrollbar { width: 6px; }
         #sidebar::-webkit-scrollbar-track { background: transparent; }
         #sidebar::-webkit-scrollbar-thumb { background-color: #1e3a8a; border-radius: 10px; }
@@ -16,6 +22,11 @@
     </style>
 </head>
 <body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen relative font-sans select-none">
+
+    <div id="splashScreen" class="fixed inset-0 w-full h-full bg-black z-[60] flex flex-col items-center justify-center transition-opacity duration-1000 opacity-100">
+        <h1 class="text-6xl sm:text-8xl font-black text-blue-500 tracking-wider">📺</h1>
+        <h1 class="text-2xl sm:text-4xl font-black text-blue-500 tracking-wider mt-4">CASTA-APP⚽</h1>
+    </div>
 
     <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
         <video id="reproductor" class="w-full h-full outline-none object-contain" controls tabindex="-1" autoplay playsinline></video>
@@ -28,7 +39,7 @@
         <div id="mensajeError" class="absolute z-10 bottom-10 left-1/2 transform -translate-x-1/2 hidden bg-red-900/90 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center w-[90%] sm:w-auto max-w-lg"></div>
     </div>
 
-    <div id="topNav" class="absolute top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 xl:top-10 xl:left-10 xl:right-10 z-40 flex justify-between items-start pointer-events-none transition-opacity duration-500 opacity-100">
+    <div id="topNav" class="absolute top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 xl:top-10 xl:left-10 xl:right-10 z-40 flex justify-between items-start pointer-events-none transition-opacity duration-500">
         <button id="btnMenu" class="pointer-events-auto bg-black/60 hover:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none backdrop-blur-sm">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
@@ -88,7 +99,7 @@
         const loadingMsg = document.getElementById('loadingMsg');
 
         const sidebar = document.getElementById('sidebar');
-        const topNav = document.getElementById('topNav');
+        const topNav = document.getElementById('topNav'); // Referencia añadida
         const btnMenu = document.getElementById('btnMenu');
         const btnCerrar = document.getElementById('btnCerrar');
         const btnCast = document.getElementById('btnCast');
@@ -114,6 +125,7 @@
 
         fetch(`${API_URL}/ping`).catch(() => {});
 
+        // Asegúrate de que las rutas sean relativas para que funcionen en el servidor (ej: logos_canales/tu_imagen.png)
         const misCanales = [
             { nombre: "ESPN Premium", logo: "logos_canales/espn.png", opciones: [{ nombre: "Opción Automática 1", id: "espn_scraper1" }, { nombre:"Opción Automática 2", id: "espn_premium_HD"}]},
             { nombre: "TNT Sports", logo: "logos_canales/tnt.png", opciones: [{ nombre: "Opción 1", id: "tnt_1" }, { nombre: "Opción Automática", id: "tnt_scraper1" }] },
@@ -185,40 +197,42 @@
             loadingMsg.innerText = "";
         }
 
-        // 🔥 NUEVO: Función para desaparecer menú de arriba
+        // 🔥 NUEVO: Función para reaparecer Nav superior al haber actividad y resetear timer
         function resetearInactividad() {
             topNav.classList.remove('opacity-0');
             topNav.classList.remove('pointer-events-none');
             clearTimeout(timeoutInactividad);
 
-            // Si el panel de canales está cerrado, oculta los botones en 3 segundos
+            // Solo programar auto-ocultado si el menú lateral está cerrado
             if (sidebar.classList.contains('-translate-x-[130%]')) {
                 timeoutInactividad = setTimeout(() => {
                     topNav.classList.add('opacity-0');
                     topNav.classList.add('pointer-events-none');
-                }, 3000);
+                }, 3000); // 3 segundos de inactividad
             }
         }
 
         function abrirMenu() {
             sidebar.classList.remove('-translate-x-[130%]');
-            sidebar.classList.remove('-translate-x-full'); // Limpieza de clase vieja por las dudas
-            resetearInactividad();
-            
+            // Al abrir menú lateral, asegurar que Nav superior esté visible pero NO programar ocultado
+            topNav.classList.remove('opacity-0');
+            topNav.classList.remove('pointer-events-none');
+            clearTimeout(timeoutInactividad);
+
             const primerBoton = listaCanalesDiv.querySelector('button');
             if (primerBoton) primerBoton.focus();
         }
 
         function cerrarMenu() {
             sidebar.classList.add('-translate-x-[130%]');
-            resetearInactividad();
+            resetearInactividad(); // Al cerrar lateral, empezar timer para Nav superior
             videoElement.focus();
         }
 
         btnMenu.addEventListener('click', abrirMenu);
         btnCerrar.addEventListener('click', cerrarMenu);
         
-        // Escuchamos el movimiento de mouse o toques para mostrar los botones
+        // 🔥 NUEVO: Detectar actividad en pantalla completa para mostrar Nav superior
         document.addEventListener('mousemove', resetearInactividad);
         document.addEventListener('touchstart', resetearInactividad);
 
@@ -411,7 +425,7 @@
         document.addEventListener('keydown', (e) => {
             const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
             
-            // 🔥 NUEVO: Mostramos los botones si tocan cualquier tecla
+            // 🔥 NUEVO: Si tocan cualquier tecla, reaparecer controles superiores
             resetearInactividad();
 
             if (e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009) {
@@ -426,10 +440,9 @@
             if (e.key === 'ArrowRight' && isMenuAbierto) { cerrarMenu(); return; }
 
             if (isMenuAbierto) {
-                // 🔥 NUEVO: Filtro inteligente -> offsetParent !== null asegura atrapar SÓLO botones visibles
+                // 🔥 NUEVO: Filtro inteligente -> offsetParent !== null asegura atrapar SÓLO botones visibles en pantalla
                 const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
                 const currentIndex = botones.indexOf(document.activeElement);
-                
                 if (currentIndex > -1) {
                     if (e.key === 'ArrowDown' && currentIndex < botones.length - 1) {
                         e.preventDefault();
@@ -451,24 +464,45 @@
         });
 
         btnCast.addEventListener('click', async () => {
-            if (videoElement.remote) {
-                try {
-                    await videoElement.remote.prompt();
-                } catch (error) {
-                    console.warn("Error o cancelación del Cast:", error);
-                }
-            } 
-            else if (videoElement.webkitShowPlaybackTargetPicker) {
-                videoElement.webkitShowPlaybackTargetPicker();
-            } 
-            else {
-                alert("Tu navegador no soporta transmisión nativa. Probá usar Google Chrome o Safari para enviar a tu TV.");
-            }
-        });
+    // Verificar si el navegador soporta Remote Playback (Chrome/Android)
+    if (videoElement.remote) {
+        try {
+            await videoElement.remote.prompt();
+        } catch (error) {
+            console.warn("Error o cancelación del Cast:", error);
+            // Fallback si cancela o no encuentra
+        }
+    } 
+    // Verificar si soporta AirPlay (Safari/iOS)
+    else if (videoElement.webkitShowPlaybackTargetPicker) {
+        videoElement.webkitShowPlaybackTargetPicker();
+    } 
+    // Fallback si el navegador no soporta nada nativo
+    else {
+        alert("Tu navegador no soporta transmisión nativa. Probá usar Google Chrome o Safari para enviar a tu TV.");
+    }
+});
 
         window.onload = () => {
             renderizarCanales();
-            abrirMenu();
+            
+            // 🔥 NUEVO: Lógica del Splash Screen
+            const splash = document.getElementById('splashScreen');
+            // Dar un tiempo para que se vea el splash, luego abrir menú lateral
+            setTimeout(() => {
+                // Iniciar Nav superior suavemente
+                topNav.classList.remove('opacity-0');
+                topNav.classList.remove('pointer-events-none');
+                
+                // Abrir menú por defecto al inicio
+                abrirMenu(); 
+
+                // Desvanecer splash screen suavemente
+                splash.classList.add('opacity-0');
+                // Eliminar del DOM después de la transición para liberar recursos
+                setTimeout(() => splash.remove(), 1000); 
+            }, 1000); // 1 segundo de splash puro
+
             iniciarReloj();
             iniciarClima();
         };
