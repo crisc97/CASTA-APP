@@ -28,7 +28,7 @@
         <div id="mensajeError" class="absolute z-10 bottom-10 left-1/2 transform -translate-x-1/2 hidden bg-red-900/90 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center w-[90%] sm:w-auto max-w-lg"></div>
     </div>
 
-    <div class="absolute top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 xl:top-10 xl:left-10 xl:right-10 z-40 flex justify-between items-start pointer-events-none">
+    <div id="topNav" class="absolute top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 xl:top-10 xl:left-10 xl:right-10 z-40 flex justify-between items-start pointer-events-none transition-opacity duration-500 opacity-100">
         <button id="btnMenu" class="pointer-events-auto bg-black/60 hover:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none backdrop-blur-sm">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
@@ -44,7 +44,7 @@
         </div>
     </div>
 
-    <div id="sidebar" class="absolute top-0 left-0 h-full w-[85vw] max-w-xs sm:w-72 bg-[#050514]/95 backdrop-blur-lg z-50 transform translate-x-0 transition-transform duration-300 ease-in-out border-r border-[#1e204a] shadow-[20px_0_40px_rgba(0,0,0,0.9)] flex flex-col">
+    <div id="sidebar" class="absolute top-0 left-0 h-full w-[85vw] max-w-xs sm:w-72 bg-[#050514]/95 backdrop-blur-lg z-50 transform -translate-x-[130%] transition-transform duration-300 ease-in-out border-r border-[#1e204a] shadow-[20px_0_40px_rgba(0,0,0,0.9)] flex flex-col">
         
         <div class="p-5 border-b border-[#1e204a] flex flex-col gap-1 relative">
             <button id="btnCerrar" class="absolute top-3 right-4 text-gray-500 hover:text-white text-3xl font-bold focus:outline-none transition">&times;</button>
@@ -88,6 +88,7 @@
         const loadingMsg = document.getElementById('loadingMsg');
 
         const sidebar = document.getElementById('sidebar');
+        const topNav = document.getElementById('topNav');
         const btnMenu = document.getElementById('btnMenu');
         const btnCerrar = document.getElementById('btnCerrar');
         const btnCast = document.getElementById('btnCast');
@@ -98,6 +99,7 @@
         let canalActualNombre = "";
         let canalActualId = "";
         let ultimoReintento = 0;
+        let timeoutInactividad; // 🔥 NUEVO: Timer para ocultar botones
 
         const canalesBot = [
             'espn_scraper1', 'espn_scraper2',
@@ -112,7 +114,6 @@
 
         fetch(`${API_URL}/ping`).catch(() => {});
 
-        // Asegúrate de que las rutas sean relativas para que funcionen en el servidor (ej: logos_canales/tu_imagen.png)
         const misCanales = [
             { nombre: "ESPN Premium", logo: "logos_canales/espn.png", opciones: [{ nombre: "Opción Automática 1", id: "espn_scraper1" }, { nombre:"Opción Automática 2", id: "espn_premium_HD"}]},
             { nombre: "TNT Sports", logo: "logos_canales/tnt.png", opciones: [{ nombre: "Opción 1", id: "tnt_1" }, { nombre: "Opción Automática", id: "tnt_scraper1" }] },
@@ -184,19 +185,42 @@
             loadingMsg.innerText = "";
         }
 
+        // 🔥 NUEVO: Función para desaparecer menú de arriba
+        function resetearInactividad() {
+            topNav.classList.remove('opacity-0');
+            topNav.classList.remove('pointer-events-none');
+            clearTimeout(timeoutInactividad);
+
+            // Si el panel de canales está cerrado, oculta los botones en 3 segundos
+            if (sidebar.classList.contains('-translate-x-[130%]')) {
+                timeoutInactividad = setTimeout(() => {
+                    topNav.classList.add('opacity-0');
+                    topNav.classList.add('pointer-events-none');
+                }, 3000);
+            }
+        }
+
         function abrirMenu() {
-            sidebar.classList.remove('-translate-x-full');
+            sidebar.classList.remove('-translate-x-[130%]');
+            sidebar.classList.remove('-translate-x-full'); // Limpieza de clase vieja por las dudas
+            resetearInactividad();
+            
             const primerBoton = listaCanalesDiv.querySelector('button');
             if (primerBoton) primerBoton.focus();
         }
 
         function cerrarMenu() {
-            sidebar.classList.add('-translate-x-full');
+            sidebar.classList.add('-translate-x-[130%]');
+            resetearInactividad();
             videoElement.focus();
         }
 
         btnMenu.addEventListener('click', abrirMenu);
         btnCerrar.addEventListener('click', cerrarMenu);
+        
+        // Escuchamos el movimiento de mouse o toques para mostrar los botones
+        document.addEventListener('mousemove', resetearInactividad);
+        document.addEventListener('touchstart', resetearInactividad);
 
         function renderizarCanales() {
             listaCanalesDiv.innerHTML = '';
@@ -385,7 +409,10 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            const isMenuAbierto = !sidebar.classList.contains('-translate-x-full');
+            const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
+            
+            // 🔥 NUEVO: Mostramos los botones si tocan cualquier tecla
+            resetearInactividad();
 
             if (e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009) {
                 if (isMenuAbierto) {
@@ -399,8 +426,10 @@
             if (e.key === 'ArrowRight' && isMenuAbierto) { cerrarMenu(); return; }
 
             if (isMenuAbierto) {
-                const botones = Array.from(sidebar.querySelectorAll('button:not(.hidden)'));
+                // 🔥 NUEVO: Filtro inteligente -> offsetParent !== null asegura atrapar SÓLO botones visibles
+                const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
                 const currentIndex = botones.indexOf(document.activeElement);
+                
                 if (currentIndex > -1) {
                     if (e.key === 'ArrowDown' && currentIndex < botones.length - 1) {
                         e.preventDefault();
@@ -422,24 +451,20 @@
         });
 
         btnCast.addEventListener('click', async () => {
-    // Verificar si el navegador soporta Remote Playback (Chrome/Android)
-    if (videoElement.remote) {
-        try {
-            await videoElement.remote.prompt();
-        } catch (error) {
-            console.warn("Error o cancelación del Cast:", error);
-            // Fallback si cancela o no encuentra
-        }
-    } 
-    // Verificar si soporta AirPlay (Safari/iOS)
-    else if (videoElement.webkitShowPlaybackTargetPicker) {
-        videoElement.webkitShowPlaybackTargetPicker();
-    } 
-    // Fallback si el navegador no soporta nada nativo
-    else {
-        alert("Tu navegador no soporta transmisión nativa. Probá usar Google Chrome o Safari para enviar a tu TV.");
-    }
-});
+            if (videoElement.remote) {
+                try {
+                    await videoElement.remote.prompt();
+                } catch (error) {
+                    console.warn("Error o cancelación del Cast:", error);
+                }
+            } 
+            else if (videoElement.webkitShowPlaybackTargetPicker) {
+                videoElement.webkitShowPlaybackTargetPicker();
+            } 
+            else {
+                alert("Tu navegador no soporta transmisión nativa. Probá usar Google Chrome o Safari para enviar a tu TV.");
+            }
+        });
 
         window.onload = () => {
             renderizarCanales();
