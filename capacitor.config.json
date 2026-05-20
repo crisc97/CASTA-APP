@@ -1,9 +1,9 @@
 {
-  "appId": "com.tu-nombre.castaapp",
+  "appId": "com.casta.castapp",
   "appName": "CASTA-APP",
   "webDir": "www",
   "server": {
-    "url": "https://crisc97.github.io/CASTA-APP/",
+    "url": "https://casta-app.onrender.com/",
     "cleartext": true,
     "allowNavigation": [
       "crisc97.github.io",
