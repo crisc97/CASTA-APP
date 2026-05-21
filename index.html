@@ -10,9 +10,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
     <style>
         body { background-color: black !important; }
-        #topNav { opacity: 0; pointer-events: none; }
-
-        /* Eliminamos controles fantasma de Android */
+        
+        /* 🔥 Eliminamos controles nativos y preparamos UI */
         video::-webkit-media-controls { display: none !important; }
         video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none !important; }
 
@@ -24,7 +23,7 @@
 </head>
 <body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen relative font-sans select-none">
 
-    <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
+    <div id="videoContainer" class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
         <video id="reproductor" class="w-full h-full outline-none object-contain" tabindex="-1" autoplay playsinline poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
 
         <div id="loading" class="absolute hidden z-10 flex-col items-center gap-4 bg-[#070819]/95 p-6 sm:p-8 rounded-2xl backdrop-blur-xl border border-gray-800 shadow-[0_25px_65px_-15px_rgba(0,0,0,0.9)]">
@@ -35,35 +34,49 @@
             <p id="loadingMsg" class="text-gray-200 text-xs sm:text-sm font-semibold text-center px-4 py-2.5 bg-black/60 rounded-xl border border-white/5 shadow-inner drop-shadow-md whitespace-pre-line max-w-[280px] sm:max-w-xs mt-1"></p>
         </div>
 
-        <div id="mensajeError" class="absolute z-10 bottom-10 left-1/2 transform -translate-x-1/2 hidden bg-red-900/90 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center w-[90%] sm:w-auto max-w-lg"></div>
+        <div id="mensajeError" class="absolute z-10 bottom-20 left-1/2 transform -translate-x-1/2 hidden bg-red-900/90 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center w-[90%] sm:w-auto max-w-lg"></div>
+
+        <div id="bottomControls" class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black via-black/80 to-transparent pt-12 pb-6 px-6 z-30 flex justify-between items-center transition-opacity duration-500 opacity-0 pointer-events-none">
+            <div class="flex items-center gap-6 pointer-events-auto">
+                <button id="btnMobilePlay" class="text-white hover:text-blue-500 outline-none transition transform active:scale-90">
+                    <svg id="iconMobilePlay" class="w-10 h-10 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="iconMobilePause" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <button id="btnVolume" class="text-white hover:text-blue-500 outline-none transition transform active:scale-90">
+                    <svg id="iconVolOn" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5 10v4a2 2 0 002 2h2l5 5V3l-5 5H7a2 2 0 00-2 2z"></path></svg>
+                    <svg id="iconVolOff" class="w-8 h-8 hidden text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z m9.172-1.414l4.242-4.242m0 4.242l-4.242-4.242"></path></svg>
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-4 pointer-events-auto">
+                <button id="btnQuality" class="text-white text-xs sm:text-sm font-bold bg-white/10 px-3 py-1.5 rounded-lg border border-gray-500 hover:bg-blue-600 outline-none transition">AUTO</button>
+                <button id="btnFullscreen" class="text-white hover:text-blue-500 outline-none transition transform active:scale-90">
+                    <svg id="iconFullEnter" class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    <svg id="iconFullExit" class="w-9 h-9 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4M4 14l5 5M20 10h-4V6m4 4l-5-5M4 10h4V6m-4 4l5-5M20 14h-4v4m4-4l-5 5"></path></svg>
+                </button>
+            </div>
+        </div>
     </div>
 
     <div id="sidebarOverlay" class="absolute inset-0 bg-black/60 z-40 hidden opacity-0 transition-opacity duration-350 pointer-events-none backdrop-blur-xs"></div>
 
-    <div id="topNav" class="absolute top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 xl:top-10 xl:left-10 xl:right-10 z-40 flex justify-between items-start pointer-events-none transition-opacity duration-500">
-        <button id="btnMenu" class="pointer-events-auto bg-black/60 hover:bg-blue-600 focus:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none backdrop-blur-sm">
+    <div id="topNav" class="absolute top-8 left-4 right-4 sm:top-10 sm:left-8 sm:right-8 z-40 flex justify-between items-start pointer-events-none transition-opacity duration-500">
+        <button id="btnMenu" class="pointer-events-auto bg-black/70 hover:bg-blue-600 focus:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3.5 rounded-full border border-gray-600 shadow-lg transition duration-300 outline-none backdrop-blur-md">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
 
         <div class="flex gap-4 pointer-events-auto">
-            <button id="btnCast" class="bg-black/60 hover:bg-purple-600 focus:bg-purple-600 focus:ring-4 focus:ring-white text-white p-3 rounded-full border border-gray-700 transition duration-300 outline-none backdrop-blur-sm" title="Transmitir a TV">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-            </button>
-
-            <button id="btnReportar" class="hidden bg-black/60 hover:bg-red-600 focus:bg-red-600 focus:ring-4 focus:ring-white text-white px-4 py-3 rounded-full border border-gray-700 transition duration-300 font-bold flex items-center gap-2 outline-none backdrop-blur-sm" title="Reportar Falla">
-                <span>⚠️</span> <span class="hidden sm:inline">Reportar NO funcional</span>
+            <button id="btnReportar" class="hidden bg-black/70 hover:bg-red-600 focus:bg-red-600 focus:ring-4 focus:ring-white text-white px-4 py-3.5 rounded-full border border-gray-600 shadow-lg transition duration-300 font-bold flex items-center gap-2 outline-none backdrop-blur-md" title="Reportar Falla">
+                <span class="text-lg">⚠️</span> <span class="hidden sm:inline">Reportar NO funcional</span>
             </button>
         </div>
     </div>
 
     <div id="sidebar" class="absolute top-0 left-0 h-full w-[85vw] max-w-xs sm:w-72 bg-[#050514]/95 backdrop-blur-lg z-50 transform -translate-x-[130%] transition-transform duration-300 ease-in-out border-r border-[#1e204a] shadow-[20px_0_40px_rgba(0,0,0,0.9)] flex flex-col">
-        
-        <div class="p-5 border-b border-[#1e204a] flex flex-col gap-1 relative">
-            <button id="btnCerrar" class="absolute top-3 right-4 text-gray-500 hover:text-white focus:text-white text-3xl font-bold focus:outline-none transition">&times;</button>
-            
+        <div class="p-5 border-b border-[#1e204a] flex flex-col gap-1 relative pt-10">
+            <button id="btnCerrar" class="absolute top-8 right-4 text-gray-500 hover:text-white focus:text-white text-4xl font-bold focus:outline-none transition">&times;</button>
             <h1 class="text-xl sm:text-2xl font-black text-blue-500 tracking-wider mt-2">📺CASTA-APP⚽</h1>
             <p class="text-[10px] sm:text-xs text-gray-400 tracking-widest uppercase">Seleccione un canal</p>
-            
             <div class="grid grid-cols-[1fr_auto_1fr] gap-3 items-center mt-4 bg-black/30 p-3 rounded-lg border border-white/5 shadow-inner">
                 <div class="flex flex-col items-start justify-center">
                     <span class="text-[10px] text-[#5c6bc0] font-semibold uppercase tracking-wider mb-1">Horario</span>
@@ -79,11 +92,9 @@
                 </div>
             </div>
         </div>
-
         <div class="bg-[#0f112e] px-5 py-2 border-b border-[#1e204a]">
             <span class="text-sm font-semibold text-[#8c9eff] uppercase tracking-widest">Deportes</span>
         </div>
-
         <div id="listaCanales" class="flex-1 overflow-y-auto p-3 flex flex-col gap-2 pb-6"></div>
     </div>
 
@@ -98,11 +109,25 @@
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay'); 
         const topNav = document.getElementById('topNav'); 
+        const bottomControls = document.getElementById('bottomControls');
 
+        // Botones UI superior
         const btnMenu = document.getElementById('btnMenu');
         const btnCerrar = document.getElementById('btnCerrar');
-        const btnCast = document.getElementById('btnCast');
         const btnReportar = document.getElementById('btnReportar');
+
+        // Botones UI Inferior
+        const btnMobilePlay = document.getElementById('btnMobilePlay');
+        const iconMobilePlay = document.getElementById('iconMobilePlay');
+        const iconMobilePause = document.getElementById('iconMobilePause');
+        
+        const btnVolume = document.getElementById('btnVolume');
+        const iconVolOn = document.getElementById('iconVolOn');
+        const iconVolOff = document.getElementById('iconVolOff');
+
+        const btnFullscreen = document.getElementById('btnFullscreen');
+        const iconFullEnter = document.getElementById('iconFullEnter');
+        const iconFullExit = document.getElementById('iconFullExit');
 
         let hls;
         let dashPlayer;
@@ -122,7 +147,6 @@
         ];
 
         const API_URL = "https://casta-app.onrender.com";
-
         fetch(`${API_URL}/ping`).catch(() => {});
 
         const misCanales = [
@@ -136,8 +160,7 @@
         function iniciarReloj() {
             const relojEl = document.getElementById('relojLocal');
             setInterval(() => {
-                const ahora = new Date();
-                relojEl.innerText = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                relojEl.innerText = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             }, 1000);
         }
 
@@ -145,32 +168,14 @@
             try {
                 const resGeo = await fetch('https://get.geojs.io/v1/ip/geo.json');
                 const dataGeo = await resGeo.json();
-                const lat = dataGeo.latitude;
-                const lon = dataGeo.longitude;
-                const ciudad = dataGeo.city || "Local";
-                document.getElementById('climaCiudad').innerText = ciudad;
+                document.getElementById('climaCiudad').innerText = dataGeo.city || "Local";
 
-                const resClima = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                const resClima = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${dataGeo.latitude}&longitude=${dataGeo.longitude}&current_weather=true`);
                 const dataClima = await resClima.json();
-                const temp = Math.round(dataClima.current_weather.temperature);
-                const code = dataClima.current_weather.weathercode;
-                const isDay = dataClima.current_weather.is_day;
-                document.getElementById('climaTemp').innerText = `${temp}°C`;
-
-                let icono = "🌍";
-                if (code === 0) icono = isDay ? "☀️" : "🌙";
-                else if (code === 1 || code === 2) icono = isDay ? "⛅" : "☁️";
-                else if (code === 3) icono = "☁️";
-                else if (code >= 45 && code <= 48) icono = "🌫️";
-                else if (code >= 51 && code <= 67) icono = "🌧️";
-                else if (code >= 71 && code <= 77) icono = "❄️";
-                else if (code >= 80 && code <= 82) icono = isDay ? "🌦️" : "🌧️";
-                else if (code >= 95) icono = "⛈️";
-                document.getElementById('climaIcono').innerText = icono;
+                document.getElementById('climaTemp').innerText = `${Math.round(dataClima.current_weather.temperature)}°C`;
             } catch (error) {
                 document.getElementById('climaCiudad').innerText = "Offline";
                 document.getElementById('climaTemp').innerText = "--";
-                document.getElementById('climaIcono').innerText = "⚠️";
             }
         }
 
@@ -183,32 +188,26 @@
             } else {
                 loadingLogo.classList.add('hidden');
             }
-            if (mensaje) {
-                loadingMsg.innerText = mensaje;
-            } else if (esBot) {
-                loadingMsg.innerText = "🤖 Buscando enlace del canal...\nEsto puede tardar hasta 60s.";
-            } else {
-                loadingMsg.innerText = "Cargando transmisión...";
-            }
+            loadingMsg.innerText = mensaje ? mensaje : (esBot ? "🤖 Buscando enlace del canal...\nEsto puede tardar hasta 60s." : "Cargando transmisión...");
         }
 
         function ocultarLoader() {
             loader.classList.add('hidden');
             loader.classList.remove('flex');
-            loadingMsg.innerText = "";
-            loadingLogo.src = "";
-            loadingLogo.classList.add('hidden');
         }
 
+        // 🔥 CONTROLES: Muestra/Oculta Arriba y Abajo juntos
         function resetearInactividad() {
             topNav.classList.remove('opacity-0', 'pointer-events-none');
+            bottomControls.classList.remove('opacity-0', 'pointer-events-none');
             clearTimeout(timeoutInactividad);
 
             if (sidebar.classList.contains('-translate-x-[130%]')) {
                 timeoutInactividad = setTimeout(() => {
                     topNav.classList.add('opacity-0', 'pointer-events-none');
+                    bottomControls.classList.add('opacity-0', 'pointer-events-none');
                     videoElement.focus();
-                }, 4000);
+                }, 4500); // 4.5 segundos antes de ocultarse
             }
         }
 
@@ -221,20 +220,15 @@
             }, 50);
 
             topNav.classList.remove('opacity-0', 'pointer-events-none');
+            bottomControls.classList.add('opacity-0', 'pointer-events-none'); // Oculta los de abajo al abrir menú
             clearTimeout(timeoutInactividad);
-
-            const primerBoton = listaCanalesDiv.querySelector('button');
-            if (primerBoton) primerBoton.focus();
         }
 
         function cerrarMenu() {
             sidebar.classList.add('-translate-x-[130%]');
             sidebarOverlay.classList.remove('opacity-100');
             sidebarOverlay.classList.add('pointer-events-none');
-            setTimeout(() => {
-                sidebarOverlay.classList.add('hidden');
-            }, 350);
-
+            setTimeout(() => { sidebarOverlay.classList.add('hidden'); }, 350);
             resetearInactividad(); 
             videoElement.focus();
         }
@@ -246,13 +240,84 @@
         document.addEventListener('mousemove', resetearInactividad);
         document.addEventListener('touchstart', resetearInactividad);
         
-        // Al tocar la pantalla del celular, SOLO mostramos los botones de arriba sin pausar el video
+        // Mostrar barra al tocar la pantalla sin pausar video
         videoElement.addEventListener('click', (e) => {
             e.stopPropagation();
             if (topNav.classList.contains('opacity-0')) {
                 resetearInactividad();
             } else {
                 topNav.classList.add('opacity-0', 'pointer-events-none');
+                bottomControls.classList.add('opacity-0', 'pointer-events-none');
+            }
+        });
+
+        // 🔥 LOGICA CONTROLES INFERIORES
+        function updatePlayIcons() {
+            if (videoElement.paused) {
+                iconMobilePlay.classList.remove('hidden');
+                iconMobilePause.classList.add('hidden');
+            } else {
+                iconMobilePlay.classList.add('hidden');
+                iconMobilePause.classList.remove('hidden');
+            }
+        }
+        videoElement.addEventListener('play', updatePlayIcons);
+        videoElement.addEventListener('pause', updatePlayIcons);
+
+        btnMobilePlay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (videoElement.paused) videoElement.play(); else videoElement.pause();
+            resetearInactividad();
+        });
+
+        btnVolume.addEventListener('click', (e) => {
+            e.stopPropagation();
+            videoElement.muted = !videoElement.muted;
+            if (videoElement.muted) {
+                iconVolOn.classList.add('hidden');
+                iconVolOff.classList.remove('hidden');
+            } else {
+                iconVolOn.classList.remove('hidden');
+                iconVolOff.classList.add('hidden');
+            }
+            resetearInactividad();
+        });
+
+        // 🔥 PANTALLA COMPLETA Y GIRO A HORIZONTAL
+        btnFullscreen.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            resetearInactividad();
+            if (!document.fullscreenElement) {
+                try {
+                    await document.documentElement.requestFullscreen();
+                    iconFullEnter.classList.add('hidden');
+                    iconFullExit.classList.remove('hidden');
+                    // Forzar celular a horizontal
+                    if (screen.orientation && screen.orientation.lock) {
+                        await screen.orientation.lock('landscape');
+                    }
+                } catch (err) { console.warn("Fullscreen error", err); }
+            } else {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                    iconFullEnter.classList.remove('hidden');
+                    iconFullExit.classList.add('hidden');
+                    // Volver a vertical
+                    if (screen.orientation && screen.orientation.unlock) {
+                        screen.orientation.unlock();
+                    }
+                }
+            }
+        });
+
+        // Si el usuario sale de fullscreen con botón físico del celu:
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                iconFullEnter.classList.remove('hidden');
+                iconFullExit.classList.add('hidden');
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
             }
         });
 
@@ -301,13 +366,11 @@
                         btnOpcion.classList.remove('bg-[#0c0e24]', 'text-gray-400', 'border-transparent');
                         btnOpcion.classList.add('bg-[#3949ab]', 'text-white', 'font-bold', 'border-blue-400');
 
-                        canalActualNombre = `${canal.nombre} - ${opcion.nombre}`;
                         canalActualId = opcion.id;
                         canalActualLogo = canal.logo; 
                         ultimoReintento = 0;
                         obtenerEnlaceServidor(opcion.id);
                         cerrarMenu();
-                        
                         btnReportar.classList.remove('hidden');
                     };
                     subOpcionesDiv.appendChild(btnOpcion);
@@ -336,63 +399,48 @@
             mostrarLoader(esBot);
 
             try {
-                const timeoutMs = esBot ? 90000 : 15000;
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
+                const timeoutId = setTimeout(() => controller.abort(), esBot ? 90000 : 15000);
                 const res = await fetch(`${API_URL}/api/get-stream/${canalId}`, { signal: controller.signal });
                 clearTimeout(timeoutId);
                 const data = await res.json();
 
-                if (data.exito) {
-                    ejecutarVideo(data.url, canalId);
-                } else {
-                    throw new Error("No se pudo obtener el enlace");
-                }
+                if (data.exito) ejecutarVideo(data.url, canalId);
+                else throw new Error("No enlace");
             } catch (err) {
                 ocultarLoader();
                 mensajeError.classList.remove('hidden');
-                if (err.name === 'AbortError') {
-                    mensajeError.innerText = "⏱️ El bot tardó demasiado. Intentá de nuevo.";
-                } else {
-                    mensajeError.innerText = "Error: El servidor no responde o el canal no está disponible.";
-                }
+                mensajeError.innerText = "Error: El servidor no responde o el canal no está disponible.";
                 abrirMenu();
             }
         }
 
         async function reintentarCanal(canalId) {
             const ahora = Date.now();
-            if (ahora - ultimoReintento < 30000) {
-                ocultarLoader();
-                return;
-            }
+            if (ahora - ultimoReintento < 30000) return ocultarLoader();
             ultimoReintento = ahora;
             mostrarLoader(canalesBot.includes(canalId), "🔄 Enlace caído, buscando nuevo...");
-
             try { await fetch(`${API_URL}/api/clear-cache/${canalId}`).catch(() => {}); } catch (e) {}
             setTimeout(() => { obtenerEnlaceServidor(canalId); }, 1000);
         }
 
         function ejecutarVideo(url, canalId) {
             videoElement.setAttribute('poster', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
-
             if (hls) { hls.destroy(); hls = null; }
             if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
             videoElement.pause();
-
             videoElement.classList.remove('hidden');
             videoElement.volume = 1.0;
             videoElement.muted = false;
+            updatePlayIcons();
 
             if (url.includes('.mpd')) {
                 dashPlayer = dashjs.MediaPlayer().create();
                 dashPlayer.initialize(videoElement, url, true);
-                dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => ocultarLoader());
-                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
+                dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => { ocultarLoader(); updatePlayIcons(); });
+                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => {
                     ocultarLoader();
                     if (canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
-                    else { mensajeError.classList.remove('hidden'); mensajeError.innerText = "💥 Error en DASH."; }
                 });
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
@@ -404,10 +452,7 @@
                         videoElement.play().catch(() => { videoElement.muted = true; videoElement.play(); });
                     });
                     hls.on(Hls.Events.ERROR, function (event, data) {
-                        if (data.fatal) {
-                            if (canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
-                            else { ocultarLoader(); mensajeError.classList.remove('hidden'); mensajeError.innerText = "💥 Error de conexión con el video."; }
-                        }
+                        if (data.fatal && canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
                     });
                 } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
                     videoElement.src = url;
@@ -421,7 +466,7 @@
             }
         }
 
-        // Eventos de teclado (Para mandos de TV y TV boxes)
+        // 🎮 NAVEGACIÓN DE TELEVISOR (Mando a Distancia) INTACTA
         document.addEventListener('keydown', (e) => {
             const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
             resetearInactividad();
@@ -439,12 +484,10 @@
                     if (e.key === 'ArrowDown' && currentIndex < botones.length - 1) {
                         e.preventDefault();
                         botones[currentIndex + 1].focus();
-                        botones[currentIndex + 1].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
                     }
                     if (e.key === 'ArrowUp' && currentIndex > 0) {
                         e.preventDefault();
                         botones[currentIndex - 1].focus();
-                        botones[currentIndex - 1].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
                     }
                 }
             } else {
@@ -454,8 +497,6 @@
                     else btnMenu.focus();
                     return;
                 }
-
-                // En la tele, apretar el botón Enter/OK en la pantalla sí pausa/reproduce instantáneamente
                 if (e.key === 'Enter') {
                     if (document.activeElement.tagName === 'BUTTON') {
                         document.activeElement.click();
@@ -465,12 +506,6 @@
                     }
                 }
             }
-        });
-
-        btnCast.addEventListener('click', async () => {
-            if (videoElement.remote) { try { await videoElement.remote.prompt(); } catch (error) { console.warn(error); } } 
-            else if (videoElement.webkitShowPlaybackTargetPicker) { videoElement.webkitShowPlaybackTargetPicker(); } 
-            else { alert("Tu navegador no soporta transmisión nativa."); }
         });
 
         window.onload = () => {
