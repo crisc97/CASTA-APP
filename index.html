@@ -26,13 +26,6 @@
 
     <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
         <video id="reproductor" class="w-full h-full outline-none object-contain" tabindex="-1" autoplay playsinline poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
-        
-        <div id="centerControls" class="absolute inset-0 z-30 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-500 bg-black/20">
-            <button id="btnCenterPlay" class="pointer-events-auto bg-black/50 hover:bg-blue-600 focus:bg-blue-600 text-white p-5 rounded-full border border-gray-700/50 transition duration-300 outline-none backdrop-blur-md shadow-2xl transform active:scale-95">
-                <svg id="iconPlay" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <svg id="iconPause" class="w-10 h-10 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-            </button>
-        </div>
 
         <div id="loading" class="absolute hidden z-10 flex-col items-center gap-4 bg-[#070819]/95 p-6 sm:p-8 rounded-2xl backdrop-blur-xl border border-gray-800 shadow-[0_25px_65px_-15px_rgba(0,0,0,0.9)]">
             <div class="relative w-24 h-24 flex items-center justify-center">
@@ -103,12 +96,8 @@
         const loadingLogo = document.getElementById('loadingLogo');
 
         const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebarOverlay'); // Capa táctil externa
+        const sidebarOverlay = document.getElementById('sidebarOverlay'); 
         const topNav = document.getElementById('topNav'); 
-        const centerControls = document.getElementById('centerControls'); // Controles de celular
-        const btnCenterPlay = document.getElementById('btnCenterPlay');
-        const iconPlay = document.getElementById('iconPlay');
-        const iconPause = document.getElementById('iconPause');
 
         const btnMenu = document.getElementById('btnMenu');
         const btnCerrar = document.getElementById('btnCerrar');
@@ -211,22 +200,18 @@
             loadingLogo.classList.add('hidden');
         }
 
-        // 🔥 MODIFICADO: Muestra la barra superior Y los controles de pantalla centrales juntos
         function resetearInactividad() {
             topNav.classList.remove('opacity-0', 'pointer-events-none');
-            centerControls.classList.remove('opacity-0', 'pointer-events-none');
             clearTimeout(timeoutInactividad);
 
             if (sidebar.classList.contains('-translate-x-[130%]')) {
                 timeoutInactividad = setTimeout(() => {
                     topNav.classList.add('opacity-0', 'pointer-events-none');
-                    centerControls.classList.add('opacity-0', 'pointer-events-none');
                     videoElement.focus();
                 }, 4000);
             }
         }
 
-        // 🔥 MODIFICADO: El menú despliega la capa oscura de fondo
         function abrirMenu() {
             sidebar.classList.remove('-translate-x-[130%]');
             sidebarOverlay.classList.remove('hidden');
@@ -236,7 +221,6 @@
             }, 50);
 
             topNav.classList.remove('opacity-0', 'pointer-events-none');
-            centerControls.classList.remove('opacity-0', 'pointer-events-none');
             clearTimeout(timeoutInactividad);
 
             const primerBoton = listaCanalesDiv.querySelector('button');
@@ -257,41 +241,19 @@
 
         btnMenu.addEventListener('click', abrirMenu);
         btnCerrar.addEventListener('click', cerrarMenu);
-        sidebarOverlay.addEventListener('click', cerrarMenu); // Cierra tocando afuera (móvil)
+        sidebarOverlay.addEventListener('click', cerrarMenu); 
         
         document.addEventListener('mousemove', resetearInactividad);
         document.addEventListener('touchstart', resetearInactividad);
         
-        // 🔥 MODIFICADO: Tocar la pantalla del celular NO pausa de golpe, solo prende la interfaz voluntariamente
+        // Al tocar la pantalla del celular, SOLO mostramos los botones de arriba sin pausar el video
         videoElement.addEventListener('click', (e) => {
             e.stopPropagation();
             if (topNav.classList.contains('opacity-0')) {
                 resetearInactividad();
             } else {
                 topNav.classList.add('opacity-0', 'pointer-events-none');
-                centerControls.classList.add('opacity-0', 'pointer-events-none');
             }
-        });
-
-        // Control dinámico de iconos Play/Pause nativos
-        function actualizarIconosPlay() {
-            if (videoElement.paused) {
-                iconPlay.classList.remove('hidden');
-                iconPause.classList.add('hidden');
-            } else {
-                iconPlay.classList.add('hidden');
-                iconPause.classList.remove('hidden');
-            }
-        }
-        videoElement.addEventListener('play', actualizarIconosPlay);
-        videoElement.addEventListener('pause', actualizarIconosPlay);
-
-        // Botón central Play/Pausa táctil
-        btnCenterPlay.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (videoElement.paused) videoElement.play();
-            else videoElement.pause();
-            resetearInactividad();
         });
 
         function renderizarCanales() {
@@ -426,7 +388,7 @@
             if (url.includes('.mpd')) {
                 dashPlayer = dashjs.MediaPlayer().create();
                 dashPlayer.initialize(videoElement, url, true);
-                dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => { ocultarLoader(); actualizarIconosPlay(); });
+                dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => ocultarLoader());
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
                     ocultarLoader();
                     if (canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
@@ -439,7 +401,6 @@
                     hls.attachMedia(videoElement);
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
                         ocultarLoader();
-                        actualizarIconosPlay();
                         videoElement.play().catch(() => { videoElement.muted = true; videoElement.play(); });
                     });
                     hls.on(Hls.Events.ERROR, function (event, data) {
@@ -452,13 +413,11 @@
                     videoElement.src = url;
                     videoElement.play();
                     ocultarLoader();
-                    actualizarIconosPlay();
                 }
             } else {
                 videoElement.src = url;
                 videoElement.play();
                 ocultarLoader();
-                actualizarIconosPlay();
             }
         }
 
