@@ -35,20 +35,76 @@ app.get('/api/clear-cache/:canal', (req, res) => {
 // --- BASE DE DATOS DE CANALES ---
 const dbCanales = {
     'tnt_1': { base: 'https://anden26.ddns.net/live/stream.m3u8', parametros: 'v=1777146764944' },
-    'eltrece_directo': { base: 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8', parametros: '' },
-    'elnueve_directo': { base: 'http://107.152.39.199:8030/hls/canal7.m3u8', parametros: '' },
-    'telefe_directo': { base: 'https://telefe.com/Api/Videos/GetSourceUrl/694564/0/HLS?.m3u8', parametros: '' },
+    'telefe_directo': { base: 'http://45.5.151.147:8000/play/a00g/index.m3u8', parametros: '',
+        usarProxy: true  },
+    'elnueve_directo': { base: 'http://45.5.151.147:8000/play/a00d/index.m3u8', parametros: '',
+        usarProxy: true },
+    'america_directo': { base: 'http://45.5.151.147:8000/play/a00c/index.m3u8', parametros: '',
+        usarProxy: true },
+    'tvpublica_directo': { base: 'http://45.5.151.147:8000/play/a00y/index.m3u8', parametros: '',
+        usarProxy: true },
+    
+     'ciudadmagazine_arg': { 
+        base: 'http://45.5.151.147:8000/play/a03i/index.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
     'espn_premium_HD': { 
         base: 'http://latinapro.net:25461/live/lazaroperez/perez3/40234.m3u8', 
         parametros: '',
         usarProxy: true // Esto obliga al server a inyectar las credenciales
     },
     'espn_premium': { 
-        base: 'http://45.5.151.147:8000/play/a00m/19160440.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a00m/index.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
-
+    
+    'espn_1': { 
+        base: 'http://45.5.151.147:8000/play/a00i/index.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
+    'espn_2': { 
+        base: 'http://45.5.151.147:8000/play/a00j/index.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
+    'espn_3': { 
+        base: 'http://45.5.151.147:8000/play/a00k/index.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
+     'tnt_premium': { 
+        base: 'http://45.5.151.147:8000/play/a00r/index.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
+     'tyc_arg': { 
+        base: 'http://45.5.151.147:8000/play/a00s/index.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
+     'foxsports_arg': { 
+        base: 'http://45.5.151.147:8000/play/a00n/index.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
+     'foxsports_arg3': { 
+        base: 'http://45.5.151.147:8000/play/a00p/index.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
+     'discovery_arg': { 
+        base: 'http://45.5.151.147:8000/play/a01s/index.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
+     'discoveryid_arg': { 
+        base: 'http://45.5.151.147:8000/play/a01u/index.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
     // 🔥 CANALES BOT (Puppeteer scraper)
     'espn_scraper1': {
         urlScraping: 'https://tvlibr3.com/en-vivo/espn-premium/',
