@@ -300,26 +300,47 @@ async function clickBotonPorVariantes(page, variantes) {
     }
 }
 
-// --- PROXY PARA HLS (.m3u8), DASH (.mpd) y TS ---
+// 🔀 Ruta Proxy optimizada para Streaming (Cero latencia de memoria)
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
-    if (!targetUrl) return res.status(400).send('Falta el parámetro url');
 
-    const headers = armarHeaders(targetUrl);
-    
-    // IMPORTANTE: Forward del header 'Range' que envía el navegador
-    if (req.headers.range) {
-        headers['Range'] = req.headers.range;
+    if (!targetUrl) {
+        return res.status(400).send("Falta la URL de destino.");
     }
 
     try {
-        const response = await axios.get(targetUrl, {
-            responseType: 'stream', 
-            headers,
-            timeout: 30000,
-            maxRedirects: 10,
-            validateStatus: (status) => status >= 200 && status < 400
+        // Usamos tu función armarHeaders para inyectar el User-Agent correcto
+        const customHeaders = armarHeaders(targetUrl);
+
+        const response = await axios({
+            method: 'get',
+            url: targetUrl,
+            responseType: 'stream', // 🔥 VITAL: No guarda en memoria, lo trata como un flujo de datos continuo
+            headers: customHeaders,
+            timeout: 15000 // Corta si el servidor original se cuelga
         });
+
+        // Copiamos el Content-Type original (ej. video/MP2T o application/vnd.apple.mpegURL)
+        if (response.headers['content-type']) {
+            res.setHeader('Content-Type', response.headers['content-type']);
+        }
+        
+        // Habilitamos CORS para que tu web no lo bloquee
+        res.setHeader('Access-Control-Allow-Origin', '*');
+
+        // 🔥 MAGIA PURA: Conectamos la manguera de entrada directo a la manguera de salida (pipe)
+        // Esto evita que Render se sature guardando los fragmentos en la memoria RAM
+        response.data.pipe(res);
+
+    } catch (error) {
+        console.error(`❌ Error en proxy para ${targetUrl}:`, error.message);
+        
+        // Solo respondemos con error si todavía no habíamos empezado a mandarle datos al reproductor
+        if (!res.headersSent) {
+            res.status(500).send("Error conectando con el servidor de origen.");
+        }
+    }
+});
 
         const contentType = response.headers['content-type'] || '';
         console.log(`🔀 Proxy HTTP ${response.status}: ${targetUrl} [${contentType}]`);
