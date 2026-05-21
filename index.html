@@ -474,16 +474,36 @@
                 });
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
-                    hls = new Hls({ debug: false });
+                    
+                    // Configuramos HLS para que no sature el servidor de Render
+                    hls = new Hls({ 
+                        debug: false,
+                        maxMaxBufferLength: 15,
+                        maxBufferSize: 30 * 1000 * 1000, 
+                        maxRetries: 5, 
+                        enableWorker: true
+                    });
+                    
                     hls.loadSource(url);
                     hls.attachMedia(videoElement);
-                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    
+                    hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+                        // Ocultamos el loader
                         ocultarLoader();
-                        videoElement.play().catch(() => { videoElement.muted = true; videoElement.play(); });
+                        
+                        // 🔥 ESTA ES LA MAGIA: Clavamos la calidad en el nivel 0 para evitar saltos y bloqueos
+                        hls.currentLevel = 0; 
+                        
+                        videoElement.play().catch(() => { 
+                            videoElement.muted = true; 
+                            videoElement.play(); 
+                        });
                     });
+
                     hls.on(Hls.Events.ERROR, function (event, data) {
                         if (data.fatal && canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
                     });
+                    
                 } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
                     videoElement.src = url;
                     videoElement.play();
