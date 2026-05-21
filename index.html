@@ -15,8 +15,9 @@
         /* Ocultar barra superior hasta que haya interacción */
         #topNav { opacity: 0; pointer-events: none; }
 
-        /* 🔥 NUEVO: Forzamos la desaparición de cualquier control fantasma del televisor */
+        /* 🔥 CORRECCIÓN: Eliminamos controles fantasma Y el botón de play pixelado de Android */
         video::-webkit-media-controls { display: none !important; }
+        video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none !important; }
 
         #sidebar::-webkit-scrollbar { width: 6px; }
         #sidebar::-webkit-scrollbar-track { background: transparent; }
@@ -27,7 +28,7 @@
 <body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen relative font-sans select-none">
 
     <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
-        <video id="reproductor" class="w-full h-full outline-none object-contain" tabindex="-1" autoplay playsinline></video>
+        <video id="reproductor" class="w-full h-full outline-none object-contain" tabindex="-1" autoplay playsinline poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
         
         <div id="loading" class="absolute hidden z-10 flex-col items-center gap-3">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
@@ -188,7 +189,7 @@
             }
         }
 
-        function ocultarLoader() {
+        function occultarLoader() {
             loader.classList.add('hidden');
             loader.classList.remove('flex');
             loadingMsg.innerText = "";
@@ -198,11 +199,9 @@
             topNav.classList.remove('opacity-0', 'pointer-events-none');
             clearTimeout(timeoutInactividad);
 
-            // Se vuelve a ocultar automáticamente a los 4 segundos si el menú está cerrado
             if (sidebar.classList.contains('-translate-x-[130%]')) {
                 timeoutInactividad = setTimeout(() => {
                     topNav.classList.add('opacity-0', 'pointer-events-none');
-                    // Devolvemos el foco al reproductor para que no queden seleccionados botones invisibles
                     videoElement.focus();
                 }, 4000);
             }
@@ -229,7 +228,6 @@
         document.addEventListener('mousemove', resetearInactividad);
         document.addEventListener('touchstart', resetearInactividad);
         
-        // Pausar/Reproducir al hacer clic en el video (para mouses/táctil)
         videoElement.addEventListener('click', () => {
             if (videoElement.paused) videoElement.play();
             else videoElement.pause();
@@ -251,7 +249,7 @@
                 const iniciales = canal.nombre.substring(0, 3).toUpperCase();
                 
                 const logoHtml = canal.logo 
-                    ? `<img src="${canal.logo}" alt="${iniciales}" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.outerHTML='<span class=\\'text-xs font-black tracking-tighter text-gray-800\\'>${iniciales}</span>';">`
+                    ? `<img src="${canal.logo}" alt="${iniciales}" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-xs font-black tracking-tighter text-gray-800\\'>${iniciales}</span>';">`
                     : `<span class="text-xs font-black tracking-tighter text-gray-800">${iniciales}</span>`;
 
                 btnPrincipal.innerHTML = `
@@ -290,7 +288,6 @@
                         obtenerEnlaceServidor(opcion.id);
                         cerrarMenu();
                         
-                        // 🔥 Hacemos visible el botón de reportar ahora que hay un canal activo
                         btnReportar.classList.remove('hidden');
                     };
                     subOpcionesDiv.appendChild(btnOpcion);
@@ -367,6 +364,9 @@
         }
 
         function ejecutarVideo(url, canalId) {
+            // 🔥 CLAVE: Metemos el poster invisible para limpiar el play gris antes de cargar
+            videoElement.setAttribute('poster', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+
             if (hls) { hls.destroy(); hls = null; }
             if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
             videoElement.pause();
@@ -425,8 +425,6 @@
 
         document.addEventListener('keydown', (e) => {
             const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
-            
-            // Reaparecen los botones de arriba cuando tocás el control
             resetearInactividad();
 
             if (e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009) {
@@ -438,7 +436,6 @@
             }
 
             if (isMenuAbierto) {
-                // Navegación dentro del menú lateral (solo botones visibles en pantalla)
                 if (e.key === 'ArrowRight') { cerrarMenu(); return; }
 
                 const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
@@ -456,13 +453,11 @@
                     }
                 }
             } else {
-                // 🔥 NUEVO: Lógica de navegación cuando estás VIENDO UN PARTIDO
                 if (e.key === 'ArrowLeft') { 
                     abrirMenu(); 
                     return; 
                 }
                 
-                // Si presionan la flecha de ARRIBA estando en el video, enfocamos el botón de reportar
                 if (e.key === 'ArrowUp') {
                     if (!btnReportar.classList.contains('hidden')) {
                         btnReportar.focus();
@@ -472,10 +467,9 @@
                     return;
                 }
 
-                // Reproducir / Pausar con la tecla OK, a menos que un botón de arriba esté seleccionado
                 if (e.key === 'Enter') {
                     if (document.activeElement.tagName === 'BUTTON') {
-                        document.activeElement.click(); // Ejecuta el botón de arriba que tengas seleccionado
+                        document.activeElement.click();
                     } else {
                         if (videoElement.paused) videoElement.play();
                         else videoElement.pause();
@@ -502,10 +496,8 @@
 
         window.onload = () => {
             renderizarCanales();
-            abrirMenu(); // Abre el menú directamente al iniciar
-            
+            abrirMenu();
             topNav.classList.remove('opacity-0', 'pointer-events-none');
-            
             iniciarReloj();
             iniciarClima();
         };
