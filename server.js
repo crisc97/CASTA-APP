@@ -183,6 +183,10 @@ app.get('/proxy/stream', async (req, res) => {
 
     const headers = armarHeaders(targetUrl);
     
+    // 🔥 FIX 1: Le decimos al servidor original que NO comprima el video. 
+    // Así evitamos que los fragmentos .ts se corrompan en el viaje.
+    headers['Accept-Encoding'] = 'identity';
+
     if (req.headers.range) {
         headers['Range'] = req.headers.range;
     }
@@ -200,7 +204,7 @@ app.get('/proxy/stream', async (req, res) => {
         const contentType = response.headers['content-type'] || '';
         console.log(`🔀 Proxy HTTP ${response.status}: ${targetUrl} [${contentType}]`);
 
-        // A. SI ES UNA PLAYLIST (.m3u8) o DASH (.mpd) -> Reescribimos enlaces
+        // A. SI ES UNA PLAYLIST (.m3u8) o DASH (.mpd)
         if (targetUrl.includes('.m3u8') || targetUrl.includes('.mpd') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL') || contentType.includes('dash+xml')) {
             let data = '';
             response.data.on('data', chunk => data += chunk);
@@ -208,7 +212,24 @@ app.get('/proxy/stream', async (req, res) => {
                 if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL')) {
                     let contenido = data.split('\n').map(linea => {
                         const l = linea.trim();
-                        if (!l || l.startsWith('#')) return linea;
+                        if (!l) return linea;
+
+                        // 🔥 FIX 2: Si el video está encriptado, pasamos la LLAVE por el proxy
+                        if (l.startsWith('#EXT-X-KEY')) {
+                            const match = l.match(/URI="([^"]+)"/);
+                            if (match) {
+                                try {
+                                    const keyUrl = new URL(match[1], targetUrl).href;
+                                    const proxyKeyUrl = `${API_URL}/proxy/stream?url=${encodeURIComponent(keyUrl)}`;
+                                    return l.replace(`URI="${match[1]}"`, `URI="${proxyKeyUrl}"`);
+                                } catch(e) {}
+                            }
+                            return l;
+                        }
+
+                        if (l.startsWith('#')) return l; // Dejamos intactas las demás etiquetas
+
+                        // Reescribimos los segmentos de video
                         try {
                             const urlSegmento = new URL(l, targetUrl).href;
                             return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
@@ -231,13 +252,14 @@ app.get('/proxy/stream', async (req, res) => {
             return;
         }
 
-        // B. SI ES SEGMENTO DE VIDEO (.ts) -> Pipe directo en binario (Cero latencia)
+        // B. SI ES SEGMENTO DE VIDEO (.ts) -> Pipe directo
         res.setHeader('Content-Type', contentType || 'video/mp2t');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Accept-Ranges', 'bytes');
         
-        if (response.headers['content-length']) res.setHeader('Content-Length', response.headers['content-length']);
+        // 🔥 FIX 3: NO reenviamos el Content-Length original.
+        // Si Node modificó 1 byte del tamaño al descargarlo, el reproductor cortaba el video y se ponía negro.
         if (response.headers['content-range']) res.setHeader('Content-Range', response.headers['content-range']);
         
         if (response.status === 206) res.status(206);
