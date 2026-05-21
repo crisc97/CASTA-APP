@@ -51,7 +51,7 @@
             <div class="flex items-center gap-4 pointer-events-auto">
                 <button id="btnQuality" class="text-white text-xs sm:text-sm font-bold bg-white/10 px-3 py-1.5 rounded-lg border border-gray-500 hover:bg-blue-600 outline-none transition">AUTO</button>
                 <button id="btnFullscreen" class="text-white hover:text-blue-500 outline-none transition transform active:scale-90">
-                    <svg id="iconFullEnter" class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    <svg id="iconFullEnter" class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4rm-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
                     <svg id="iconFullExit" class="w-9 h-9 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4M4 14l5 5M20 10h-4V6m4 4l-5-5M4 10h4V6m-4 4l5-5M20 14h-4v4m4-4l-5 5"></path></svg>
                 </button>
             </div>
@@ -68,7 +68,7 @@
         <div class="flex gap-4 pointer-events-auto">
             <button id="btnReportar" class="hidden bg-black/70 hover:bg-red-600 focus:bg-red-600 focus:ring-4 focus:ring-white text-white pl-4 pr-5 py-2 rounded-xl border border-gray-600 shadow-lg transition duration-300 font-bold flex items-center gap-2.5 outline-none backdrop-blur-md" title="Reportar Falla">
                 <span class="text-xl shrink-0">⚠️</span>
-                <span class="text-left text-xs sm:text-sm leading-tight tracking-wide">Reportar<br><span class="font-medium text-gray-300">no funcional</span></span>
+                <span class="text-left text-xs sm:text-sm leading-tight tracking-wide">Reportar<br><span class="font-medium text-gray-300">NO funcional</span></span>
             </button>
         </div>
     </div>
@@ -222,6 +222,10 @@
             setTimeout(() => {
                 sidebarOverlay.classList.remove('pointer-events-none');
                 sidebarOverlay.classList.add('opacity-100');
+                
+                // Forzar foco en el primer botón visible al abrir
+                const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
+                if (botones.length > 0) botones[0].focus();
             }, 50);
 
             topNav.classList.remove('opacity-0', 'pointer-events-none');
@@ -469,38 +473,59 @@
             }
         }
 
-        // NAVEGACIÓN TOTAL PARA MANDO DE TV / TELEVISORES
+        // NAVEGACIÓN TOTAL BLINDADA PARA MANDO DE TV / TELEVISORES
         document.addEventListener('keydown', (e) => {
             const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
             resetearInactividad();
 
-            if (e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009) {
+            // Soportar tanto e.key como keyCodes antiguos de Smart TVs (Tizen/WebOS)
+            const isUp = e.key === 'ArrowUp' || e.keyCode === 38;
+            const isDown = e.key === 'ArrowDown' || e.keyCode === 40;
+            const isLeft = e.key === 'ArrowLeft' || e.keyCode === 37;
+            const isRight = e.key === 'ArrowRight' || e.keyCode === 39;
+            const isEnter = e.key === 'Enter' || e.keyCode === 13;
+            const isBack = e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009;
+
+            if (isBack) {
                 if (isMenuAbierto) { cerrarMenu(); e.preventDefault(); }
                 return;
             }
 
             if (isMenuAbierto) {
-                if (e.key === 'ArrowRight') { cerrarMenu(); return; }
+                if (isRight) { cerrarMenu(); e.preventDefault(); return; }
+                
+                // Recolectar botones visibles dinámicamente
                 const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
                 const currentIndex = botones.indexOf(document.activeElement);
-                if (currentIndex > -1) {
-                    if (e.key === 'ArrowDown' && currentIndex < botones.length - 1) {
-                        e.preventDefault();
+
+                if (isDown) {
+                    e.preventDefault(); // Evita scroll o saltos nativos raros de la TV
+                    if (currentIndex === -1 && botones.length > 0) {
+                        botones[0].focus();
+                    } else if (currentIndex < botones.length - 1) {
                         botones[currentIndex + 1].focus();
+                        botones[currentIndex + 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
                     }
-                    if (e.key === 'ArrowUp' && currentIndex > 0) {
-                        e.preventDefault();
+                }
+                
+                if (isUp) {
+                    e.preventDefault(); // Evita scroll o saltos nativos raros de la TV
+                    if (currentIndex === -1 && botones.length > 0) {
+                        botones[0].focus();
+                    } else if (currentIndex > 0) {
                         botones[currentIndex - 1].focus();
+                        botones[currentIndex - 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
                     }
                 }
             } else {
-                if (e.key === 'ArrowLeft') { abrirMenu(); return; }
-                if (e.key === 'ArrowUp') {
+                if (isLeft) { abrirMenu(); e.preventDefault(); return; }
+                if (isUp) {
+                    e.preventDefault();
                     if (!btnReportar.classList.contains('hidden')) btnReportar.focus();
                     else btnMenu.focus();
                     return;
                 }
-                if (e.key === 'Enter') {
+                if (isEnter) {
                     if (document.activeElement.tagName === 'BUTTON') {
                         document.activeElement.click();
                     } else {
