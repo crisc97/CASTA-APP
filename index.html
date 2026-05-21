@@ -30,9 +30,13 @@
     <div class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
         <video id="reproductor" class="w-full h-full outline-none object-contain" tabindex="-1" autoplay playsinline poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
         
-        <div id="loading" class="absolute hidden z-10 flex-col items-center gap-3">
-            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
-            <p id="loadingMsg" class="text-white text-sm font-semibold text-center px-4 drop-shadow-md"></p>
+        <div id="loading" class="absolute hidden z-10 flex-col items-center gap-4 bg-[#070819]/95 p-6 sm:p-8 rounded-2xl backdrop-blur-xl border border-gray-800 shadow-[0_25px_65px_-15px_rgba(0,0,0,0.9)]">
+            <div class="relative w-24 h-24 flex items-center justify-center">
+                <div class="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-blue-500 absolute inset-0"></div>
+                <img id="loadingLogo" src="" alt="Cargando..." class="w-14 h-14 object-contain hidden bg-white p-1 rounded-lg shadow-md">
+            </div>
+            
+            <p id="loadingMsg" class="text-gray-200 text-xs sm:text-sm font-semibold text-center px-4 py-2.5 bg-black/60 rounded-xl border border-white/5 shadow-inner drop-shadow-md whitespace-pre-line max-w-[280px] sm:max-w-xs mt-1"></p>
         </div>
 
         <div id="mensajeError" class="absolute z-10 bottom-10 left-1/2 transform -translate-x-1/2 hidden bg-red-900/90 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center w-[90%] sm:w-auto max-w-lg"></div>
@@ -96,6 +100,7 @@
         const mensajeError = document.getElementById('mensajeError');
         const loader = document.getElementById('loading');
         const loadingMsg = document.getElementById('loadingMsg');
+        const loadingLogo = document.getElementById('loadingLogo');
 
         const sidebar = document.getElementById('sidebar');
         const topNav = document.getElementById('topNav'); 
@@ -108,6 +113,7 @@
         let dashPlayer;
         let canalActualNombre = "";
         let canalActualId = "";
+        let canalActualLogo = ""; 
         let ultimoReintento = 0;
         let timeoutInactividad; 
 
@@ -180,19 +186,29 @@
         function mostrarLoader(esBot = false, mensaje = '') {
             loader.classList.remove('hidden');
             loader.classList.add('flex');
+            
+            if (canalActualLogo) {
+                loadingLogo.src = canalActualLogo;
+                loadingLogo.classList.remove('hidden');
+            } else {
+                loadingLogo.classList.add('hidden');
+            }
+
             if (mensaje) {
                 loadingMsg.innerText = mensaje;
             } else if (esBot) {
                 loadingMsg.innerText = "🤖 Buscando enlace del canal...\nEsto puede tardar hasta 60s.";
             } else {
-                loadingMsg.innerText = "";
+                loadingMsg.innerText = "Cargando transmisión...";
             }
         }
 
-        function occultarLoader() {
+        function ocultarLoader() {
             loader.classList.add('hidden');
             loader.classList.remove('flex');
             loadingMsg.innerText = "";
+            loadingLogo.src = "";
+            loadingLogo.classList.add('hidden');
         }
 
         function resetearInactividad() {
@@ -284,6 +300,7 @@
 
                         canalActualNombre = `${canal.nombre} - ${opcion.nombre}`;
                         canalActualId = opcion.id;
+                        canalActualLogo = canal.logo; 
                         ultimoReintento = 0;
                         obtenerEnlaceServidor(opcion.id);
                         cerrarMenu();
@@ -364,7 +381,6 @@
         }
 
         function ejecutarVideo(url, canalId) {
-            // 🔥 CLAVE: Metemos el poster invisible para limpiar el play gris antes de cargar
             videoElement.setAttribute('poster', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
 
             if (hls) { hls.destroy(); hls = null; }
