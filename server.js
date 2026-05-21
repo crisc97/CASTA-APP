@@ -43,7 +43,7 @@ const dbCanales = {
         parametros: '',
         usarProxy: true // Esto obliga al server a inyectar las credenciales
     },
-    'boca_premium': { 
+    'espn_premium': { 
         base: 'http://45.5.151.147:8000/play/a00m/19160440.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
