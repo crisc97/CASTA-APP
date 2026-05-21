@@ -35,17 +35,19 @@ app.get('/api/clear-cache/:canal', (req, res) => {
 // --- BASE DE DATOS DE CANALES ---
 const dbCanales = {
     'tnt_1': { base: 'https://anden26.ddns.net/live/stream.m3u8', parametros: 'v=1777146764944' },
-    'telefe_directo': { base: 'http://45.5.151.147:8000/play/a00g/index.m3u8', parametros: '',
+    'telefe_directo': { base: 'http://45.5.151.147:8000/play/a00g/97172336.m3u8', parametros: '',
         usarProxy: true  },
-    'elnueve_directo': { base: 'http://45.5.151.147:8000/play/a00d/index.m3u8', parametros: '',
+    'eltrece_directo': { base: 'http://45.5.151.147:8000/play/a00g/97172336.m3u8', parametros: '',
+        usarProxy: true  },
+    'elnueve_directo': { base: 'http://45.5.151.147:8000/play/a00e/32518685.m3u8', parametros: '',
         usarProxy: true },
-    'america_directo': { base: 'http://45.5.151.147:8000/play/a00c/index.m3u8', parametros: '',
+    'america_directo': { base: 'http://45.5.151.147:8000/play/a00c/14077361.m3u8', parametros: '',
         usarProxy: true },
-    'tvpublica_directo': { base: 'http://45.5.151.147:8000/play/a00y/index.m3u8', parametros: '',
+    'tvpublica_directo': { base: 'http://45.5.151.147:8000/play/a00h/68422884.m3u8', parametros: '',
         usarProxy: true },
     
      'ciudadmagazine_arg': { 
-        base: 'http://45.5.151.147:8000/play/a03i/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a03i/61700157.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
@@ -55,53 +57,53 @@ const dbCanales = {
         usarProxy: true // Esto obliga al server a inyectar las credenciales
     },
     'espn_premium': { 
-        base: 'http://45.5.151.147:8000/play/a00m/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a00m/62981070.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
     
     'espn_1': { 
-        base: 'http://45.5.151.147:8000/play/a00i/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a00i/69558806.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
     'espn_2': { 
-        base: 'http://45.5.151.147:8000/play/a00j/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a00j/86183475.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
     'espn_3': { 
-        base: 'http://45.5.151.147:8000/play/a00k/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a00k/11538235.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
      'tnt_premium': { 
-        base: 'http://45.5.151.147:8000/play/a00r/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a00r/47816283.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
      'tyc_arg': { 
-        base: 'http://45.5.151.147:8000/play/a00s/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a00s/40269997.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
      'foxsports_arg': { 
-        base: 'http://45.5.151.147:8000/play/a00n/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a00n/89420450.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
      'foxsports_arg3': { 
-        base: 'http://45.5.151.147:8000/play/a00p/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a00p/67737282.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
      'discovery_arg': { 
-        base: 'http://45.5.151.147:8000/play/a01s/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a01s/97775026.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
      'discoveryid_arg': { 
-        base: 'http://45.5.151.147:8000/play/a01u/index.m3u8', 
+        base: 'http://45.5.151.147:8000/play/a01u/52253637.m3u8', 
         parametros: '',
         usarProxy: true // <-- Esto hace que pase por /proxy/stream
     },
