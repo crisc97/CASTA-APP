@@ -43,6 +43,11 @@ const dbCanales = {
         parametros: '',
         usarProxy: true // Esto obliga al server a inyectar las credenciales
     },
+    'boca_premium': { 
+        base: 'http://45.5.151.147:8000/play/a00m/19160440.m3u8', 
+        parametros: '',
+        usarProxy: true // <-- Esto hace que pase por /proxy/stream
+    },
 
     // 🔥 CANALES BOT (Puppeteer scraper)
     'espn_scraper1': {
@@ -168,10 +173,10 @@ function esStream(url) {
 
 // Helper: arma headers correctos según el dominio del stream
 function armarHeaders(targetUrl) {
-    // 🔥 NUEVO: Si la URL es de la app que capturamos, usamos su User-Agent obligatorio
-    if (targetUrl.includes('latinapro.net')) {
+    // 🔥 NUEVO: Si es de latinapro o de la nueva IP de Boca TV, inyectamos su User-Agent obligatorio
+    if (targetUrl.includes('latinapro.net') || targetUrl.includes('45.5.151.147')) {
         return {
-            'User-Agent': 'bocatvplay.beta/9.8 (Linux;Android 15) AndroidXMedia3/1.1.1',
+            'User-Agent': 'bocatvplay.beta/9.8 (Linux;Android 11) AndroidXMedia3/1.1.1',
             'Referer': '', // Dejar vacío para evitar bloqueos por referer inválido
             'Connection': 'keep-alive'
         };
