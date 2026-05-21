@@ -3,7 +3,7 @@
   "appName": "CASTA-APP",
   "webDir": "www",
   "server": {
-    "url": "https://mi-tv-online.onrender.com/",
+    "url": https://crisc97.github.io/CASTA-APP/",
     "cleartext": true,
     "allowNavigation": [
       "crisc97.github.io",
