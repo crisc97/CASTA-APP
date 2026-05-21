@@ -297,8 +297,7 @@ async function clickBotonPorVariantes(page, variantes) {
     } catch (e) {
         console.log(`❌ Error al hacer clic: ${e.message}`);
         return null;
-    }
-};
+    };
 
 // 🔀 Ruta Proxy optimizada para Streaming (Cero latencia de memoria)
 app.get('/proxy/stream', async (req, res) => {
