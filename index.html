@@ -129,7 +129,7 @@
         let canalActualLogo = ""; 
         let ultimoReintento = 0;
         let timeoutInactividad; 
-        let misCanales = []; // Ahora la lista empieza vacía y se llena sola
+        let misCanales = []; 
 
         const ua = navigator.userAgent.toLowerCase();
         const esTV = /tv|smarttv|googletv|appletv|tizen|webos|hbbtv|crkey|netcast|viera|bravia|large|box|roku|firetv|playstation|xbox|kftv/i.test(ua);
@@ -366,7 +366,6 @@
 
         async function obtenerEnlaceServidor(canalId) {
             mensajeError.classList.add('hidden');
-            // Detectamos si es un bot porque el ID dice "scraper"
             const esBot = canalId.includes('scraper');
             mostrarLoader(esBot);
 
@@ -427,12 +426,19 @@
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
                     
-                    // CONFIGURACIÓN PEGADA AL VIVO (Baja Latencia)
+                    // 🔥 CONFIGURACIÓN DE COLCHÓN EQUILIBRADO (6 Segundos)
                     hls = new Hls({
-                        debug: false, enableWorker: true, lowLatencyMode: true,       
-                        maxBufferLength: 30, maxMaxBufferLength: 60,
-                        liveSyncDuration: 3, liveMaxLatencyDuration: 12, 
-                        fragLoadingMaxRetry: 15, manifestLoadingMaxRetry: 15, levelLoadingMaxRetry: 15, fragLoadingRetryDelay: 500,
+                        debug: false, 
+                        enableWorker: true, 
+                        lowLatencyMode: false,       
+                        maxBufferLength: 30, 
+                        maxMaxBufferLength: 60,
+                        liveSyncDuration: 6,         // Nos pegamos a 6 segundos del vivo
+                        liveMaxLatencyDuration: 18,  // Tolerancia de hasta 18 seg antes de hacer salto
+                        fragLoadingMaxRetry: 15, 
+                        manifestLoadingMaxRetry: 15, 
+                        levelLoadingMaxRetry: 15, 
+                        fragLoadingRetryDelay: 500,
                         xhrSetup: function(xhr, url) { xhr.withCredentials = false; }
                     });
                     
@@ -533,7 +539,7 @@
         });
 
         window.onload = () => {
-            descargarListaCanales(); // <- MAGIA: Ahora descarga la lista del JSON
+            descargarListaCanales(); 
             abrirMenu();
             iniciarReloj();
             iniciarClima();
