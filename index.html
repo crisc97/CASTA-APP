@@ -129,42 +129,15 @@
         let canalActualLogo = ""; 
         let ultimoReintento = 0;
         let timeoutInactividad; 
+        let misCanales = []; // Ahora la lista empieza vacía y se llena sola
 
         const ua = navigator.userAgent.toLowerCase();
         const esTV = /tv|smarttv|googletv|appletv|tizen|webos|hbbtv|crkey|netcast|viera|bravia|large|box|roku|firetv|playstation|xbox|kftv/i.test(ua);
 
-        if (esTV) {
-            bottomControls.classList.add('!hidden');
-        }
-
-        const canalesBot = [
-            'espn_scraper1', 'espn_scraper2', 'tnt_scraper1', 'tnt_scraper2',
-            'dsports_scraper1', 'dsports_scraper2', 'fox_scraper1', 'fox_scraper2',
-            'tyc_scraper1', 'tyc_scraper2', 'telefe_scraper', 'eltrece_scraper', 'elnueve_scraper'
-        ];
+        if (esTV) { bottomControls.classList.add('!hidden'); }
 
         const API_URL = "https://casta-app.onrender.com";
         fetch(`${API_URL}/ping`).catch(() => {});
-
-        const misCanales = [
-            { nombre: "ESPN Premium", logo: "logos_canales/espn.png", opciones: [{ nombre: "Opción 1", id: "espn_premium" }, { nombre: "Opción 2", id: "espn_premium_HD" },  { nombre:"Opción 3", id: "espn_scraper1"}]},
-            { nombre: "TNT Sports Premium", logo: "logos_canales/tnt.png", opciones: [{ nombre: "Opción 1", id: "tnt_premium" }, { nombre: "Opción 2", id: "tnt_1" }, { nombre: "Opción 3", id: "tnt_scraper1" }] },
-            { nombre: "DirecTv Sports", logo: "logos_canales/dsports.png", opciones: [{ nombre: "Opción 1", id: "dsports_scraper1" }] },
-            { nombre: "Fox Sports", logo: "logos_canales/foxs.png", opciones: [{ nombre: "Opción 1", id: "foxsports_arg" }, { nombre: "Opción 2", id: "fox_scraper1" }] },
-            { nombre: "Fox Sports 3", logo: "logos_canales/foxs3.png", opciones: [{ nombre: "Opción 1", id: "foxsports_arg3" }] },
-            { nombre: "TyC Sports Int", logo: "logos_canales/tyc.png", opciones: [{ nombre: "Opción 1 (internacional)", id: "tyc_scraper1" }, { nombre: "Opción 2 (Arg.)", id: "tyc_arg" }] },
-            { nombre: "ESPN", logo: "logos_canales/espn1.png", opciones: [{ nombre: "Opción 1", id: "espn_1" }] },
-            { nombre: "ESPN 2", logo: "logos_canales/espn2.png", opciones: [{ nombre: "Opción 1", id: "espn_2" }] },
-            { nombre: "ESPN 3", logo: "logos_canales/espn3.png", opciones: [{ nombre: "Opción 1", id: "espn_3" }] },  
-            { nombre: "Telefe", logo: "logos_canales/telefe.png", opciones: [{ nombre: "Opción 1", id: "telefe_directo" }] },
-            { nombre: "El trece", logo: "logos_canales/eltrece.png", opciones: [{ nombre: "Opción 1", id: "eltrece_directo" }] },
-            { nombre: "El nueve", logo: "logos_canales/elnueve.png", opciones: [{ nombre: "Opción 1", id: "elnueve_directo" }] },
-            { nombre: "America", logo: "logos_canales/america.png", opciones: [{ nombre: "Opción 1", id: "america_directo" }] },
-            { nombre: "Tv Publica", logo: "logos_canales/tvp.png", opciones: [{ nombre: "Opción 1", id: "tvpublica_directo" }] },
-            { nombre: "Ciudad Magazine", logo: "logos_canales/cmagazine.png", opciones: [{ nombre: "Opción 1", id: "ciudadmagazine_arg" }] },
-            { nombre: "Discovery", logo: "logos_canales/discovery.png", opciones: [{ nombre: "Opción 1", id: "discovery_arg" }] },
-            { nombre: "Discovery ID", logo: "logos_canales/discoveryid.png", opciones: [{ nombre: "Opción 1", id: "discoveryid_arg" }] }
-        ];
 
         function iniciarReloj() {
             const relojEl = document.getElementById('relojLocal');
@@ -214,9 +187,7 @@
             if (sidebar.classList.contains('-translate-x-[130%]')) {
                 timeoutInactividad = setTimeout(() => {
                     topNav.classList.add('opacity-0', 'pointer-events-none');
-                    if (!esTV) {
-                        bottomControls.classList.add('opacity-0', 'pointer-events-none');
-                    }
+                    if (!esTV) { bottomControls.classList.add('opacity-0', 'pointer-events-none'); }
                     videoElement.focus();
                 }, 4500);
             }
@@ -232,9 +203,7 @@
                 if (botones.length > 0) botones[0].focus();
             }, 50);
             topNav.classList.remove('opacity-0', 'pointer-events-none');
-            if (!esTV) {
-                bottomControls.classList.add('opacity-0', 'pointer-events-none');
-            }
+            if (!esTV) { bottomControls.classList.add('opacity-0', 'pointer-events-none'); }
             clearTimeout(timeoutInactividad);
         }
 
@@ -255,24 +224,16 @@
         
         videoElement.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (topNav.classList.contains('opacity-0')) {
-                resetearInactividad();
-            } else {
+            if (topNav.classList.contains('opacity-0')) resetearInactividad();
+            else {
                 topNav.classList.add('opacity-0', 'pointer-events-none');
-                if (!esTV) {
-                    bottomControls.classList.add('opacity-0', 'pointer-events-none');
-                }
+                if (!esTV) bottomControls.classList.add('opacity-0', 'pointer-events-none');
             }
         });
 
         function updatePlayIcons() {
-            if (videoElement.paused) {
-                iconMobilePlay.classList.remove('hidden');
-                iconMobilePause.classList.add('hidden');
-            } else {
-                iconMobilePlay.classList.add('hidden');
-                iconMobilePause.classList.remove('hidden');
-            }
+            if (videoElement.paused) { iconMobilePlay.classList.remove('hidden'); iconMobilePause.classList.add('hidden'); } 
+            else { iconMobilePlay.classList.add('hidden'); iconMobilePause.classList.remove('hidden'); }
         }
         videoElement.addEventListener('play', updatePlayIcons);
         videoElement.addEventListener('pause', updatePlayIcons);
@@ -286,13 +247,8 @@
         btnVolume.addEventListener('click', (e) => {
             e.stopPropagation();
             videoElement.muted = !videoElement.muted;
-            if (videoElement.muted) {
-                iconVolOn.classList.add('hidden');
-                iconVolOff.classList.remove('hidden');
-            } else {
-                iconVolOn.classList.remove('hidden');
-                iconVolOff.classList.add('hidden');
-            }
+            if (videoElement.muted) { iconVolOn.classList.add('hidden'); iconVolOff.classList.remove('hidden'); } 
+            else { iconVolOn.classList.remove('hidden'); iconVolOff.classList.add('hidden'); }
             resetearInactividad();
         });
 
@@ -302,33 +258,39 @@
             if (!document.fullscreenElement) {
                 try {
                     await document.documentElement.requestFullscreen();
-                    iconFullEnter.classList.add('hidden');
-                    iconFullExit.classList.remove('hidden');
-                    if (screen.orientation && screen.orientation.lock) {
-                        await screen.orientation.lock('landscape');
-                    }
-                } catch (err) { console.warn("Fullscreen error", err); }
+                    iconFullEnter.classList.add('hidden'); iconFullExit.classList.remove('hidden');
+                    if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+                } catch (err) {}
             } else {
                 if (document.exitFullscreen) {
                     await document.exitFullscreen();
-                    iconFullEnter.classList.remove('hidden');
-                    iconFullExit.classList.add('hidden');
-                    if (screen.orientation && screen.orientation.unlock) {
-                        screen.orientation.unlock();
-                    }
+                    iconFullEnter.classList.remove('hidden'); iconFullExit.classList.add('hidden');
+                    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
                 }
             }
         });
 
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement) {
-                iconFullEnter.classList.remove('hidden');
-                iconFullExit.classList.add('hidden');
-                if (screen.orientation && screen.orientation.unlock) {
-                    screen.orientation.unlock();
-                }
+                iconFullEnter.classList.remove('hidden'); iconFullExit.classList.add('hidden');
+                if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
             }
         });
+
+        // ============================================================
+        // DESCARGAR LISTA Y RENDERIZAR
+        // ============================================================
+        async function descargarListaCanales() {
+            try {
+                const res = await fetch(`${API_URL}/api/canales`);
+                misCanales = await res.json();
+                renderizarCanales();
+            } catch (error) {
+                console.error("Error al descargar la lista IPTV", error);
+                mensajeError.classList.remove('hidden');
+                mensajeError.innerText = "Error: No se pudo cargar la lista de canales del servidor.";
+            }
+        }
 
         function renderizarCanales() {
             listaCanalesDiv.innerHTML = '';
@@ -404,7 +366,8 @@
 
         async function obtenerEnlaceServidor(canalId) {
             mensajeError.classList.add('hidden');
-            const esBot = canalesBot.includes(canalId);
+            // Detectamos si es un bot porque el ID dice "scraper"
+            const esBot = canalId.includes('scraper');
             mostrarLoader(esBot);
 
             try {
@@ -428,7 +391,8 @@
             const ahora = Date.now();
             if (ahora - ultimoReintento < 30000) return ocultarLoader();
             ultimoReintento = ahora;
-            mostrarLoader(canalesBot.includes(canalId), "🔄 Enlace caído, buscando nuevo...");
+            const esBot = canalId.includes('scraper');
+            mostrarLoader(esBot, "🔄 Enlace caído, buscando nuevo...");
             try { await fetch(`${API_URL}/api/clear-cache/${canalId}`).catch(() => {}); } catch (e) {}
             setTimeout(() => { obtenerEnlaceServidor(canalId); }, 1000);
         }
@@ -458,27 +422,18 @@
                 dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => { ocultarLoader(); updatePlayIcons(); });
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => {
                     ocultarLoader();
-                    if (canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
+                    if (canalId && canalId.includes('scraper')) reintentarCanal(canalId);
                 });
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
                     
-                    // 🔥 CONFIGURACIÓN PEGADA AL VIVO (Baja Latencia)
+                    // CONFIGURACIÓN PEGADA AL VIVO (Baja Latencia)
                     hls = new Hls({
-                        debug: false, 
-                        enableWorker: true,
-                        lowLatencyMode: true,       // Activamos baja latencia
-                        maxBufferLength: 30,        // Mantenemos un colchón decente pero menor
-                        maxMaxBufferLength: 60,
-                        liveSyncDuration: 3,        // 🔥 Arranca a solo 3 segundos del vivo real
-                        liveMaxLatencyDuration: 12, // 🔥 Si se atrasa 12 seg, pega el salto para volver al vivo
-                        fragLoadingMaxRetry: 15,    
-                        manifestLoadingMaxRetry: 15,
-                        levelLoadingMaxRetry: 15,
-                        fragLoadingRetryDelay: 500,
-                        xhrSetup: function(xhr, url) {
-                            xhr.withCredentials = false; 
-                        }
+                        debug: false, enableWorker: true, lowLatencyMode: true,       
+                        maxBufferLength: 30, maxMaxBufferLength: 60,
+                        liveSyncDuration: 3, liveMaxLatencyDuration: 12, 
+                        fragLoadingMaxRetry: 15, manifestLoadingMaxRetry: 15, levelLoadingMaxRetry: 15, fragLoadingRetryDelay: 500,
+                        xhrSetup: function(xhr, url) { xhr.withCredentials = false; }
                     });
                     
                     hls.loadSource(url);
@@ -486,32 +441,26 @@
                     
                     hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
                         ocultarLoader();
-                        
                         videoElement.muted = true; 
-                        
                         videoElement.play().then(() => {
                             setTimeout(() => {
                                 videoElement.muted = false;
                                 videoElement.volume = 1.0;
                                 updatePlayIcons();
                             }, 150);
-                        }).catch((err) => { 
-                            console.log("Error crítico al reproducir:", err);
-                        });
+                        }).catch((err) => { console.log("Error crítico al reproducir:", err); });
                     });
 
                     hls.on(Hls.Events.ERROR, function (event, data) {
                         if (data.fatal) {
                             switch (data.type) {
                                 case Hls.ErrorTypes.NETWORK_ERROR:
-                                    hls.startLoad();
-                                    break;
+                                    hls.startLoad(); break;
                                 case Hls.ErrorTypes.MEDIA_ERROR:
-                                    hls.recoverMediaError();
-                                    break;
+                                    hls.recoverMediaError(); break;
                                 default:
                                     hls.destroy();
-                                    if (canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
+                                    if (canalId && canalId.includes('scraper')) reintentarCanal(canalId);
                                     break;
                             }
                         }
@@ -577,18 +526,14 @@
                     return;
                 }
                 if (isEnter) {
-                    if (document.activeElement.tagName === 'BUTTON') {
-                        document.activeElement.click();
-                    } else {
-                        if (videoElement.paused) videoElement.play();
-                        else videoElement.pause();
-                    }
+                    if (document.activeElement.tagName === 'BUTTON') document.activeElement.click();
+                    else { if (videoElement.paused) videoElement.play(); else videoElement.pause(); }
                 }
             }
         });
 
         window.onload = () => {
-            renderizarCanales();
+            descargarListaCanales(); // <- MAGIA: Ahora descarga la lista del JSON
             abrirMenu();
             iniciarReloj();
             iniciarClima();
