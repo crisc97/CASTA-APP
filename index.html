@@ -170,7 +170,7 @@
             { nombre: "Tv Publica", logo: "logos_canales/tvp.png", opciones: [{ nombre: "Opción 1", id: "tvpublica_directo" }] },
             { nombre: "Ciudad Magazine", logo: "logos_canales/cmagazine.png", opciones: [{ nombre: "Opción 1", id: "ciudadmagazine_arg" }] },
             { nombre: "Discovery", logo: "logos_canales/discovery.png", opciones: [{ nombre: "Opción 1", id: "discovery_arg" }] },
-            { nombre: "Discovery ID", logo: "logos_canales/id.png", opciones: [{ nombre: "Opción 1", id: "discoveryid_arg" }] }
+            { nombre: "Discovery ID", logo: "logos_canales/discoveryid.png", opciones: [{ nombre: "Opción 1", id: "discoveryid_arg" }] }
             
 ];
 
@@ -475,33 +475,53 @@
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
                     
-                    // Configuramos HLS para que no sature el servidor de Render
-                    hls = new Hls({ 
-                        debug: false,
-                        maxMaxBufferLength: 15,
-                        maxBufferSize: 30 * 1000 * 1000, 
-                        maxRetries: 5, 
-                        enableWorker: true
+                    // 🔥 CONFIGURACIÓN MODO "SUPERVIVENCIA"
+                    hls = new Hls({
+                        debug: true, // Ponelo en true para ver en la consola F12 qué le duele a Hls.js
+                        enableWorker: true,
+                        lowLatencyMode: true,
+                        backBufferLength: 90,
+                        // Ignoramos errores de red pequeños y forzamos a seguir
+                        fragLoadingMaxRetry: 5,
+                        manifestLoadingMaxRetry: 5,
+                        levelLoadingMaxRetry: 5,
+                        // Hacemos que no sea tan "quejoso" con el CORS y el origen de los datos
+                        xhrSetup: function(xhr, url) {
+                            xhr.withCredentials = false; // Importantísimo para evitar bloqueos CORS cruzados
+                        }
                     });
                     
                     hls.loadSource(url);
                     hls.attachMedia(videoElement);
                     
                     hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
-                        // Ocultamos el loader
                         ocultarLoader();
-                        
-                        // 🔥 ESTA ES LA MAGIA: Clavamos la calidad en el nivel 0 para evitar saltos y bloqueos
-                        hls.currentLevel = 0; 
-                        
+                        // hls.currentLevel = 0; // Si lo descomentás, fuerza la calidad más alta, sino queda en AUTO
                         videoElement.play().catch(() => { 
                             videoElement.muted = true; 
                             videoElement.play(); 
                         });
                     });
 
+                    // Manejador de errores para que intente recuperarse si se traba
                     hls.on(Hls.Events.ERROR, function (event, data) {
-                        if (data.fatal && canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
+                        if (data.fatal) {
+                            switch (data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                    console.error("HLS Network Error, intentando recuperar...");
+                                    hls.startLoad();
+                                    break;
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    console.error("HLS Media Error, intentando recuperar...");
+                                    hls.recoverMediaError();
+                                    break;
+                                default:
+                                    console.error("HLS Error Fatal, destruyendo...");
+                                    hls.destroy();
+                                    if (canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
+                                    break;
+                            }
+                        }
                     });
                     
                 } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
