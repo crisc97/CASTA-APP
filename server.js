@@ -35,7 +35,7 @@ app.get('/api/clear-cache/:canal', (req, res) => {
 // --- BASE DE DATOS DE CANALES ---
 const dbCanales = {
     'tnt_1': { base: 'https://anden26.ddns.net/live/stream.m3u8', parametros: 'v=1777146764944' },
-    'telefe_directo': { base: 'http://45.5.151.147:8000/play/a00g/index.m3u8', parametros: '', usarProxy: true  },
+    'telefe_directo': { base: 'http://45.5.151.147:8000/play/a00g/index.m3u8', parametros: '', usarProxy: false  },
     'eltrece_directo': { base: 'http://45.5.151.147:8000/play/a00g/index.m3u8', parametros: '', usarProxy: true  },
     'elnueve_directo': { base: 'http://45.5.151.147:8000/play/a00e/index.m3u8', parametros: '', usarProxy: true },
     'america_directo': { base: 'http://45.5.151.147:8000/play/a00c/index.m3u8', parametros: '', usarProxy: true },
