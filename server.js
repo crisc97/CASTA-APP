@@ -29,7 +29,7 @@ function cargarConfiguracion() {
         console.error("❌ Error al leer config_canales.json:", error.message);
     }
 }
-cargarConfiguracion(); // Cargar al encender
+cargarConfiguracion(); 
 
 // ============================================================
 // RUTAS 
@@ -37,12 +37,10 @@ cargarConfiguracion(); // Cargar al encender
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/ping', (req, res) => res.send('ok'));
 
-// Ruta donde el index.html busca la lista de canales
 app.get('/api/canales', (req, res) => {
     res.json(frontendCanales);
 });
 
-// Truco: Si editás el archivo JSON, entrá a tuweb.com/api/recargar-lista para actualizar sin reiniciar
 app.get('/api/recargar-lista', (req, res) => {
     cargarConfiguracion();
     res.json({ exito: true, mensaje: "Lista recargada exitosamente" });
@@ -56,7 +54,7 @@ app.get('/api/clear-cache/:canal', (req, res) => {
 });
 
 // ============================================================
-// BOTS: COLA Y FUNCIONES DE CLIC
+// BOTS: COLA Y FUNCIONES INTELIGENTES
 // ============================================================
 let botEnEjecucion = false;
 const colaDeBots = [];
@@ -79,7 +77,6 @@ function encolarBot(fn) {
     });
 }
 
-// Función que le da "manos" al bot para que toque los botones
 async function clickBotonPorVariantes(page, variantes) {
     try {
         return await page.evaluate((textos) => {
@@ -98,7 +95,10 @@ function esStream(url) {
 }
 
 async function correrBot(datosCanal, canalId) {
-    console.log(`🕵️ BOT: Scrapeando ${canalId}`);
+    // Inteligencia del bot: Determina si debe buscar botones o es directo
+    const tieneBotones = datosCanal.opcionesBotones && datosCanal.opcionesBotones.length > 0;
+    console.log(`🕵️ BOT: Scrapeando [${canalId}] | Modo: ${tieneBotones ? '🤖 Complejo (Con Clics)' : '⚡ Rápido (Sin clics)'}`);
+    
     const browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
@@ -109,29 +109,42 @@ async function correrBot(datosCanal, canalId) {
         const page = await browser.newPage();
         await page.setViewport({ width: 800, height: 600 });
         await page.setRequestInterception(true);
+        
         page.on('request', req => {
             if (['image', 'stylesheet', 'font'].includes(req.resourceType())) { req.abort(); return; }
-            if (esStream(req.url()) && !linkVideoPuro) linkVideoPuro = req.url();
+            if (esStream(req.url()) && !linkVideoPuro) {
+                linkVideoPuro = req.url();
+                console.log(`✅ [${canalId}] Enlace capturado exitosamente.`);
+            }
             req.continue();
         });
 
+        // Cargamos la página
         await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
         
-        await new Promise(r => setTimeout(r, 1000));
-        for (const variantes of (datosCanal.opcionesBotones || [])) {
-            if (linkVideoPuro) break;
-            const clicOk = await clickBotonPorVariantes(page, variantes);
-            if (clicOk) {
-                let espera = 0;
-                while (!linkVideoPuro && espera < 50) { await new Promise(r => setTimeout(r, 100)); espera++; }
+        // Si el canal exige hacer clics (TV Libre), ejecutamos el bucle
+        if (tieneBotones) {
+            await new Promise(r => setTimeout(r, 1000));
+            for (const variantes of datosCanal.opcionesBotones) {
+                if (linkVideoPuro) break;
+                const clicOk = await clickBotonPorVariantes(page, variantes);
+                if (clicOk) {
+                    let espera = 0;
+                    while (!linkVideoPuro && espera < 50) { await new Promise(r => setTimeout(r, 100)); espera++; }
+                }
             }
-        }
+        } 
         
+        // Si el video no arrancó solo (suele pasar en las listas nuevas), simulamos un clic en el centro de la pantalla
         if (!linkVideoPuro) {
             const viewport = page.viewport();
             await page.mouse.click(viewport.width / 2, viewport.height / 2);
-            await new Promise(r => setTimeout(r, 3000));
+            let esperaExtra = 0;
+            while (!linkVideoPuro && esperaExtra < 30) { await new Promise(r => setTimeout(r, 100)); esperaExtra++; }
         }
+        
+    } catch (e) {
+        console.error(`❌ Error en el bot para ${canalId}:`, e.message);
     } finally {
         try { await browser.close(); } catch (e) {}
     }
@@ -139,40 +152,63 @@ async function correrBot(datosCanal, canalId) {
 }
 
 // ============================================================
-// API STREAM Y PROXY IPTV
+// API STREAM: REPRODUCTOR MAESTRO UNIVERSAL
 // ============================================================
 app.get('/api/get-stream/:canal', async (req, res) => {
     const canalId = req.params.canal;
     const datosCanal = dbCanales[canalId];
-    if (!datosCanal) return res.status(404).json({ exito: false });
+    if (!datosCanal) return res.status(404).json({ exito: false, error: "Canal no encontrado en JSON" });
 
     try {
+        let urlFinal = "";
+
+        // CASO A: Es un link que requiere el BOT (URL web, reproductores HTML, TVLibre)
         if (datosCanal.urlScraping) {
             const ahora = Date.now();
-            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
+            // 1. Revisar Caché para no abrir navegadores de más
+            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) { // 2 horas de caché
                 return res.json({ exito: true, url: memoriaCache[canalId].url });
             }
+            
+            // 2. Mandar el Bot a trabajar
             const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
+            
             if (linkVideoPuro) {
-                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                // Siempre usamos proxy para los enlaces raspados para evitar bloqueos
+                urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
                 memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
-                return res.json({ exito: true, url: urlFinal });
+            } else {
+                return res.status(500).json({ exito: false, error: "No se pudo extraer el video de la página" });
             }
-            return res.status(500).json({ exito: false });
+        } 
+        
+        // CASO B: Es un link de video puro DIRECTO (M3U8 o .ts)
+        else if (datosCanal.base) {
+            const separador = datosCanal.parametros ? '?' : '';
+            const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
+            
+            // Si le pusiste false, va directo al cliente. Si es true, pasa por el servidor.
+            if (datosCanal.usarProxy === false) {
+                urlFinal = urlCompleta; 
+            } else {
+                urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
+            }
+        } 
+        
+        else {
+            return res.status(400).json({ exito: false, error: "El canal no tiene 'base' ni 'urlScraping' configurado" });
         }
 
-        const separador = datosCanal.parametros ? '?' : '';
-        const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
-        
-        if (datosCanal.usarProxy) {
-            return res.json({ exito: true, url: `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}` });
-        }
-        return res.json({ exito: true, url: urlCompleta });
+        return res.json({ exito: true, url: urlFinal });
+
     } catch (error) {
         return res.status(500).json({ exito: false, error: error.message });
     }
 });
 
+// ============================================================
+// PROXY
+// ============================================================
 function armarHeaders(targetUrl) {
     return {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122 Safari/537.36',
