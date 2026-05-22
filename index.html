@@ -448,7 +448,6 @@
             videoElement.pause();
             videoElement.classList.remove('hidden');
             
-            // 🔥 VOLUMEN RESTAURADO: Arranca desmuteado y al 100%
             videoElement.volume = 1.0;
             videoElement.muted = true;
             updatePlayIcons();
@@ -464,18 +463,19 @@
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
                     
-                    // 🔥 CONFIGURACIÓN ULTRA-BUFFER ANTI CONGELAMIENTO
+                    // 🔥 CONFIGURACIÓN PEGADA AL VIVO (Baja Latencia)
                     hls = new Hls({
-                        debug: true, 
+                        debug: false, 
                         enableWorker: true,
-                        lowLatencyMode: false, 
-                        maxBufferLength: 45,        // Guarda colchón de 45 seg
-                        maxMaxBufferLength: 90,
-                        liveSyncDurationCount: 6,   // Arranca 6 fragmentos atrás del vivo
-                        liveMaxLatencyDurationCount: 15,
-                        fragLoadingMaxRetry: 15,    // Insiste un montón de veces si Render tarda
+                        lowLatencyMode: true,       // Activamos baja latencia
+                        maxBufferLength: 30,        // Mantenemos un colchón decente pero menor
+                        maxMaxBufferLength: 60,
+                        liveSyncDuration: 3,        // 🔥 Arranca a solo 3 segundos del vivo real
+                        liveMaxLatencyDuration: 12, // 🔥 Si se atrasa 12 seg, pega el salto para volver al vivo
+                        fragLoadingMaxRetry: 15,    
                         manifestLoadingMaxRetry: 15,
                         levelLoadingMaxRetry: 15,
+                        fragLoadingRetryDelay: 500,
                         xhrSetup: function(xhr, url) {
                             xhr.withCredentials = false; 
                         }
@@ -487,9 +487,6 @@
                     hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
                         ocultarLoader();
                         
-                        // 🔥 TRUCO INTELIGENTE PARA EVITAR PANTALLA NEGRA:
-                        // Forzamos mudo para saltar la restricción de Chrome, damos Play 
-                        // y una milésima de segundo después le clavamos el volumen al máximo.
                         videoElement.muted = true; 
                         
                         videoElement.play().then(() => {
@@ -497,7 +494,6 @@
                                 videoElement.muted = false;
                                 videoElement.volume = 1.0;
                                 updatePlayIcons();
-                                console.log("🔊 ¡Volumen restaurado al máximo con éxito!");
                             }, 150);
                         }).catch((err) => { 
                             console.log("Error crítico al reproducir:", err);
