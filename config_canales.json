@@ -12,7 +12,7 @@
     { "nombre": "Telefe","categoria": "Nacional", "logo": "logos_canales/telefe.png", "opciones": [{ "nombre": "Opción 1", "id": "telefe_directo" }] },
     { "nombre": "El Trece","categoria": "Entretenimiento nacional", "logo": "logos_canales/eltrece.png", "opciones": [{ "nombre": "Opción 1", "id": "eltrece_directo" }] },
     { "nombre": "El Nueve","categoria": "Entretenimiento nacional", "logo": "logos_canales/elnueve.png", "opciones": [{ "nombre": "Opción 1", "id": "elnueve_directo" }] },
-    { "nombre": "América",""categoria": "Entretenimiento nacional", "logo": "logos_canales/america.png", "opciones": [{ "nombre": "Opción 1", "id": "america_directo" }] },
+    { "nombre": "América","categoria": "Entretenimiento nacional", "logo": "logos_canales/america.png", "opciones": [{ "nombre": "Opción 1", "id": "america_directo" }] },
     { "nombre": "TV Pública","categoria": "categoria": "Entretenimiento nacional", "logo": "logos_canales/tvp.png", "opciones": [{ "nombre": "Opción 1", "id": "tvpublica_directo" }] },
     { "nombre": "Ciudad Magazine","categoria": "Entretenimiento nacional", "logo": "logos_canales/cmagazine.png", "opciones": [{ "nombre": "Opción 1", "id": "ciudadmagazine_arg" }] },
     { "nombre": "Discovery","categoria": "Cultura", "logo": "logos_canales/discovery.png", "opciones": [{ "nombre": "Opción 1", "id": "discovery_arg" }] },
