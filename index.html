@@ -9,13 +9,9 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
     <style>
-        /* Forzamos el canvas base a negro absoluto para evitar destellos blancos del navegador */
         html, body { background-color: #000000 !important; }
-        
-        /* Eliminamos controles nativos y ocultamos barras por defecto */
         video::-webkit-media-controls { display: none !important; }
         video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none !important; }
-
         #sidebar::-webkit-scrollbar { width: 6px; }
         #sidebar::-webkit-scrollbar-track { background: transparent; }
         #sidebar::-webkit-scrollbar-thumb { background-color: #1e3a8a; border-radius: 10px; }
@@ -48,7 +44,6 @@
                     <svg id="iconVolOff" class="w-8 h-8 hidden text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z m9.172-1.414l4.242-4.242m0 4.242l-4.242-4.242"></path></svg>
                 </button>
             </div>
-            
             <div class="flex items-center gap-4 pointer-events-auto">
                 <button id="btnQuality" class="text-white text-xs sm:text-sm font-bold bg-white/10 px-3 py-1.5 rounded-lg border border-gray-500 hover:bg-blue-600 outline-none transition">AUTO</button>
                 <button id="btnFullscreen" class="text-white hover:text-blue-500 outline-none transition transform active:scale-90">
@@ -65,7 +60,6 @@
         <button id="btnMenu" class="pointer-events-auto bg-black/70 hover:bg-blue-600 focus:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3.5 rounded-full border border-gray-600 shadow-lg transition duration-300 outline-none backdrop-blur-md">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
-
         <div class="flex gap-4 pointer-events-auto">
             <button id="btnReportar" class="hidden bg-black/70 hover:bg-red-600 focus:bg-red-600 focus:ring-4 focus:ring-white text-white pl-4 pr-5 py-2 rounded-xl border border-gray-600 shadow-lg transition duration-300 font-bold flex items-center gap-2.5 outline-none backdrop-blur-md" title="Reportar Falla">
                 <span class="text-xl shrink-0">⚠️</span>
@@ -136,7 +130,6 @@
         let ultimoReintento = 0;
         let timeoutInactividad; 
 
-        // DETECTOR INTELIGENTE DE SMART TV / BLINK / APPARATUS TELEVISOR
         const ua = navigator.userAgent.toLowerCase();
         const esTV = /tv|smarttv|googletv|appletv|tizen|webos|hbbtv|crkey|netcast|viera|bravia|large|box|roku|firetv|playstation|xbox|kftv/i.test(ua);
 
@@ -164,15 +157,14 @@
             { nombre: "ESPN 2", logo: "logos_canales/espn2.png", opciones: [{ nombre: "Opción 1", id: "espn_2" }] },
             { nombre: "ESPN 3", logo: "logos_canales/espn3.png", opciones: [{ nombre: "Opción 1", id: "espn_3" }] },  
             { nombre: "Telefe", logo: "logos_canales/telefe.png", opciones: [{ nombre: "Opción 1", id: "telefe_directo" }] },
-             { nombre: "El trece", logo: "logos_canales/eltrece.png", opciones: [{ nombre: "Opción 1", id: "eltrece_directo" }] },
+            { nombre: "El trece", logo: "logos_canales/eltrece.png", opciones: [{ nombre: "Opción 1", id: "eltrece_directo" }] },
             { nombre: "El nueve", logo: "logos_canales/elnueve.png", opciones: [{ nombre: "Opción 1", id: "elnueve_directo" }] },
             { nombre: "America", logo: "logos_canales/america.png", opciones: [{ nombre: "Opción 1", id: "america_directo" }] },
             { nombre: "Tv Publica", logo: "logos_canales/tvp.png", opciones: [{ nombre: "Opción 1", id: "tvpublica_directo" }] },
             { nombre: "Ciudad Magazine", logo: "logos_canales/cmagazine.png", opciones: [{ nombre: "Opción 1", id: "ciudadmagazine_arg" }] },
             { nombre: "Discovery", logo: "logos_canales/discovery.png", opciones: [{ nombre: "Opción 1", id: "discovery_arg" }] },
             { nombre: "Discovery ID", logo: "logos_canales/discoveryid.png", opciones: [{ nombre: "Opción 1", id: "discoveryid_arg" }] }
-            
-];
+        ];
 
         function iniciarReloj() {
             const relojEl = document.getElementById('relojLocal');
@@ -236,12 +228,9 @@
             setTimeout(() => {
                 sidebarOverlay.classList.remove('pointer-events-none');
                 sidebarOverlay.classList.add('opacity-100');
-                
-                // Forzar foco en el menú al abrir
                 const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
                 if (botones.length > 0) botones[0].focus();
             }, 50);
-
             topNav.classList.remove('opacity-0', 'pointer-events-none');
             if (!esTV) {
                 bottomControls.classList.add('opacity-0', 'pointer-events-none');
@@ -261,7 +250,6 @@
         btnMenu.addEventListener('click', abrirMenu);
         btnCerrar.addEventListener('click', cerrarMenu);
         sidebarOverlay.addEventListener('click', cerrarMenu); 
-        
         document.addEventListener('mousemove', resetearInactividad);
         document.addEventListener('touchstart', resetearInactividad);
         
@@ -446,7 +434,6 @@
         }
 
         function ejecutarVideo(url, canalId) {
-            // Control de seguridad: Si la URL es inválida o nula, frena el colapso crítico
             if (!url || typeof url !== 'string') {
                 ocultarLoader();
                 mensajeError.classList.remove('hidden');
@@ -460,8 +447,10 @@
             if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
             videoElement.pause();
             videoElement.classList.remove('hidden');
+            
+            // 🔥 VOLUMEN RESTAURADO: Arranca desmuteado y al 100%
             videoElement.volume = 1.0;
-            videoElement.muted = true;
+            videoElement.muted = false;
             updatePlayIcons();
 
             if (url.includes('.mpd')) {
@@ -475,23 +464,18 @@
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
                     
-                    // 🔥 CONFIGURACIÓN ANTI-TIRONES PARA PROXY
+                    // 🔥 CONFIGURACIÓN ULTRA-BUFFER ANTI CONGELAMIENTO
                     hls = new Hls({
                         debug: true, 
                         enableWorker: true,
                         lowLatencyMode: false, 
-                        
-                        // Agrandamos la "mochila" de carga (Buffer)
-                        maxBufferLength: 60,      // Que intente guardar hasta 60 segundos de video
-                        maxMaxBufferLength: 120,
-                        
-                        // Le damos más margen al vivo
-                        liveSyncDurationCount: 8, 
-                        liveMaxLatencyDurationCount: 20,
-                        
-                        fragLoadingMaxRetry: 10,  // Si falla un pedacito, que intente varias veces
-                        manifestLoadingMaxRetry: 10,
-                        
+                        maxBufferLength: 45,        // Guarda colchón de 45 seg
+                        maxMaxBufferLength: 90,
+                        liveSyncDurationCount: 6,   // Arranca 6 fragmentos atrás del vivo
+                        liveMaxLatencyDurationCount: 15,
+                        fragLoadingMaxRetry: 15,    // Insiste un montón de veces si Render tarda
+                        manifestLoadingMaxRetry: 15,
+                        levelLoadingMaxRetry: 15,
                         xhrSetup: function(xhr, url) {
                             xhr.withCredentials = false; 
                         }
@@ -502,27 +486,24 @@
                     
                     hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
                         ocultarLoader();
-                        // hls.currentLevel = 0; // Si lo descomentás, fuerza la calidad más alta, sino queda en AUTO
+                        // Intentamos arrancar con sonido, si el navegador bloquea, conmuta solo a mudo
                         videoElement.play().catch(() => { 
+                            console.log("Autoplay bloqueado con audio. Forzando mudo para arrancar.");
                             videoElement.muted = true; 
                             videoElement.play(); 
                         });
                     });
 
-                    // Manejador de errores para que intente recuperarse si se traba
                     hls.on(Hls.Events.ERROR, function (event, data) {
                         if (data.fatal) {
                             switch (data.type) {
                                 case Hls.ErrorTypes.NETWORK_ERROR:
-                                    console.error("HLS Network Error, intentando recuperar...");
                                     hls.startLoad();
                                     break;
                                 case Hls.ErrorTypes.MEDIA_ERROR:
-                                    console.error("HLS Media Error, intentando recuperar...");
                                     hls.recoverMediaError();
                                     break;
                                 default:
-                                    console.error("HLS Error Fatal, destruyendo...");
                                     hls.destroy();
                                     if (canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
                                     break;
@@ -542,7 +523,6 @@
             }
         }
 
-        // NAVEGACIÓN TOTAL BLINDADA PARA MANDO DE TV / TELEVISORES
         document.addEventListener('keydown', (e) => {
             const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
             resetearInactividad();
@@ -561,7 +541,6 @@
 
             if (isMenuAbierto) {
                 if (isRight) { cerrarMenu(); e.preventDefault(); return; }
-                
                 const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
                 const currentIndex = botones.indexOf(document.activeElement);
 
@@ -574,7 +553,6 @@
                         botones[currentIndex + 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
                     }
                 }
-                
                 if (isUp) {
                     e.preventDefault();
                     if (currentIndex === -1 && botones.length > 0) {
