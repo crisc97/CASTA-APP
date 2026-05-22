@@ -88,9 +88,7 @@
                 </div>
             </div>
         </div>
-        <div class="bg-[#0f112e] px-5 py-2 border-b border-[#1e204a]">
-            <span class="text-sm font-semibold text-[#8c9eff] uppercase tracking-widest">Deportes</span>
-        </div>
+        
         <div id="listaCanales" class="flex-1 overflow-y-auto p-3 flex flex-col gap-2 pb-6"></div>
     </div>
 
@@ -297,67 +295,89 @@
             const todasLasSolapas = [];
             const todosLosBotonesOpcion = [];
 
-            misCanales.forEach((canal) => {
-                const canalContainer = document.createElement('div');
-                canalContainer.className = "flex flex-col gap-1 mb-1";
-
-                const btnPrincipal = document.createElement('button');
-                btnPrincipal.className = "w-full text-left bg-[#131538] hover:bg-[#1a1d4f] focus:bg-[#282c75] focus:ring-2 focus:ring-blue-400 outline-none text-white font-semibold py-2 px-3 rounded-md transition border border-[#1e204a] flex items-center justify-between group";
-                
-                const iniciales = canal.nombre.substring(0, 3).toUpperCase();
-                const logoHtml = canal.logo 
-                    ? `<img src="${canal.logo}" alt="${iniciales}" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';">`
-                    : `<span class="text-xs font-black tracking-tighter text-gray-800">${iniciales}</span>`;
-
-                btnPrincipal.innerHTML = `
-                    <div class="flex items-center gap-3 overflow-hidden w-full">
-                        <div class="w-14 h-10 bg-white rounded flex items-center justify-center shrink-0 shadow-inner group-hover:border-blue-400 border border-gray-300 transition overflow-hidden">
-                            ${logoHtml}
-                        </div>
-                        <span class="text-sm md:text-base truncate tracking-wide w-full">${canal.nombre}</span>
-                    </div>
-                    <span class="text-xs text-[#5c6bc0] ml-2 shrink-0">▼</span>
-                `;
-
-                const subOpcionesDiv = document.createElement('div');
-                subOpcionesDiv.className = "hidden flex-col gap-1 pl-14 mt-1 border-l-2 border-[#3949ab]";
-                todasLasSolapas.push(subOpcionesDiv);
-
-                canal.opciones.forEach(opcion => {
-                    const btnOpcion = document.createElement('button');
-                    btnOpcion.className = "w-full text-left bg-[#0c0e24] outline-none hover:bg-[#1a1d4f] focus:bg-[#3949ab] focus:text-white text-gray-400 hover:text-white py-2 px-3 rounded-md transition text-xs border border-transparent";
-                    btnOpcion.innerText = opcion.nombre;
-                    todosLosBotonesOpcion.push(btnOpcion);
-
-                    btnOpcion.onclick = () => {
-                        todosLosBotonesOpcion.forEach(b => {
-                            b.classList.remove('bg-[#3949ab]', 'text-white', 'font-bold', 'border-blue-400');
-                            b.classList.add('bg-[#0c0e24]', 'text-gray-400', 'border-transparent');
-                        });
-                        btnOpcion.classList.remove('bg-[#0c0e24]', 'text-gray-400', 'border-transparent');
-                        btnOpcion.classList.add('bg-[#3949ab]', 'text-white', 'font-bold', 'border-blue-400');
-
-                        canalActualId = opcion.id;
-                        canalActualLogo = canal.logo; 
-                        ultimoReintento = 0;
-                        obtenerEnlaceServidor(opcion.id);
-                        cerrarMenu();
-                        btnReportar.classList.remove('hidden');
-                    };
-                    subOpcionesDiv.appendChild(btnOpcion);
-                });
-
-                btnPrincipal.onclick = () => {
-                    const estabaOculta = subOpcionesDiv.classList.contains('hidden');
-                    todasLasSolapas.forEach(solapa => solapa.classList.add('hidden'));
-                    if (estabaOculta) subOpcionesDiv.classList.remove('hidden');
-                };
-
-                canalContainer.appendChild(btnPrincipal);
-                canalContainer.appendChild(subOpcionesDiv);
-                listaCanalesDiv.appendChild(canalContainer);
+            // 1. Agrupar los canales por la propiedad "categoria"
+            const canalesAgrupados = {};
+            misCanales.forEach(canal => {
+                const cat = canal.categoria || "Canales"; 
+                if (!canalesAgrupados[cat]) {
+                    canalesAgrupados[cat] = [];
+                }
+                canalesAgrupados[cat].push(canal);
             });
 
+            // 2. Iterar sobre cada categoría y dibujar
+            for (const categoria in canalesAgrupados) {
+                
+                // --- Título de la Categoría ---
+                const divCategoria = document.createElement('div');
+                divCategoria.className = "bg-[#0f112e] px-3 py-2 mt-2 mb-1 border-y border-[#1e204a]";
+                divCategoria.innerHTML = `<span class="text-xs font-bold text-[#8c9eff] uppercase tracking-widest">${categoria}</span>`;
+                listaCanalesDiv.appendChild(divCategoria);
+
+                // --- Botones de los Canales de esta Categoría ---
+                canalesAgrupados[categoria].forEach((canal) => {
+                    const canalContainer = document.createElement('div');
+                    canalContainer.className = "flex flex-col gap-1 mb-1";
+
+                    const btnPrincipal = document.createElement('button');
+                    btnPrincipal.className = "w-full text-left bg-[#131538] hover:bg-[#1a1d4f] focus:bg-[#282c75] focus:ring-2 focus:ring-blue-400 outline-none text-white font-semibold py-2 px-3 rounded-md transition border border-[#1e204a] flex items-center justify-between group";
+                    
+                    const iniciales = canal.nombre.substring(0, 3).toUpperCase();
+                    const logoHtml = canal.logo 
+                        ? `<img src="${canal.logo}" alt="${iniciales}" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';">`
+                        : `<span class="text-xs font-black tracking-tighter text-gray-800">${iniciales}</span>`;
+
+                    btnPrincipal.innerHTML = `
+                        <div class="flex items-center gap-3 overflow-hidden w-full">
+                            <div class="w-14 h-10 bg-white rounded flex items-center justify-center shrink-0 shadow-inner group-hover:border-blue-400 border border-gray-300 transition overflow-hidden">
+                                ${logoHtml}
+                            </div>
+                            <span class="text-sm md:text-base truncate tracking-wide w-full">${canal.nombre}</span>
+                        </div>
+                        <span class="text-xs text-[#5c6bc0] ml-2 shrink-0">▼</span>
+                    `;
+
+                    const subOpcionesDiv = document.createElement('div');
+                    subOpcionesDiv.className = "hidden flex-col gap-1 pl-14 mt-1 border-l-2 border-[#3949ab]";
+                    todasLasSolapas.push(subOpcionesDiv);
+
+                    canal.opciones.forEach(opcion => {
+                        const btnOpcion = document.createElement('button');
+                        btnOpcion.className = "w-full text-left bg-[#0c0e24] outline-none hover:bg-[#1a1d4f] focus:bg-[#3949ab] focus:text-white text-gray-400 hover:text-white py-2 px-3 rounded-md transition text-xs border border-transparent";
+                        btnOpcion.innerText = opcion.nombre;
+                        todosLosBotonesOpcion.push(btnOpcion);
+
+                        btnOpcion.onclick = () => {
+                            todosLosBotonesOpcion.forEach(b => {
+                                b.classList.remove('bg-[#3949ab]', 'text-white', 'font-bold', 'border-blue-400');
+                                b.classList.add('bg-[#0c0e24]', 'text-gray-400', 'border-transparent');
+                            });
+                            btnOpcion.classList.remove('bg-[#0c0e24]', 'text-gray-400', 'border-transparent');
+                            btnOpcion.classList.add('bg-[#3949ab]', 'text-white', 'font-bold', 'border-blue-400');
+
+                            canalActualId = opcion.id;
+                            canalActualLogo = canal.logo; 
+                            ultimoReintento = 0;
+                            obtenerEnlaceServidor(opcion.id);
+                            cerrarMenu();
+                            btnReportar.classList.remove('hidden');
+                        };
+                        subOpcionesDiv.appendChild(btnOpcion);
+                    });
+
+                    btnPrincipal.onclick = () => {
+                        const estabaOculta = subOpcionesDiv.classList.contains('hidden');
+                        todasLasSolapas.forEach(solapa => solapa.classList.add('hidden'));
+                        if (estabaOculta) subOpcionesDiv.classList.remove('hidden');
+                    };
+
+                    canalContainer.appendChild(btnPrincipal);
+                    canalContainer.appendChild(subOpcionesDiv);
+                    listaCanalesDiv.appendChild(canalContainer);
+                });
+            }
+
+            // Seleccionar automáticamente la primera opción del primer canal para que arranque
             if (todosLosBotonesOpcion.length > 0) {
                 todasLasSolapas[0].classList.remove('hidden');
                 todosLosBotonesOpcion[0].click();
@@ -426,15 +446,15 @@
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
                     
-                    // 🔥 CONFIGURACIÓN DE COLCHÓN EQUILIBRADO (6 Segundos)
+                    // CONFIGURACIÓN DE COLCHÓN EQUILIBRADO (6 Segundos)
                     hls = new Hls({
                         debug: false, 
                         enableWorker: true, 
                         lowLatencyMode: false,       
                         maxBufferLength: 30, 
                         maxMaxBufferLength: 60,
-                        liveSyncDuration: 6,         // Nos pegamos a 6 segundos del vivo
-                        liveMaxLatencyDuration: 18,  // Tolerancia de hasta 18 seg antes de hacer salto
+                        liveSyncDuration: 6,         
+                        liveMaxLatencyDuration: 18,  
                         fragLoadingMaxRetry: 15, 
                         manifestLoadingMaxRetry: 15, 
                         levelLoadingMaxRetry: 15, 
