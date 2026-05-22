@@ -20,20 +20,23 @@
   ],
   "backend": {
     "tnt_1": { "base": "https://anden26.ddns.net/live/stream.m3u8", "parametros": "v=1777146764944" },
-    "telefe_directo": { "base": "http://45.5.151.147:8000/play/a00g/index.m3u8", "parametros": "", "usarProxy": false },
-    "eltrece_directo": { "base": "http://45.5.151.147:8000/play/a00g/index.m3u8", "parametros": "", "usarProxy": true },
+    "eltrece_directo": { "base": "http://45.5.151.147:8000/play/a00g/index.m3u8", "parametros": "", "usarProxy": false },
+    "telefe_directo": { "base": "http://45.5.151.147:8000/play/a00g/index.m3u8", "parametros": "", "usarProxy": true },
     "elnueve_directo": { "base": "http://45.5.151.147:8000/play/a00e/index.m3u8", "parametros": "", "usarProxy": true },
     "america_directo": { "base": "http://45.5.151.147:8000/play/a00c/index.m3u8", "parametros": "", "usarProxy": true },
     "tvpublica_directo": { "base": "http://45.5.151.147:8000/play/a00h/index.m3u8", "parametros": "", "usarProxy": true },
-    "espn_premium": { "base": "http://45.5.151.147:8000/play/a00m/index.m3u8", "parametros": "", "usarProxy": false },
+    "espn_premium": { "base": "http://45.5.151.147:8000/play/a00m/index.m3u8", "parametros": "", "usarProxy": true },
     "espn_1": { "base": "http://45.5.151.147:8000/play/a00i/index.m3u8", "parametros": "", "usarProxy": true },
     "espn_2": { "base": "http://45.5.151.147:8000/play/a00j/index.m3u8", "parametros": "", "usarProxy": true },
     "espn_3": { "base": "http://45.5.151.147:8000/play/a00k/index.m3u8", "parametros": "", "usarProxy": true },
-    "tnt_premium": { "base": "http://45.5.151.147:8000/play/a00r/index.m3u8", "parametros": "", "usarProxy": false },
+    "tnt_premium": { "base": "http://45.5.151.147:8000/play/a00r/index.m3u8", "parametros": "", "usarProxy": true },
     "tyc_arg": { "base": "http://45.5.151.147:8000/play/a00s/index.m3u8", "parametros": "", "usarProxy": true },
     "foxsports_arg": { "base": "http://45.5.151.147:8000/play/a00n/index.m3u8", "parametros": "", "usarProxy": true },
     "foxsports_arg3": { "base": "http://45.5.151.147:8000/play/a00p/index.m3u8", "parametros": "", "usarProxy": true },
     "espn_scraper1": { "urlScraping": "https://tvlibr3.com/en-vivo/espn-premium/", "opcionesBotones": [["Opción 3", "Opción3"], ["Opción 1 (FL)", "Opcion 1 (FL)"]] },
-    "tnt_scraper1": { "urlScraping": "https://tvlibr3.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 2", "Opción2"]] }
+    "tnt_scraper1": { "urlScraping": "https://tvlibr3.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 2", "Opción2"]] };
+    "dsports_scraper1": { "urlScraping": "https://tvlibr3.com/en-vivo/dsports/", "opcionesBotones": [["Opción 2", "Opción2"]] };
+    "fox_scraper1": { "urlScraping": "https://tvlibr3.com/en-vivo/fox-sports/", "opcionesBotones": [["Opción 1 (FL)", "Opcion 1 (FL)"], ["Opción 2", "Opción2"]] };
+    "tyc_scraper1": { "https://tvlibr3.com/en-vivo/tyc-sports/", "opcionesBotones": [["Opción 1 (FL)", "Opcion 1 (FL)"], ["Opción 3", "Opción3"]] };
   }
 }
