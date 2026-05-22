@@ -450,7 +450,7 @@
             
             // 🔥 VOLUMEN RESTAURADO: Arranca desmuteado y al 100%
             videoElement.volume = 1.0;
-            videoElement.muted = false;
+            videoElement.muted = true;
             updatePlayIcons();
 
             if (url.includes('.mpd')) {
@@ -486,11 +486,21 @@
                     
                     hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
                         ocultarLoader();
-                        // Intentamos arrancar con sonido, si el navegador bloquea, conmuta solo a mudo
-                        videoElement.play().catch(() => { 
-                            console.log("Autoplay bloqueado con audio. Forzando mudo para arrancar.");
-                            videoElement.muted = true; 
-                            videoElement.play(); 
+                        
+                        // 🔥 TRUCO INTELIGENTE PARA EVITAR PANTALLA NEGRA:
+                        // Forzamos mudo para saltar la restricción de Chrome, damos Play 
+                        // y una milésima de segundo después le clavamos el volumen al máximo.
+                        videoElement.muted = true; 
+                        
+                        videoElement.play().then(() => {
+                            setTimeout(() => {
+                                videoElement.muted = false;
+                                videoElement.volume = 1.0;
+                                updatePlayIcons();
+                                console.log("🔊 ¡Volumen restaurado al máximo con éxito!");
+                            }, 150);
+                        }).catch((err) => { 
+                            console.log("Error crítico al reproducir:", err);
                         });
                     });
 
