@@ -475,19 +475,25 @@
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream')) {
                 if (Hls.isSupported()) {
                     
-                    // 🔥 CONFIGURACIÓN MODO "SUPERVIVENCIA"
+                    // 🔥 CONFIGURACIÓN ANTI-TIRONES PARA PROXY
                     hls = new Hls({
-                        debug: true, // Ponelo en true para ver en la consola F12 qué le duele a Hls.js
+                        debug: true, 
                         enableWorker: true,
-                        lowLatencyMode: true,
-                        backBufferLength: 90,
-                        // Ignoramos errores de red pequeños y forzamos a seguir
-                        fragLoadingMaxRetry: 5,
-                        manifestLoadingMaxRetry: 5,
-                        levelLoadingMaxRetry: 5,
-                        // Hacemos que no sea tan "quejoso" con el CORS y el origen de los datos
+                        lowLatencyMode: false, 
+                        
+                        // Agrandamos la "mochila" de carga (Buffer)
+                        maxBufferLength: 60,      // Que intente guardar hasta 60 segundos de video
+                        maxMaxBufferLength: 120,
+                        
+                        // Le damos más margen al vivo
+                        liveSyncDurationCount: 8, 
+                        liveMaxLatencyDurationCount: 20,
+                        
+                        fragLoadingMaxRetry: 10,  // Si falla un pedacito, que intente varias veces
+                        manifestLoadingMaxRetry: 10,
+                        
                         xhrSetup: function(xhr, url) {
-                            xhr.withCredentials = false; // Importantísimo para evitar bloqueos CORS cruzados
+                            xhr.withCredentials = false; 
                         }
                     });
                     
