@@ -12,7 +12,7 @@
     { "nombre": "Telefe","categoria": "Entretenimiento nacional", "logo": "logos_canales/telefe.png", "opciones": [{ "nombre": "Opción 1", "id": "telefe_directo" }] },
     { "nombre": "El Trece","categoria": "Entretenimiento nacional", "logo": "logos_canales/eltrece.png", "opciones": [{ "nombre": "Señal Directa Rápida", "id": "eltrece_nebu" }, { "nombre": "Opción 2 (Proxy)", "id": "eltrece_directo" }] },
     { "nombre": "El Nueve","categoria": "Entretenimiento nacional", "logo": "logos_canales/elnueve.png", "opciones": [{ "nombre": "Opción 1", "id": "elnueve_directo" }] },
-    { "nombre": "América","categoria": "Entretenimiento nacional", "logo": "logos_canales/america.png", "opciones": [{ "nombre": "Señal Directa Rápida", "id": "america_nebu" }, { "nombre": "Opción 2 (Proxy)", "id": "america_directo" }] },
+    { "nombre": "América","categoria": "Entretenimiento nacional", "logo": "logos_canales/america.png", "opciones": [{ "nombre": "Señal Directa Rápida", "id": "america_nebu" },{ "nombre": "Señal 2", "id": "america_new" }, { "nombre": "Opción 2 (Proxy)", "id": "america_directo" }] },
     { "nombre": "TV Pública","categoria": "Entretenimiento nacional", "logo": "logos_canales/tvp.png", "opciones": [{ "nombre": "Opción 1", "id": "tvpublica_directo" }] },
     { "nombre": "Ciudad Magazine","categoria": "Entretenimiento nacional", "logo": "logos_canales/cmagazine.png", "opciones": [{ "nombre": "Opción 1", "id": "ciudadmagazine_arg" }] },
     { "nombre": "Discovery","categoria": "Cultura", "logo": "logos_canales/discovery.png", "opciones": [{ "nombre": "Opción 1", "id": "discovery_arg" }] },
@@ -44,6 +44,7 @@
     "tyc_scraper1": { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/", "opcionesBotones": [["Opción PC (Extensión)", "Opcion PC (Extension)"], ["Opción 3", "Opción3"]] },
     
     "america_nebu": { "urlScraping": "https://nebunexa.life/tok.html?get=QW1lcmljYVRW", "opcionesBotones": [] },
+    "america_new": {"base": "https://bestleague.top//tok.html?get=QW1lcmljYVRW","parametros": "","usarProxy": false},
     "eltrece_nebu": { "urlScraping": "https://nebunexa.life/tok.html?get=QXJ0ZWFySEQ", "opcionesBotones": [] }
   }
 }
