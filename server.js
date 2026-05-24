@@ -30,6 +30,42 @@ function cargarConfiguracion() {
     }
 }
 cargarConfiguracion(); 
+// ============================================================
+// CONVERTIDOR M3U A JSON (PARSER)
+// ============================================================
+function parsearM3U(contenidoM3U) {
+    const lineas = contenidoM3U.split('\n');
+    const canales = [];
+    let canalActual = {};
+
+    for (let i = 0; i < lineas.length; i++) {
+        const linea = lineas[i].trim();
+        
+        if (linea.startsWith('#EXTINF:')) {
+            canalActual = {};
+            // Extraer nombre del canal (lo que está después de la última coma)
+            const partes = linea.split(',');
+            canalActual.nombre = partes.length > 1 ? partes.pop().trim() : "Canal Desconocido";
+            
+            // Extraer logo si existe (tvg-logo="url")
+            const logoMatch = linea.match(/tvg-logo="([^"]+)"/);
+            canalActual.logo = logoMatch ? logoMatch[1] : "logos_canales/default.png";
+            
+            // Extraer categoría si existe (group-title="categoria")
+            const grupoMatch = linea.match(/group-title="([^"]+)"/);
+            canalActual.categoria = grupoMatch ? grupoMatch[1] : "General";
+            
+        } else if (linea && !linea.startsWith('#')) {
+            // Si no empieza con # y no está vacía, es la URL del stream
+            canalActual.url = linea;
+            if (canalActual.nombre && canalActual.url) {
+                canales.push({ ...canalActual });
+            }
+        }
+    }
+    return canales;
+}
+
 
 // ============================================================
 // RUTAS 
@@ -159,15 +195,13 @@ app.get('/api/get-stream/:canal', async (req, res) => {
     const datosCanal = dbCanales[canalId];
     if (!datosCanal) return res.status(404).json({ exito: false, error: "Canal no encontrado en JSON" });
 
+    // REEMPLAZÁS TODO TU BLOQUE TRY/CATCH DESDE ACÁ:
     try {
-        let urlFinal = "";
-
-        // CASO A: Es un link que requiere el BOT (URL web, reproductores HTML, TVLibre)
         if (datosCanal.urlScraping) {
             const ahora = Date.now();
             // 1. Revisar Caché para no abrir navegadores de más
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) { // 2 horas de caché
-                return res.json({ exito: true, url: memoriaCache[canalId].url });
+                return res.json({ exito: true, url: memoriaCache[canalId].url, clearkey: datosCanal.clearkey });
             }
             
             // 2. Mandar el Bot a trabajar
@@ -175,8 +209,9 @@ app.get('/api/get-stream/:canal', async (req, res) => {
             
             if (linkVideoPuro) {
                 // Siempre usamos proxy para los enlaces raspados para evitar bloqueos
-                urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
                 memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
+                return res.json({ exito: true, url: urlFinal, clearkey: datosCanal.clearkey });
             } else {
                 return res.status(500).json({ exito: false, error: "No se pudo extraer el video de la página" });
             }
@@ -189,9 +224,10 @@ app.get('/api/get-stream/:canal', async (req, res) => {
             
             // Si le pusiste false, va directo al cliente. Si es true, pasa por el servidor.
             if (datosCanal.usarProxy === false) {
-                urlFinal = urlCompleta; 
+                return res.json({ exito: true, url: urlCompleta, clearkey: datosCanal.clearkey });
             } else {
-                urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
+                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
+                return res.json({ exito: true, url: urlFinal, clearkey: datosCanal.clearkey });
             }
         } 
         
@@ -199,10 +235,172 @@ app.get('/api/get-stream/:canal', async (req, res) => {
             return res.status(400).json({ exito: false, error: "El canal no tiene 'base' ni 'urlScraping' configurado" });
         }
 
-        return res.json({ exito: true, url: urlFinal });
-
     } catch (error) {
         return res.status(500).json({ exito: false, error: error.message });
+    }
+    // HASTA ACÁ. ABAJO YA SIGUE LA RUTA DEL PROXY (app.get('/proxy/stream'...)
+});
+
+// ============================================================
+// RUTA: CONVERTIR M3U (Sube una lista y te devuelve el JSON)
+// ============================================================
+app.post('/api/convertir-m3u', express.text({ type: '*/*', limit: '50mb' }), (req, res) => {
+    try {
+        const contenidoM3U = req.body;
+        if (!contenidoM3U || !contenidoM3U.includes('#EXTM3U')) {
+            return res.status(400).json({ exito: false, error: "El archivo no parece ser un M3U válido." });
+        }
+
+        const canalesExtraidos = parsearM3U(contenidoM3U);
+        
+        // Formatear para tu estructura actual (frontend y backend)
+        const nuevoFrontend = [];
+        const nuevoBackend = {};
+
+        canalesExtraidos.forEach((canal, index) => {
+            const idGenerado = `m3u_canal_${index}`; // Ej: m3u_canal_0
+            
+            nuevoFrontend.push({
+                nombre: canal.nombre,
+                categoria: canal.categoria,
+                logo: canal.logo,
+                opciones: [{ nombre: "Opción 1", id: idGenerado }]
+            });
+
+            nuevoBackend[idGenerado] = {
+                base: canal.url,
+                parametros: "",
+                usarProxy: false // Por defecto, intentamos reproducir directo
+            };
+        });
+
+        res.json({
+            exito: true,
+            total_canales: canalesExtraidos.length,
+            estructura_generada: {
+                frontend: nuevoFrontend,
+                backend: nuevoBackend
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ exito: false, error: error.message });
+    }
+});
+// ============================================================
+// RUTA: CONVERTIR M3U DESDE UN LINK (URL)
+// ============================================================
+app.post('/api/convertir-m3u-url', async (req, res) => {
+    try {
+        const urlM3U = req.body.url;
+        if (!urlM3U) return res.status(400).json({ exito: false, error: "Falta enviar la URL." });
+
+        // 1. El servidor va a buscar la lista a internet
+        const respuesta = await axios.get(urlM3U);
+        const contenidoM3U = respuesta.data;
+
+        if (!contenidoM3U || typeof contenidoM3U !== 'string' || !contenidoM3U.includes('#EXTM3U')) {
+            return res.status(400).json({ exito: false, error: "El enlace no devuelve un formato M3U válido." });
+        }
+
+        // 2. Lo convierte usando la función que ya armamos
+        const canalesExtraidos = parsearM3U(contenidoM3U);
+        
+        const nuevoFrontend = [];
+        const nuevoBackend = {};
+
+        canalesExtraidos.forEach((canal, index) => {
+            // Le ponemos un número aleatorio al ID para que no se repitan si subís varias listas
+            const idGenerado = `link_${Date.now()}_${index}`; 
+            
+            nuevoFrontend.push({
+                nombre: canal.nombre,
+                categoria: canal.categoria,
+                logo: canal.logo,
+                opciones: [{ nombre: "Opción 1", id: idGenerado }]
+            });
+
+            nuevoBackend[idGenerado] = {
+                base: canal.url,
+                parametros: "",
+                usarProxy: false 
+            };
+        });
+
+        res.json({
+            exito: true,
+            total_canales: canalesExtraidos.length,
+            estructura_generada: {
+                frontend: nuevoFrontend,
+                backend: nuevoBackend
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ exito: false, error: error.message });
+    }
+});
+// ============================================================
+// RUTA: CONVERTIR LISTAS JSON EXTERNAS A TU FORMATO
+// ============================================================
+app.post('/api/convertir-json-url', async (req, res) => {
+    try {
+        const urlJson = req.body.url;
+        if (!urlJson) return res.status(400).json({ exito: false, error: "Falta enviar la URL." });
+
+        // 1. Descargamos el JSON de internet
+        const respuesta = await axios.get(urlJson);
+        let datos = respuesta.data;
+
+        // Intentamos detectar dónde están los canales (a veces es un Array directo, a veces está dentro de "channels" o "canales")
+        let canalesExtraidos = [];
+        if (Array.isArray(datos)) canalesExtraidos = datos;
+        else if (datos.channels) canalesExtraidos = datos.channels;
+        else if (datos.canales) canalesExtraidos = datos.canales;
+        else {
+            return res.status(400).json({ exito: false, error: "No se encontró una lista de canales reconocible en este JSON." });
+        }
+
+        const nuevoFrontend = [];
+        const nuevoBackend = {};
+
+        // 2. Traducimos canal por canal a TU formato
+        canalesExtraidos.forEach((canal, index) => {
+            const idGenerado = `json_${Date.now()}_${index}`; 
+            
+            // Buscamos cómo se llama la propiedad (cubrimos las palabras más comunes en inglés y español)
+            const nombreCanal = canal.name || canal.nombre || canal.title || "Canal Desconocido";
+            const categoriaCanal = canal.group || canal.categoria || canal.category || "General";
+            const logoCanal = canal.logo || canal.icon || canal.imagen || "";
+            const urlCanal = canal.url || canal.link || canal.stream || "";
+
+            if (urlCanal) { // Solo lo agregamos si tiene un enlace válido
+                nuevoFrontend.push({
+                    nombre: nombreCanal,
+                    categoria: categoriaCanal,
+                    logo: logoCanal,
+                    opciones: [{ nombre: "Opción 1", id: idGenerado }]
+                });
+
+                nuevoBackend[idGenerado] = {
+                    base: urlCanal,
+                    parametros: "",
+                    usarProxy: false 
+                };
+            }
+        });
+
+        res.json({
+            exito: true,
+            total_canales: nuevoFrontend.length,
+            estructura_generada: {
+                frontend: nuevoFrontend,
+                backend: nuevoBackend
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ exito: false, error: error.message });
     }
 });
 
@@ -279,6 +477,141 @@ app.get('/proxy/stream', async (req, res) => {
         response.data.pipe(res);
     } catch (err) {
         if (!res.headersSent) res.status(500).json({ exito: false, error: err.message });
+    }
+});
+
+// ============================================================
+// GUÍA DE PROGRAMACIÓN (EPG - XMLTV)
+// ============================================================
+let guiaTV = {}; // Acá guardamos los horarios en la memoria
+
+// Función para descargar y entender el XML
+async function actualizarEPG() {
+    console.log("⏳ Descargando Guía EPG gratuita...");
+    try {
+        // Enlace público y gratuito de EPG (podés cambiarlo a futuro)
+        const epgUrl = 'https://raw.githubusercontent.com/globetvapp/epg/main/Argentina/argentina1.xml';
+        const { data } = await axios.get(epgUrl);
+        
+        // Un conversor casero y rápido de XML a JSON para no instalar librerías pesadas
+        const programas = data.split('<programme');
+        guiaTV = {}; // Vaciamos la guía vieja
+
+        for (let i = 1; i < programas.length; i++) {
+            const bloque = programas[i];
+            
+            // Extraer el ID del canal, inicio, fin y título
+            const canalMatch = bloque.match(/channel="([^"]+)"/);
+            const startMatch = bloque.match(/start="([^\\s]+) /); // Ej: 20240523130000
+            const stopMatch = bloque.match(/stop="([^\\s]+) /);
+            const titleMatch = bloque.match(/<title[^>]*>([^<]+)<\/title>/);
+
+            if (canalMatch && startMatch && stopMatch && titleMatch) {
+                const idCanal = canalMatch[1];
+                const titulo = titleMatch[1];
+                
+                // Formatear hora (de "20240523130000" a "13:00")
+                const formatearHora = (fechaSTR) => `${fechaSTR.substring(8, 10)}:${fechaSTR.substring(10, 12)}`;
+                
+                if (!guiaTV[idCanal]) guiaTV[idCanal] = [];
+                
+                guiaTV[idCanal].push({
+                    inicio: startMatch[1], // Guardamos el número crudo para calcular si está en vivo
+                    horario: `${formatearHora(startMatch[1])} - ${formatearHora(stopMatch[1])}`,
+                    titulo: titulo
+                });
+            }
+        }
+        console.log("✅ Guía EPG actualizada correctamente.");
+    } catch (error) {
+        console.log("⚠️ No se pudo descargar la EPG:", error.message);
+    }
+}
+
+// Descargar EPG al iniciar el servidor y luego cada 12 horas
+actualizarEPG();
+setInterval(actualizarEPG, 12 * 60 * 60 * 1000);
+
+// ============================================================
+// RUTA PARA QUE EL FRONTEND PREGUNTE QUÉ HAY EN LA TELE (REAL)
+// ============================================================
+app.get('/api/epg/:canalId', (req, res) => {
+    try {
+        const idApp = req.params.canalId.toLowerCase(); 
+
+        // 1. Diccionario inteligente basado en tus IDs del config_canales.json
+        const diccionario = {
+            "telefe": ["telefe"],
+            "eltrece": ["eltrece", "trece", "canal13"],
+            "elnueve": ["elnueve", "nueve", "canal9"],
+            "america": ["america"],
+            "tvpublica": ["publica", "tvp"],
+            "espn_premium": ["espnpremium"],
+            "espn": ["espn"],
+            "tnt": ["tntsports"],
+            "fox": ["foxsports"],
+            "tyc": ["tyc"],
+            "dsports": ["dsports", "directv"],
+            "ciudad": ["ciudadmagazine", "ciudad"],
+            "discovery": ["discovery"]
+        };
+
+        // Determinamos las palabras a buscar en el XML
+        let palabrasClave = [idApp.split('_')[0]]; 
+        for (const key in diccionario) {
+            if (idApp.includes(key)) {
+                palabrasClave = diccionario[key];
+                break;
+            }
+        }
+
+        // 2. Buscar si el canal existe en el XML descargado
+        const idCanalXML = Object.keys(guiaTV).find(clave => {
+            const claveLimpia = clave.toLowerCase();
+            return palabrasClave.some(palabra => claveLimpia.includes(palabra));
+        });
+
+        // 3. Si lo encuentra, calculamos el horario actual
+        if (idCanalXML && guiaTV[idCanalXML]) {
+            const programas = guiaTV[idCanalXML];
+            
+            // Forzamos el reloj a la zona horaria de Argentina (UTC-3)
+            const fechaAr = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Argentina/Buenos_Aires"}));
+            const año = fechaAr.getFullYear();
+            const mes = String(fechaAr.getMonth() + 1).padStart(2, '0');
+            const dia = String(fechaAr.getDate()).padStart(2, '0');
+            const hora = String(fechaAr.getHours()).padStart(2, '0');
+            const min = String(fechaAr.getMinutes()).padStart(2, '0');
+            
+            // Creamos el número de hora actual para comparar (Ej: 20240523130000)
+            const ahoraNum = parseInt(`${año}${mes}${dia}${hora}${min}00`); 
+
+            let ahora = null;
+            let siguiente = null;
+
+            // Recorremos los horarios para ver cuál coincide con este instante
+            for (let i = 0; i < programas.length; i++) {
+                const progInicio = parseInt(programas[i].inicio);
+                const progFin = programas[i+1] ? parseInt(programas[i+1].inicio) : progInicio + 20000; 
+
+                if (ahoraNum >= progInicio && ahoraNum < progFin) {
+                    ahora = programas[i];
+                    siguiente = programas[i+1] || { titulo: "Continuación de transmisión", horario: "--:--" };
+                    break;
+                }
+            }
+
+            if (ahora) {
+                return res.json({ exito: true, ahora, siguiente });
+            }
+        }
+
+        // Si el canal no está en la guía o no hay horarios, manda error para que el Frontend muestre el texto por defecto
+        res.json({ exito: false });
+
+    } catch (error) {
+        console.error("Error en EPG:", error);
+        res.json({ exito: false });
     }
 });
 

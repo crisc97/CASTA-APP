@@ -1,3 +1,5 @@
 node_modules/  
 android/  
-assets/ 
+assets/
+.cache/
+.env

@@ -32,7 +32,20 @@
         </div>
 
         <div id="mensajeError" class="absolute z-10 bottom-20 left-1/2 transform -translate-x-1/2 hidden bg-red-900/90 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center w-[90%] sm:w-auto max-w-lg"></div>
-
+<div id="epgCartel" class="absolute bottom-20 left-4 right-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:w-[90%] sm:max-w-2xl bg-black/90 text-white p-4 rounded-lg border border-[#1e3a8a] shadow-[0_0_20px_rgba(30,58,138,0.5)] hidden transition-all duration-300 pointer-events-none z-40">
+            <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-2">
+                    <span class="bg-red-600 text-[10px] sm:text-xs font-bold px-2 py-1 rounded uppercase tracking-wider animate-pulse whitespace-nowrap">Ahora</span>
+                    <span id="epgAhoraHora" class="text-blue-400 text-xs sm:text-sm font-mono font-bold whitespace-nowrap">--:--</span>
+                    <span id="epgAhoraTitulo" class="font-bold text-sm sm:text-lg truncate">Buscando guía...</span>
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="bg-gray-700 text-[10px] sm:text-xs font-bold px-2 py-1 rounded uppercase tracking-wider whitespace-nowrap opacity-80">Después</span>
+                    <span id="epgSiguienteHora" class="text-gray-400 text-xs sm:text-sm font-mono whitespace-nowrap opacity-80">--:--</span>
+                    <span id="epgSiguienteTitulo" class="text-xs sm:text-md truncate text-gray-300">--</span>
+                </div>
+            </div>
+        </div>
         <div id="bottomControls" class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black via-black/80 to-transparent pt-12 pb-6 px-6 z-30 flex justify-between items-center transition-opacity duration-500 opacity-0 pointer-events-none">
             <div class="flex items-center gap-6 pointer-events-auto">
                 <button id="btnMobilePlay" class="text-white hover:text-blue-500 outline-none transition transform active:scale-90">
@@ -376,18 +389,13 @@
                     listaCanalesDiv.appendChild(canalContainer);
                 });
             }
-
-            // Seleccionar automáticamente la primera opción del primer canal para que arranque
-            if (todosLosBotonesOpcion.length > 0) {
-                todasLasSolapas[0].classList.remove('hidden');
-                todosLosBotonesOpcion[0].click();
-            }
-        }
-
-        async function obtenerEnlaceServidor(canalId) {
+}
+           async function obtenerEnlaceServidor(canalId) {
             mensajeError.classList.add('hidden');
             const esBot = canalId.includes('scraper');
             mostrarLoader(esBot);
+
+cargarEPG(canalId);
 
             try {
                 const controller = new AbortController();
@@ -396,7 +404,8 @@
                 clearTimeout(timeoutId);
                 const data = await res.json();
 
-                if (data.exito) ejecutarVideo(data.url, canalId);
+                // ACÁ ESTÁ EL CAMBIO 1: Le pasamos el clearkey a la función ejecutarVideo
+                if (data.exito) ejecutarVideo(data.url, canalId, data.clearkey);
                 else throw new Error("No enlace");
             } catch (err) {
                 ocultarLoader();
@@ -416,7 +425,8 @@
             setTimeout(() => { obtenerEnlaceServidor(canalId); }, 1000);
         }
 
-        function ejecutarVideo(url, canalId) {
+        // ACÁ ESTÁ EL CAMBIO 2: Agregamos "clearkey" como tercer parámetro
+        function ejecutarVideo(url, canalId, clearkey) {
             if (!url || typeof url !== 'string') {
                 ocultarLoader();
                 mensajeError.classList.remove('hidden');
@@ -437,6 +447,36 @@
 
             if (url.includes('.mpd')) {
                 dashPlayer = dashjs.MediaPlayer().create();
+
+                // ==========================================
+                // 🔥 CAMBIO 3: INICIO DE MAGIA CLEARKEY DRM 🔥
+                // ==========================================
+                if (clearkey && clearkey.kid && clearkey.key) {
+                    try {
+                        // Conversor de Hexadecimal a Base64Url (estándar W3C)
+                        const formatearKey = (str) => {
+                            if (/^[0-9a-fA-F]{32}$/.test(str)) {
+                                return btoa(str.match(/\w{2}/g).map(a => String.fromCharCode(parseInt(a, 16))).join(''))
+                                    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=*$/, '');
+                            }
+                            return str;
+                        };
+                        
+                        const protData = {
+                            "org.w3.clearkey": {
+                                "clearkeys": {
+                                    [formatearKey(clearkey.kid)]: formatearKey(clearkey.key)
+                                }
+                            }
+                        };
+                        dashPlayer.setProtectionData(protData);
+                        console.log("🔑 ClearKey inyectado con éxito!");
+                    } catch (e) {
+                        console.error("Error al procesar el ClearKey:", e);
+                    }
+                }
+                // ==========================================
+
                 dashPlayer.initialize(videoElement, url, true);
                 dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => { ocultarLoader(); updatePlayIcons(); });
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => {
@@ -556,8 +596,77 @@
                     else { if (videoElement.paused) videoElement.play(); else videoElement.pause(); }
                 }
             }
-        });
+        }); // <-- Esta era la llave que probablemente se había borrado sin querer
 
+        // ==========================================
+        // 👇 FUNCIÓN EPG 👇
+        // ==========================================
+        async function cargarEPG(idCanal) {
+            const epgCartel = document.getElementById('epgCartel');
+            if (!epgCartel) return;
+            epgCartel.classList.add('hidden'); // Ocultar mientras busca
+
+            try {
+                const res = await fetch(`http://localhost:3000/api/epg/${idCanal}`);
+                const data = await res.json();
+
+                if (data.exito) {
+                    document.getElementById('epgAhoraTitulo').innerText = data.ahora.titulo;
+                    document.getElementById('epgAhoraHora').innerText = data.ahora.horario;
+                    document.getElementById('epgSiguienteTitulo').innerText = data.siguiente.titulo;
+                    document.getElementById('epgSiguienteHora').innerText = data.siguiente.horario;
+                    
+                    epgCartel.classList.remove('hidden'); // Muestra el cartel
+                    
+                    // Se oculta solo a los 8 segundos
+                    setTimeout(() => { epgCartel.classList.add('hidden'); }, 8000);
+                }
+            } catch (e) {
+                console.error("Error al cargar EPG:", e);
+            }
+        }
+   // ==========================================
+        // 👇 FUNCIÓN EPG MEJORADA (A PRUEBA DE FALLOS) 👇
+        // ==========================================
+        async function cargarEPG(idCanal) {
+            const epgCartel = document.getElementById('epgCartel');
+            if (!epgCartel) return;
+            
+            epgCartel.classList.add('hidden'); // Lo ocultamos un milisegundo para reiniciar el efecto
+
+            try {
+                // Cambiá el puerto o la URL si tu servidor corre en otra dirección
+                const res = await fetch(`http://localhost:3000/api/epg/${encodeURIComponent(idCanal)}`);
+                const data = await res.json();
+
+                if (data && data.exito) {
+                    document.getElementById('epgAhoraTitulo').innerText = data.ahora.titulo;
+                    document.getElementById('epgAhoraHora').innerText = data.ahora.horario;
+                    document.getElementById('epgSiguienteTitulo').innerText = data.siguiente.titulo;
+                    document.getElementById('epgSiguienteHora').innerText = data.siguiente.horario;
+                } else {
+                    // Si el servidor responde pero no trae datos correctos
+                    document.getElementById('epgAhoraTitulo').innerText = "📺 Transmisión en Vivo";
+                    document.getElementById('epgAhoraHora').innerText = "00:00 - 24:00";
+                    document.getElementById('epgSiguienteTitulo').innerText = "Próxima programación";
+                    document.getElementById('epgSiguienteHora').innerText = "--:--";
+                }
+            } catch (e) {
+                console.error("Error al conectar con el servidor para EPG, usando respaldo:", e);
+                // RESPALDO: Si el servidor está apagado o da error de red, forzamos el texto para que el cartel se vea igual
+                document.getElementById('epgAhoraTitulo').innerText = "📺 En Vivo (Señal Online)";
+                document.getElementById('epgAhoraHora').innerText = "Horario continuo";
+                document.getElementById('epgSiguienteTitulo').innerText = "Programación automática";
+                document.getElementById('epgSiguienteHora').innerText = "--:--";
+            }
+
+            // MUESTRA EL CARTEL SÍ O SÍ sacando la clase 'hidden'
+            epgCartel.classList.remove('hidden'); 
+            
+            // Se oculta automáticamente a los 10 segundos para dejar ver la pantalla libre
+            setTimeout(() => { epgCartel.classList.add('hidden'); }, 10000);
+        }
+        // ==========================================
         window.onload = () => {
             descargarListaCanales(); 
             abrirMenu();

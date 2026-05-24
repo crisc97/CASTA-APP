@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Admin - Convertidor Maestro</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #111827; color: white; }
+        input { padding: 12px; margin-top: 10px; width: 80%; max-width: 600px; border-radius: 5px; border: none; font-size: 16px;}
+        button { padding: 12px 20px; cursor: pointer; color: white; border: none; border-radius: 5px; font-weight: bold; margin-right: 10px; margin-top: 15px;}
+        .btn-azul { background: #2563eb; } .btn-azul:hover { background: #1d4ed8; }
+        .btn-verde { background: #16a34a; } .btn-verde:hover { background: #15803d; }
+        pre { background: #000; padding: 15px; border-radius: 5px; overflow-x: auto; color: #10b981; max-height: 500px; border: 1px solid #374151;}
+    </style>
+</head>
+<body>
+    <h1>🛠️ Convertidor Maestro de Listas</h1>
+    <p>Pegá el enlace de la lista que encontraste en internet (puede ser .m3u o .json):</p>
+    
+    <input type="text" id="urlLista" placeholder="Ej: http://pagina.com/lista.m3u o lista.json">
+    <br>
+    
+    <button class="btn-azul" onclick="convertirLista('m3u')">Transformar link M3U</button>
+    <button class="btn-verde" onclick="convertirLista('json')">Transformar link JSON</button>
+
+    <h2 style="margin-top: 30px;">Resultado (Listo para tu config_canales.json):</h2>
+    <pre id="resultado">Esperando enlace...</pre>
+
+    <script>
+        async function convertirLista(tipo) {
+            const urlInput = document.getElementById('urlLista').value.trim();
+            if (!urlInput) return alert("¡Primero pegá un link!");
+
+            document.getElementById('resultado').innerText = "Procesando lista de internet... aguardá.";
+
+            // Elegimos la ruta del servidor dependiendo del botón que tocó
+            const rutaApi = tipo === 'm3u' ? '/api/convertir-m3u-url' : '/api/convertir-json-url';
+
+            try {
+                const res = await fetch(`http://localhost:3000${rutaApi}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: urlInput })
+                });
+                
+                const data = await res.json();
+                
+                if (data.exito) {
+                    document.getElementById('resultado').innerText = 
+                        `// ¡ÉXITO! Se extrajeron ${data.total_canales} canales.\n\n` + 
+                        JSON.stringify(data.estructura_generada, null, 2);
+                } else {
+                    document.getElementById('resultado').innerText = "Error: " + data.error;
+                }
+            } catch (err) {
+                document.getElementById('resultado').innerText = "Error de conexión. ¿Está prendido el server.js?";
+            }
+        }
+    </script>
+</body>
+</html>
