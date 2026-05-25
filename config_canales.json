@@ -47,15 +47,15 @@
     "foxsports_arg":      { "base": "http://45.5.151.147:8000/play/a00n/index.m3u8", "parametros": "", "usarProxy": true },
     "foxsports_arg3":     { "base": "http://45.5.151.147:8000/play/a00p/index.m3u8", "parametros": "", "usarProxy": true },
 
-    "espn_scraper1":   { "urlScraping": "https://tvlibre-online.com/en-vivo/espn-premium/", "opcionesBotones": [["Opción 3", "Opción3"], ["Opción 1 (FL)", "Opcion 1 (FL)"]] },
-    "tnt_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/",   "opcionesBotones": [["Opción 2", "Opción2"]] },
-    "dsports_scraper1":{ "urlScraping": "https://tvlibre-online.com/en-vivo/dsports/",       "opcionesBotones": [["Opción 2", "Opción2"]] },
-    "fox_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/fox-sports/",    "opcionesBotones": [["Opción 1 (FL)", "Opcion 1 (FL)"], ["Opción 2", "Opción2"]] },
-    "tyc_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/",   "opcionesBotones": [["Opción PC (Extensión)", "Opcion PC (Extension)"], ["Opción 3", "Opción3"]] },
+    "espn_scraper1":   { "urlScraping": "https://tvlibre-online.com/en-vivo/espn-premium/", "opcionesBotones": [["Opción 1 (FL)"], ["Opción 2"], ["Opción 3"]]},
+    "tnt_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/",   "opcionesBotones": [["Opción 1 (FL)"], ["Opción 2"], ["Opción 3"]]},
+    "dsports_scraper1":{ "urlScraping": "https://tvlibre-online.com/en-vivo/dsports/",       "opcionesBotones": [["Opción 1"], ["Opción 2"]] },
+    "fox_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/fox-sports/",    "opcionesBotones": [["Opción 1 (FL)"], ["Opción 2"], ["Opción 3"]]},
+    "tyc_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/",   "opcionesBotones": [["Opción 1 (FL)"], ["Opción 2"], ["Opción 3"]]},
 
     "america_nebu":  { "urlScraping": "https://nebunexa.life/tok.html?get=QW1lcmljYVRW",  "opcionesBotones": [] },
     "eltrece_nebu":  { "urlScraping": "https://nebunexa.life/tok.html?get=QXJ0ZWFySEQ",  "opcionesBotones": [] },
-    "america_new":   { "base": "https://bestleague.top/tok.html?get=QW1lcmljYVRW", "parametros": "", "usarProxy": false },
+    "america_new":   { "base": "https://bestleague.top/tok.html?get=QW1lcmljYVRW", "parametros": "", "usarProxy": true },
 
     "bestleague_espn":        { "urlScraping": "https://bestleague.top/tok.html?get=RVNQTjJIRA",                "opcionesBotones": [] },
     "bestleague_espn2":       { "urlScraping": "https://bestleague.top/tok.html?get=RVNQTjJfQXJn",             "opcionesBotones": [] },

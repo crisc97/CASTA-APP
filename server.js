@@ -123,36 +123,42 @@ function esStream(url) {
 
 async function correrBot(datosCanal, canalId) {
     const tieneBotones = datosCanal.opcionesBotones && datosCanal.opcionesBotones.length > 0;
-    console.log(`🕵️ BOT [${canalId}] | ${tieneBotones ? '🤖 Con clics' : '⚡ Sin clics'}`);
-
+    console.log(`🕵️ BOT: Scrapeando [${canalId}] | Modo: ${tieneBotones ? '🤖 Complejo (Con Clics)' : '⚡ Rápido (Sin clics)'}`);
+    
     const browser = await puppeteer.launch({
         headless: true,
-        args: [
-            '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
-            '--disable-gpu', '--disable-extensions', '--mute-audio',
-            '--single-process', '--js-flags=--max-old-space-size=128'
-        ]
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
     });
     let linkVideoPuro = null;
 
     try {
         const page = await browser.newPage();
-        await page.setViewport({ width: 800, height: 600 });
+        
+        // 🔥 TRUCO 1: Máscara humana (User-Agent falso) y pantalla de PC real
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+        await page.setViewport({ width: 1280, height: 720 });
+        
         await page.setRequestInterception(true);
-
+        
         page.on('request', req => {
-            const url = req.url();
-            const tipo = req.resourceType();
-            if (['image', 'stylesheet', 'font', 'media'].includes(tipo)) { req.abort(); return; }
-            if (esStream(url) && !linkVideoPuro) {
-                linkVideoPuro = url;
-                console.log(`✅ [${canalId}] Stream capturado: ${url}`);
+            if (['image', 'stylesheet', 'font'].includes(req.resourceType())) { req.abort(); return; }
+            
+            if (esStream(req.url()) && !linkVideoPuro) {
+                // 🔥 TRUCO 2: Ignorar los videos falsos de advertencias o publicidades
+                const urlDetectada = req.url().toLowerCase();
+                if (!urlDetectada.includes('aviso') && !urlDetectada.includes('extension') && !urlDetectada.includes('dummy') && !urlDetectada.includes('blank')) {
+                    linkVideoPuro = req.url();
+                    console.log(`✅ [${canalId}] Enlace capturado exitosamente.`);
+                } else {
+                    console.log(`⚠️ [${canalId}] Se ignoró un video falso/publicidad: ${urlDetectada.substring(0, 40)}...`);
+                }
             }
             req.continue();
         });
 
+        // Cargamos la página
         await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
-
+        
         if (tieneBotones) {
             await new Promise(r => setTimeout(r, 1000));
             for (const variantes of datosCanal.opcionesBotones) {
@@ -160,79 +166,88 @@ async function correrBot(datosCanal, canalId) {
                 const clicOk = await clickBotonPorVariantes(page, variantes);
                 if (clicOk) {
                     let espera = 0;
-                    while (!linkVideoPuro && espera < 60) {
-                        await new Promise(r => setTimeout(r, 100));
-                        espera++;
-                    }
+                    while (!linkVideoPuro && espera < 50) { await new Promise(r => setTimeout(r, 100)); espera++; }
                 }
             }
-        }
-
+        } 
+        
         if (!linkVideoPuro) {
-            const vp = page.viewport();
-            await page.mouse.click(vp.width / 2, vp.height / 2);
-            let espera = 0;
-            while (!linkVideoPuro && espera < 30) {
-                await new Promise(r => setTimeout(r, 100));
-                espera++;
-            }
+            const viewport = page.viewport();
+            await page.mouse.click(viewport.width / 2, viewport.height / 2);
+            let esperaExtra = 0;
+            while (!linkVideoPuro && esperaExtra < 30) { await new Promise(r => setTimeout(r, 100)); esperaExtra++; }
         }
-
+        
     } catch (e) {
-        console.error(`❌ Bot error [${canalId}]:`, e.message);
+        console.error(`❌ Error en el bot para ${canalId}:`, e.message);
     } finally {
         try { await browser.close(); } catch (e) {}
     }
     return linkVideoPuro;
 }
+app.get('/api/get-stream/:id', async (req, res) => {
+    // 1. 🔥 Permitir que tu index.html (Casta-App) acceda desde cualquier dispositivo (CORS)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-// ============================================================
-// API STREAM
-// ============================================================
-app.get('/api/get-stream/:canal', async (req, res) => {
-    const canalId = req.params.canal;
-    const datosCanal = dbCanales[canalId];
-    if (!datosCanal) return res.status(404).json({ exito: false, error: "Canal no encontrado" });
+    const canalId = req.params.id;
+    const canal = configCanales[canalId];
+
+    if (!canal) {
+        return res.status(404).send('Canal no encontrado');
+    }
+
+    // Si el cliente solo hace una petición de control (Preflight), respondemos OK
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
 
     try {
-        // CASO A: Bot scraper (URL de página web)
-        if (datosCanal.urlScraping) {
-            const ahora = Date.now();
-            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 600000)) {
-                return res.json({ exito: true, url: memoriaCache[canalId].url });
-            }
+        let urlFinal = '';
 
-            const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
-
-            if (linkVideoPuro) {
-                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
-                memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
-                return res.json({ exito: true, url: urlFinal });
-            } else {
-                return res.status(500).json({ exito: false, error: "No se pudo extraer el stream" });
-            }
+        if (canal.urlDirecta) {
+            urlFinal = canal.urlDirecta;
+        } else {
+            // Si es un bot, corre el scraper para sacar la URL fresca
+            urlFinal = await correrBot(canal, canalId);
         }
 
-        // CASO B: URL directa (.m3u8 real)
-        else if (datosCanal.base) {
-            const separador = datosCanal.parametros ? '?' : '';
-            const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
+        if (!urlFinal) {
+            return res.status(500).send('No se pudo obtener el enlace del stream');
+        }
 
-            // ⚡ Si usarProxy es false O no está definido → directo al cliente
-            if (!datosCanal.usarProxy) {
-                return res.json({ exito: true, url: urlCompleta });
-            } else {
-                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
-                return res.json({ exito: true, url: urlFinal });
+        // 2. 🔥 Si NO usa proxy, redirigimos (útil para los bots que suelen tener CORS abierto)
+        if (canal.usarProxy === false) {
+            return res.redirect(urlFinal);
+        }
+
+        // 3. 🔥 Si SÍ usa proxy (canales directos IP), hacemos un puente directo sin ahogar el servidor
+        const respuestaStream = await axios({
+            method: 'get',
+            url: urlFinal,
+            responseType: 'stream',
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                'Referer': new URL(urlFinal).origin
             }
-        }
+        });
 
-        else {
-            return res.status(400).json({ exito: false, error: "Canal mal configurado" });
-        }
+        // Copiamos el tipo de contenido original (video/mpd, application/x-mpegURL, etc.)
+        res.setHeader('Content-Type', respuestaStream.headers['content-type'] || 'application/x-mpegURL');
+        
+        // Conectamos la manguera: los datos entran desde el IPTV pirata y salen directo a tu Casta-App
+        respuestaStream.data.pipe(res);
+
+        respuestaStream.data.on('error', (err) => {
+            console.error(`Error en la transmisión del stream ${canalId}:`, err.message);
+            if (!res.headersSent) res.status(500).send('Error en la transmisión');
+        });
 
     } catch (error) {
-        return res.status(500).json({ exito: false, error: error.message });
+        console.error(`Error en el proxy de ${canalId}:`, error.message);
+        if (!res.headersSent) res.status(500).send('Error al conectar con el origen');
     }
 });
 
