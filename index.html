@@ -32,7 +32,6 @@
         </div>
 
         <div id="mensajeError" class="absolute z-10 bottom-20 left-1/2 transform -translate-x-1/2 hidden bg-red-900/90 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center w-[90%] sm:w-auto max-w-lg"></div>
-<div id="epgCartel" class="absolute bottom-20 left-4 right-4 sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:w-[90%] sm:max-w-2xl bg-black/90 text-white p-4 rounded-lg border border-[#1e3a8a] shadow-[0_0_20px_rgba(30,58,138,0.5)] hidden transition-all duration-300 pointer-events-none z-40">
             <div class="flex flex-col gap-1">
                 <div class="flex items-center gap-2">
                     <span class="bg-red-600 text-[10px] sm:text-xs font-bold px-2 py-1 rounded uppercase tracking-wider animate-pulse whitespace-nowrap">Ahora</span>
@@ -389,13 +388,11 @@
                     listaCanalesDiv.appendChild(canalContainer);
                 });
             }
-}
+            }
            async function obtenerEnlaceServidor(canalId) {
             mensajeError.classList.add('hidden');
             const esBot = canalId.includes('scraper');
             mostrarLoader(esBot);
-
-cargarEPG(canalId);
 
             try {
                 const controller = new AbortController();
@@ -444,7 +441,7 @@ cargarEPG(canalId);
             videoElement.volume = 1.0;
             videoElement.muted = true;
             updatePlayIcons();
-// ==========================================
+            // ==========================================
             // 🔥 NUEVO: SISTEMA DE RECONEXIÓN AUTOMÁTICA 🔥
             // ==========================================
             // 1. Limpiamos detectores anteriores
@@ -629,74 +626,6 @@ cargarEPG(canalId);
             }
         }); // <-- Esta era la llave que probablemente se había borrado sin querer
 
-        // ==========================================
-        // 👇 FUNCIÓN EPG 👇
-        // ==========================================
-        async function cargarEPG(idCanal) {
-            const epgCartel = document.getElementById('epgCartel');
-            if (!epgCartel) return;
-            epgCartel.classList.add('hidden'); // Ocultar mientras busca
-
-            try {
-                const res = await fetch(`http://localhost:3000/api/epg/${idCanal}`);
-                const data = await res.json();
-
-                if (data.exito) {
-                    document.getElementById('epgAhoraTitulo').innerText = data.ahora.titulo;
-                    document.getElementById('epgAhoraHora').innerText = data.ahora.horario;
-                    document.getElementById('epgSiguienteTitulo').innerText = data.siguiente.titulo;
-                    document.getElementById('epgSiguienteHora').innerText = data.siguiente.horario;
-                    
-                    epgCartel.classList.remove('hidden'); // Muestra el cartel
-                    
-                    // Se oculta solo a los 8 segundos
-                    setTimeout(() => { epgCartel.classList.add('hidden'); }, 8000);
-                }
-            } catch (e) {
-                console.error("Error al cargar EPG:", e);
-            }
-        }
-   // ==========================================
-        // 👇 FUNCIÓN EPG MEJORADA (A PRUEBA DE FALLOS) 👇
-        // ==========================================
-        async function cargarEPG(idCanal) {
-            const epgCartel = document.getElementById('epgCartel');
-            if (!epgCartel) return;
-            
-            epgCartel.classList.add('hidden'); // Lo ocultamos un milisegundo para reiniciar el efecto
-
-            try {
-                // Cambiá el puerto o la URL si tu servidor corre en otra dirección
-                const res = await fetch(`http://localhost:3000/api/epg/${encodeURIComponent(idCanal)}`);
-                const data = await res.json();
-
-                if (data && data.exito) {
-                    document.getElementById('epgAhoraTitulo').innerText = data.ahora.titulo;
-                    document.getElementById('epgAhoraHora').innerText = data.ahora.horario;
-                    document.getElementById('epgSiguienteTitulo').innerText = data.siguiente.titulo;
-                    document.getElementById('epgSiguienteHora').innerText = data.siguiente.horario;
-                } else {
-                    // Si el servidor responde pero no trae datos correctos
-                    document.getElementById('epgAhoraTitulo').innerText = "📺 Transmisión en Vivo";
-                    document.getElementById('epgAhoraHora').innerText = "00:00 - 24:00";
-                    document.getElementById('epgSiguienteTitulo').innerText = "Próxima programación";
-                    document.getElementById('epgSiguienteHora').innerText = "--:--";
-                }
-            } catch (e) {
-                console.error("Error al conectar con el servidor para EPG, usando respaldo:", e);
-                // RESPALDO: Si el servidor está apagado o da error de red, forzamos el texto para que el cartel se vea igual
-                document.getElementById('epgAhoraTitulo').innerText = "📺 En Vivo (Señal Online)";
-                document.getElementById('epgAhoraHora').innerText = "Horario continuo";
-                document.getElementById('epgSiguienteTitulo').innerText = "Programación automática";
-                document.getElementById('epgSiguienteHora').innerText = "--:--";
-            }
-
-            // MUESTRA EL CARTEL SÍ O SÍ sacando la clase 'hidden'
-            epgCartel.classList.remove('hidden'); 
-            
-            // Se oculta automáticamente a los 10 segundos para dejar ver la pantalla libre
-            setTimeout(() => { epgCartel.classList.add('hidden'); }, 10000);
-        }
         // ==========================================
         window.onload = () => {
             descargarListaCanales(); 
