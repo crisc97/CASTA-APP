@@ -6,6 +6,10 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
+
+// ============================================================
+// 🔥 SOLUCIÓN CORS GLOBAL
+// ============================================================
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
@@ -202,22 +206,26 @@ async function correrBot(datosCanal, canalId) {
     
     return linkVideoPuro;
 }
+
+// ============================================================
+// OBTENER STREAM FINAL DEL CANAL
+// ============================================================
 app.get('/api/get-stream/:id', async (req, res) => {
-    // 1. 🔥 Permitir que tu index.html (Casta-App) acceda desde cualquier dispositivo (CORS)
+    // 🔥 Asegurar que tu frontend accede sin problemas (CORS)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+
     const canalId = req.params.id;
-    const canal = configCanales[canalId];
+    // 🔥 CORRECCIÓN: Se usa dbCanales que es donde se carga tu config dinámica
+    const canal = dbCanales[canalId];
 
     if (!canal) {
         return res.status(404).send('Canal no encontrado');
-    }
-
-    // Si el cliente solo hace una petición de control (Preflight), respondemos OK
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
     }
 
     try {
@@ -234,12 +242,12 @@ app.get('/api/get-stream/:id', async (req, res) => {
             return res.status(500).send('No se pudo obtener el enlace del stream');
         }
 
-        // 2. 🔥 Si NO usa proxy, redirigimos (útil para los bots que suelen tener CORS abierto)
+        // 🔥 Si NO usa proxy, redirigimos directamente (esquiva el consumo de RAM en Render)
         if (canal.usarProxy === false) {
             return res.redirect(urlFinal);
         }
 
-        // 3. 🔥 Si SÍ usa proxy (canales directos IP), hacemos un puente directo sin ahogar el servidor
+        // 🔥 Si SÍ usa proxy, hacemos el puente con la cañería fluida (.pipe)
         const respuestaStream = await axios({
             method: 'get',
             url: urlFinal,
@@ -251,10 +259,7 @@ app.get('/api/get-stream/:id', async (req, res) => {
             }
         });
 
-        // Copiamos el tipo de contenido original (video/mpd, application/x-mpegURL, etc.)
         res.setHeader('Content-Type', respuestaStream.headers['content-type'] || 'application/x-mpegURL');
-        
-        // Conectamos la manguera: los datos entran desde el IPTV pirata y salen directo a tu Casta-App
         respuestaStream.data.pipe(res);
 
         respuestaStream.data.on('error', (err) => {
@@ -357,10 +362,9 @@ app.post('/api/convertir-json-url', async (req, res) => {
 });
 
 // ============================================================
-// PROXY MEJORADO — sin doble request, sin buffering en segmentos
+// PROXY MEJORADO
 // ============================================================
 function armarHeaders(targetUrl) {
-    // Headers específicos para el servidor IPTV 45.5.151.147
     if (targetUrl.includes('45.5.151.147') || targetUrl.includes('latinapro')) {
         return {
             'User-Agent': 'okhttp/4.9.0',
@@ -397,12 +401,10 @@ app.get('/proxy/stream', async (req, res) => {
     const headers = armarHeaders(targetUrl);
     if (req.headers.range) headers['Range'] = req.headers.range;
 
-    // ⚡ Detectamos por URL antes de hacer cualquier request — sin doble descarga
     const esPlaylist = targetUrl.includes('.m3u8') || targetUrl.includes('.mpd');
 
     try {
         if (esPlaylist) {
-            // Para playlists: descargamos como texto y reescribimos URLs
             const response = await axios.get(targetUrl, {
                 responseType: 'text',
                 headers,
@@ -418,7 +420,6 @@ app.get('/proxy/stream', async (req, res) => {
                     const l = linea.trim();
                     if (!l) return linea;
 
-                    // Reescribir URI en atributos (ej: claves de cifrado)
                     if (l.includes('URI="')) {
                         return l.replace(/URI="([^"]+)"/, (match, p1) => {
                             try {
@@ -441,7 +442,6 @@ app.get('/proxy/stream', async (req, res) => {
                 res.setHeader('Cache-Control', 'no-cache');
                 return res.send(contenido);
             } else {
-                // DASH .mpd
                 res.setHeader('Content-Type', 'application/dash+xml');
                 res.setHeader('Access-Control-Allow-Origin', '*');
                 res.setHeader('Cache-Control', 'no-cache');
@@ -449,7 +449,6 @@ app.get('/proxy/stream', async (req, res) => {
             }
 
         } else {
-            // ⚡ Para segmentos .ts/.mp4/.aac — stream directo, UNA sola request, sin buffering
             const response = await axios.get(targetUrl, {
                 responseType: 'stream',
                 headers,
