@@ -6,6 +6,15 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200); // Responder OK rápido a las verificaciones del navegador
+    }
+    next();
+});
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
@@ -178,11 +187,19 @@ async function correrBot(datosCanal, canalId) {
             while (!linkVideoPuro && esperaExtra < 30) { await new Promise(r => setTimeout(r, 100)); esperaExtra++; }
         }
         
-    } catch (e) {
+   } catch (e) {
         console.error(`❌ Error en el bot para ${canalId}:`, e.message);
     } finally {
-        try { await browser.close(); } catch (e) {}
+        // Esto es VITAL para que Render no se quede sin memoria y tire Error 502
+        try { 
+            if (browser) {
+                const pages = await browser.pages();
+                for (let i = 0; i < pages.length; i++) await pages[i].close();
+                await browser.close(); 
+            }
+        } catch (e) {}
     }
+    
     return linkVideoPuro;
 }
 app.get('/api/get-stream/:id', async (req, res) => {
