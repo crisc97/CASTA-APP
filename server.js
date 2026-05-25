@@ -200,7 +200,7 @@ app.get('/api/get-stream/:canal', async (req, res) => {
         if (datosCanal.urlScraping) {
             const ahora = Date.now();
             // 1. Revisar Caché para no abrir navegadores de más
-            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) { // 2 horas de caché
+            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 600000)) { // 2 horas de caché
                 return res.json({ exito: true, url: memoriaCache[canalId].url, clearkey: datosCanal.clearkey });
             }
             
