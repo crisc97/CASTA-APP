@@ -444,6 +444,37 @@ cargarEPG(canalId);
             videoElement.volume = 1.0;
             videoElement.muted = true;
             updatePlayIcons();
+// ==========================================
+            // 🔥 NUEVO: SISTEMA DE RECONEXIÓN AUTOMÁTICA 🔥
+            // ==========================================
+            // 1. Limpiamos detectores anteriores
+            if (window.detectorCongelamiento) clearTimeout(window.detectorCongelamiento);
+
+            // 2. ¿Qué hacer si el video se traba (se queda sin datos)?
+            videoElement.onwaiting = () => {
+                mostrarLoader(false, "Servidor saturado.\nForzando reconexión...");
+                
+                // Le damos 8 segundos de tolerancia. Si no revive, lo reiniciamos a la fuerza
+                window.detectorCongelamiento = setTimeout(() => {
+                    console.log("El video no reacciona. Reiniciando conexión...");
+                    if (canalId && canalId.includes('scraper')) {
+                        // Si es un bot, reseteamos el tiempo para que busque un link fresco ya mismo
+                        ultimoReintento = 0; 
+                        reintentarCanal(canalId);
+                    } else {
+                        // Si es enlace directo, inyectamos de nuevo la URL para sacarlo del "coma"
+                        ejecutarVideo(url, canalId, clearkey); 
+                    }
+                }, 8000); 
+            };
+
+            // 3. ¿Qué hacer cuando el video vuelve a dar imagen?
+            videoElement.onplaying = () => {
+                // Frenamos el cronómetro de reinicio porque ya se arregló
+                if (window.detectorCongelamiento) clearTimeout(window.detectorCongelamiento);
+                ocultarLoader();
+            };
+            // ==========================================
 
             if (url.includes('.mpd')) {
                 dashPlayer = dashjs.MediaPlayer().create();
