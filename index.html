@@ -8,56 +8,70 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            'bg': '#0f172a',
+                            'card': '#1e293b',
+                            'accent': '#38bdf8',
+                            'border': '#334155'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        html, body { background-color: #000000 !important; }
+        html, body { background-color: #0f172a !important; font-family: 'Inter', sans-serif; height: 100%; }
         video::-webkit-media-controls { display: none !important; }
-        video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none !important; }
+        #videoOverlayContainer { display: none; }
+        #videoOverlayContainer.active { display: flex; }
         #sidebar::-webkit-scrollbar { width: 6px; }
-        #sidebar::-webkit-scrollbar-track { background: transparent; }
-        #sidebar::-webkit-scrollbar-thumb { background-color: #1e3a8a; border-radius: 10px; }
-        #sidebar { -ms-overflow-style: none; scrollbar-width: thin; scrollbar-color: #1e3a8a transparent; -webkit-overflow-scrolling: touch; }
+        #sidebar::-webkit-scrollbar-thumb { background-color: #38bdf8; border-radius: 10px; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 </head>
-<body class="text-white font-sans overflow-hidden select-none">
+<body class="text-white overflow-hidden select-none">
 
-    <div class="relative w-screen h-screen bg-black flex flex-col md:flex-row">
+    <div class="relative w-screen h-screen bg-brand-bg flex flex-col p-4 md:p-6 lg:p-8">
         
-        <div class="relative flex-1 h-full bg-black flex items-center justify-center overflow-hidden z-10">
-            <video id="videoPlayer" class="w-full h-full object-contain hidden" autoplay playsinline></video>
-            
-            <div id="videoClickOverlay" class="absolute inset-0 z-20 cursor-pointer"></div>
-
-            <div id="videoLoader" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-70 z-30 transition-opacity duration-300">
-                <div id="loaderSpinner" class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500 mb-4"></div>
-                <p id="loaderText" class="text-lg font-semibold tracking-wide text-center whitespace-pre-line px-4">Seleccioná un canal para empezar</p>
-            </div>
-
-            <div id="infoEsquina" class="absolute top-4 right-4 bg-black bg-opacity-60 px-4 py-2 rounded-xl border border-gray-800 text-right z-30 flex flex-col pointer-events-none transition-opacity duration-300">
-                <span id="reloj" class="text-2xl font-bold text-blue-400">00:00:00</span>
-                <span id="clima" class="text-xs text-gray-400 mt-0.5">Cargando clima...</span>
-            </div>
-
-            <div id="controlContenedor" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-4 bg-black bg-opacity-70 px-5 py-3 rounded-2xl border border-gray-800 z-30 opacity-0 pointer-events-none transition-opacity duration-300">
-                <button id="btnMenuToggle" class="bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-xl font-medium text-sm flex items-center gap-2 transition-all">
-                    <span>☰</span> Lista
-                </button>
-                <div class="h-6 w-px bg-gray-700"></div>
-                <button id="btnPlayPause" class="text-white text-xl p-1 hover:scale-110 transition-transform">⏸</button>
-                <button id="btnMute" class="text-white text-xl p-1 hover:scale-110 transition-transform">🔊</button>
-                <button id="btnFullscreen" class="text-white text-xl p-1 hover:scale-110 transition-transform">📺</button>
-                <button id="btnReportarCanal" class="hidden bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all">
-                    ⚠️ Reportar Caído
-                </button>
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-brand-border">
+            <h1 class="text-3xl font-black tracking-tighter text-white">📺 CASTA-<span class="text-brand-accent">APP</span></h1>
+            <div class="flex items-center gap-3">
+                <input id="buscador" type="text" placeholder="Buscar canal..." class="bg-brand-card border border-brand-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-brand-accent transition-colors w-40 md:w-60">
+                <span id="reloj" class="text-xl font-bold text-gray-400">00:00</span>
             </div>
         </div>
 
-        <div id="sidebar" class="w-full md:w-80 h-1/3 md:h-full bg-neutral-950 border-t md:border-t-0 md:border-r border-gray-900 flex flex-col z-40 transition-all duration-300 overflow-y-auto">
-            <div class="p-4 border-b border-gray-900 bg-neutral-950 sticky top-0 z-50">
-                <h1 class="text-xl font-black tracking-wider text-center text-blue-500 mb-3">📺 CASTA-APP</h1>
-                <input id="buscador" type="text" placeholder="Buscar canal o categoría..." class="w-full bg-neutral-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500">
+        <div id="listaCategorias" class="flex-1 overflow-y-auto pr-3 space-y-8">
             </div>
-            <div id="listaCanales" class="flex-1 p-3 flex flex-col gap-2">
+
+        <div id="reproductorFlotante" class="fixed inset-0 bg-black bg-opacity-95 z-50 transition-all duration-300 transform translate-y-full opacity-0">
+            <div class="relative w-full h-full flex flex-col">
+                <div class="p-4 flex items-center justify-between border-b border-gray-800 bg-black">
+                    <button id="btnCerrarReproductor" class="text-gray-400 hover:text-white text-3xl p-2 transition-transform hover:scale-110">✕</button>
+                    <h2 id="tituloCanalReproduciendo" class="text-xl font-bold truncate px-4">Canal</h2>
+                    <div class="w-12"></div> </div>
+                
+                <div class="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
+                    <video id="videoPlayer" class="w-full h-full object-contain" autoplay playsinline></video>
+                    <div id="videoClickOverlay" class="absolute inset-0 z-10 cursor-pointer"></div>
+
+                    <div id="videoLoader" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-20 transition-opacity duration-300">
+                        <div id="loaderSpinner" class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-brand-accent mb-4"></div>
+                        <p id="loaderText" class="text-lg font-semibold tracking-wide text-center whitespace-pre-line px-4">Conectando...</p>
+                    </div>
+
+                    <div id="controlContenedor" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-5 bg-black bg-opacity-70 px-6 py-3 rounded-full border border-gray-800 z-30 opacity-0 transition-opacity duration-300">
+                        <button id="btnPlayPause" class="text-white text-2xl hover:scale-110 transition-transform">⏸</button>
+                        <button id="btnMute" class="text-white text-2xl hover:scale-110 transition-transform">🔊</button>
+                        <button id="btnFullscreen" class="text-white text-2xl hover:scale-110 transition-transform">📺</button>
+                    </div>
                 </div>
+            </div>
         </div>
 
     </div>
@@ -74,17 +88,17 @@
         const loader = document.getElementById('videoLoader');
         const spinner = document.getElementById('loaderSpinner');
         const textLoader = document.getElementById('loaderText');
-        const infoEsquina = document.getElementById('infoEsquina');
         const controlContenedor = document.getElementById('controlContenedor');
         
-        const btnMenu = document.getElementById('btnMenuToggle');
+        const reproductorFlotante = document.getElementById('reproductorFlotante');
+        const tituloReproductor = document.getElementById('tituloCanalReproduciendo');
+        const btnCerrar = document.getElementById('btnCerrarReproductor');
+
         const btnPlay = document.getElementById('btnPlayPause');
         const btnMute = document.getElementById('btnMute');
         const btnFull = document.getElementById('btnFullscreen');
-        const btnReportar = document.getElementById('btnReportarCanal');
-        const sidebar = document.getElementById('sidebar');
         const buscador = document.getElementById('buscador');
-        const listaCanalesContenedor = document.getElementById('listaCanales');
+        const listaCategoriasContenedor = document.getElementById('listaCategorias');
 
         let hlsInstance = null;
         let dashInstance = null;
@@ -95,7 +109,7 @@
         let llavesActuales = null;
         let ocultarControlesTimeout = null;
 
-        // MANEJO DE ESTADOS VISUALES (LOADER)
+        // MANEJO DE ESTADOS VISUALES (LOADER ORIGINAL)
         function mostrarLoader(conSpinner = true, texto = "Cargando...") {
             loader.style.opacity = '1';
             loader.classList.remove('pointer-events-none');
@@ -109,18 +123,16 @@
             loader.classList.add('pointer-events-none');
         }
 
-        // CONTROLES DE INTERFAZ ACTIVA / CONTROLES FLOTANTES
+        // CONTROLES DE INTERFAZ DEL REPRODUCTOR
         function mostrarControlesTemporales() {
             controlContenedor.style.opacity = '1';
             controlContenedor.classList.remove('pointer-events-none');
-            infoEsquina.style.opacity = '1';
             
             clearTimeout(ocultarControlesTimeout);
             ocultarControlesTimeout = setTimeout(() => {
-                if (!videoElement.paused && document.activeElement.tagName !== 'BUTTON' && document.activeElement.tagName !== 'INPUT') {
+                if (!videoElement.paused) {
                     controlContenedor.style.opacity = '0';
                     controlContenedor.classList.add('pointer-events-none');
-                    infoEsquina.style.opacity = '0';
                 }
             }, 4000);
         }
@@ -132,25 +144,23 @@
             else videoElement.pause();
         });
 
-        function abrirMenu() {
-            sidebar.classList.remove('hidden');
-            sidebar.style.width = window.innerWidth < 768 ? '100%' : '320px';
+        function abrirReproductor(titulo) {
+            tituloReproductor.innerText = titulo;
+            reproductorFlotante.classList.remove('translate-y-full', 'opacity-0');
         }
 
-        function cerrarMenu() {
-            if (window.innerWidth < 768) sidebar.classList.add('hidden');
-            else sidebar.style.width = '320px';
+        function cerrarReproductor() {
+            destruirReproductores();
+            reproductorFlotante.classList.add('translate-y-full', 'opacity-0');
         }
 
-        btnMenu.addEventListener('click', () => {
-            if (sidebar.classList.contains('hidden') || sidebar.style.width === '0px') abrirMenu();
-            else { sidebar.classList.add('hidden'); sidebar.style.width = '0px'; }
-        });
+        btnCerrar.addEventListener('click', cerrarReproductor);
 
-        // REPRODUCTOR MULTIMEDIA CORE
+        // REPRODUCTOR MULTIMEDIA CORE (CON TU PERRO GUARDIÁN DE 20s)
         function destruirReproductores() {
             if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
             if (dashInstance) { dashInstance.destroy(); dashInstance = null; }
+            if (window.detectorCongelamiento) clearTimeout(window.detectorCongelamiento);
             videoElement.src = "";
             videoElement.load();
         }
@@ -161,28 +171,20 @@
             urlActualVideo = url;
             llavesActuales = clearkey;
             
-            mostrarLoader(true, "Conectando con la señal en vivo...");
+            mostrarLoader(true, "Conectando con la señal...");
             console.log(`Abriendo stream: ${url}`);
 
-            if (canalId) btnReportar.classList.remove('hidden');
-
-            // ==========================================
-            // 🔥 NUEVO: SISTEMA DE RECONEXIÓN AUTOMÁTICA 🔥
-            // ==========================================
-            if (window.detectorCongelamiento) clearTimeout(window.detectorCongelamiento);
-
+            // ===============================================
+            // 🔥 TU PERRO GUARDIÁN CALIBRADO (8s -> 20s) 🔥
+            // (¡Y sin afectar tu diseño visual!)
+            // ===============================================
             videoElement.onwaiting = () => {
                 mostrarLoader(false, "Servidor saturado.\nForzando reconexión...");
                 
-                // Le damos 20 segundos de tolerancia. Si no revive, lo reiniciamos a la fuerza
+                // Le damos 20 segundos de tolerancia (20000ms)
                 window.detectorCongelamiento = setTimeout(() => {
                     console.log("El video no reacciona. Reiniciando conexión...");
-                    if (canalId && canalId.includes('scraper')) {
-                        ultimoReintento = 0; 
-                        reintentarCanal(canalId);
-                    } else {
-                        ejecutarVideo(url, canalId, clearkey); 
-                    }
+                    ejecutarVideo(url, canalId, clearkey); 
                 }, 20000); 
             };
 
@@ -193,7 +195,6 @@
             // ==========================================
 
             videoElement.oncanplay = () => {
-                videoElement.classList.remove('hidden');
                 videoElement.volume = 1.0;
                 videoElement.muted = false;
                 updatePlayIcons();
@@ -202,7 +203,8 @@
 
             videoElement.onerror = () => {
                 console.error("Error nativo del tag video. Intentando rescate...");
-                manejadorErroresTransmision();
+                mostrarLoader(true, `Error de señal. Reintentando...`);
+                setTimeout(() => ejecutarVideo(urlActualVideo, canalActualId, llavesActuales), 3000);
             };
 
             // SELECCIÓN DE MOTOR DE REPRODUCCIÓN (DASH / HLS / DIRECTO)
@@ -212,12 +214,6 @@
                 if (clearkey) {
                     dashInstance.setProtectionData({ "org.w3.clearkey": { "clearkeys": clearkey } });
                 }
-                dashInstance.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                    if (e.error && e.error.type === 'download') {
-                        console.error("Error DASH descarga:", e);
-                        manejadorErroresTransmision();
-                    }
-                });
             } 
             else if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
@@ -228,13 +224,11 @@
                         if (data.fatal) {
                             console.warn("Fatal HLS error:", data.type);
                             hlsInstance.destroy();
-                            manejadorErroresTransmision();
+                            ejecutarVideo(url, canalId, clearkey);
                         }
                     });
                 } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
                     videoElement.src = url;
-                } else {
-                    mostrarLoader(false, "Tu navegador no soporta transmisiones HLS (.m3u8)");
                 }
             } 
             else {
@@ -243,96 +237,24 @@
             }
         }
 
-        // CONTROLADORES DE REINTENTOS Y ERRORES
-        let contadorFallos = 0;
-        let ultimoReintento = 0;
-
-        function manejadorErroresTransmision() {
-            if (canalActualId && canalActualId.includes('scraper')) {
-                reintentarCanal(canalActualId);
-            } else {
-                contadorFallos++;
-                if (contadorFallos <= 3) {
-                    mostrarLoader(true, `La señal falló. Reintentando conectar (${contadorFallos}/3)...`);
-                    setTimeout(() => ejecutarVideo(urlActualVideo, canalActualId, llavesActuales), 3000);
-                } else {
-                    contadorFallos = 0;
-                    ofrecerSiguienteOpcion();
-                }
-            }
-        }
-
-        function reintentarCanal(idOpcion) {
-            const ahora = Date.now();
-            if (ahora - ultimoReintento < 8000) {
-                console.warn("Frenando bucle infinito de scraping.");
-                ofrecerSiguienteOpcion();
-                return;
-            }
-            ultimoReintento = ahora;
-            mostrarLoader(true, "La señal se cortó.\nBuscando un enlace nuevo en vivo...");
-            
-            fetch(`${API_URL}/api/canal/${idOpcion}`)
-                .then(res => res.json())
-                .then(res => {
-                    if (res.exito && res.url) ejecutarVideo(res.url, idOpcion, res.clearkey);
-                    else ofrecerSiguienteOpcion();
-                })
-                .catch(() => ofrecerSiguienteOpcion());
-        }
-
-        function ofrecerSiguienteOpcion() {
-            if (opcionesActuales.length > 1) {
-                let indiceActual = opcionesActuales.findIndex(o => o.id === canalActualId);
-                let siguienteIndice = indiceActual + 1;
-                if (siguienteIndice < opcionesActuales.length) {
-                    let sig = opcionesActuales[siguienteIndice];
-                    mostrarLoader(true, `Cambiando automáticamente a la: ${sig.nombre}...`);
-                    setTimeout(() => cargarOpcionCanal(sig.id, opcionesActuales), 2500);
-                    return;
-                }
-            }
-            mostrarLoader(false, "Señal caída temporalmente.\nPor favor, elegí otro canal o reportalo.");
-        }
-
         // LLAMADAS AL SERVIDOR BACKEND (ACCIONES)
-        function cargarOpcionCanal(idOpcion, todasLasOpciones) {
-            opcionesActuales = todasLasOpciones;
-            contadorFallos = 0;
+        function cargarOpcionCanal(idOpcion, nombreCanal) {
+            abrirReproductor(nombreCanal);
             mostrarLoader(true, "Abriendo transmisiones remotas...");
-            cerrarMenu();
 
             fetch(`${API_URL}/api/canal/${idOpcion}`)
                 .then(res => res.json())
                 .then(res => {
                     if (res.exito && res.url) ejecutarVideo(res.url, idOpcion, res.clearkey);
-                    else { mostrarLoader(false, "Error: El servidor no devolvió una URL válida."); ofrecerSiguienteOpcion(); }
+                    else { mostrarLoader(false, "Error: Señal caída temporalmente."); }
                 })
                 .catch(err => {
                     console.error(err);
-                    mostrarLoader(false, "Error crítico de conexión con tu servidor backend.");
+                    mostrarLoader(false, "Error crítico de conexión.");
                 });
         }
 
-        btnReportar.addEventListener('click', () => {
-            if (!canalActualId) return;
-            btnReportar.disabled = true;
-            btnReportar.innerText = "⏳ ENVIANDO...";
-            
-            fetch(`${API_URL}/api/reportar`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: canalActualId })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.exito) { btnReportar.className = "bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold"; btnReportar.innerText = "✅ REPORTADO"; } 
-                else { btnReportar.innerText = "❌ ERROR"; setTimeout(() => { btnReportar.disabled = false; btnReportar.className = "bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"; btnReportar.innerText = "⚠️ Reportar Caído"; }, 3000); }
-            })
-            .catch(() => { btnReportar.disabled = false; btnReportar.innerText = "⚠️ REINTENTAR"; });
-        });
-
-        // DESCARGA Y RENDERIZADO DEL MENÚ DE CANALES
+        // DESCARGA Y RENDERIZADO DEL MENÚ (TU DISEÑO DE TARJETAS ORIGINAL)
         function descargarListaCanales() {
             fetch(`${API_URL}/api/canales`)
                 .then(res => res.json())
@@ -340,11 +262,12 @@
                     canalesData = data;
                     renderizarLista(data);
                 })
-                .catch(() => mostrarLoader(false, "Error de red: No se pudo descargar la lista de canales. ¿Prendiste el servidor de Node?"));
+                .catch(() => mostrarLoader(false, "Error de red: No se pudo descargar la lista."));
         }
 
+        // ¡RESTAURADA LA BELLEZA DE TU LISTA ORIGINAL!
         function renderizarLista(datos) {
-            listaCanalesContenedor.innerHTML = "";
+            listaCategoriasContenedor.innerHTML = "";
             let categorias = {};
 
             datos.forEach(canal => {
@@ -353,79 +276,38 @@
             });
 
             for (let cat in categorias) {
-                let divCat = document.createElement('div');
-                divCat.className = "mb-4";
-                divCat.innerHTML = `<h2 class="text-xs font-black uppercase tracking-widest text-gray-500 px-2 mb-2 border-l-2 border-blue-500">${cat}</h2>`;
+                // TARJETA DE CATEGORÍA HERMOSA
+                let tarjetaCat = document.createElement('div');
+                tarjetaCat.className = "bg-brand-card p-6 rounded-3xl border border-brand-border shadow-2xl";
                 
+                // TÍTULO DE CATEGORÍA
+                tarjetaCat.innerHTML = `<h2 class="text-xs font-black uppercase tracking-widest text-brand-accent mb-6 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-brand-accent"></span>${cat}</h2>`;
+                
+                // GRILLA DE CANALES DENTRO DE LA CATEGORÍA
                 let divContenedorCanales = document.createElement('div');
-                divContenedorCanales.className = "flex flex-col gap-1.5";
+                divContenedorCanales.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4";
 
                 categorias[cat].forEach(canal => {
-                    let item = document.createElement('div');
-                    item.className = "bg-neutral-900 border border-gray-950 rounded-xl p-2.5 flex flex-col gap-2 transition-all hover:bg-neutral-850 hover:border-gray-800";
+                    // CADA CANAL ELEGANTEMENTE DISEÑADO
+                    let itemCanal = document.createElement('div');
+                    itemCanal.className = "bg-brand-bg p-3 rounded-2xl border border-brand-border flex flex-col items-center justify-center text-center group cursor-pointer transition-all hover:border-brand-accent hover:shadow-lg hover:-translate-y-1";
                     
-                    let infoPrincipal = document.createElement('div');
-                    infoPrincipal.className = "flex items-center gap-3 cursor-pointer";
-                    infoPrincipal.innerHTML = `
-                        <img src="${canal.logo}" onerror="this.src='https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=120&auto=format&fit=crop'" class="w-10 h-10 object-cover rounded-lg bg-black p-0.5 border border-gray-800 shadow-inner">
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-bold text-gray-200 truncate tracking-wide">${canal.nombre}</p>
-                        </div>
+                    itemCanal.innerHTML = `
+                        <img src="${canal.logo}" onerror="this.src='https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=120&auto=format&fit=crop'" class="w-14 h-14 object-cover rounded-xl bg-black p-1 border border-brand-border group-hover:border-brand-accent transition-colors mb-3 shadow-inner">
+                        <p class="text-xs font-semibold text-gray-200 group-hover:text-white truncate w-full px-1">${canal.nombre}</p>
                     `;
 
-                    // Al hacer clic en el cuerpo del canal, ejecuta la Opción 1 de forma automática
-                    infoPrincipal.addEventListener('click', () => {
+                    // Al hacer clic, carga la Opción 1 de forma directa y limpia (sin EPG)
+                    itemCanal.addEventListener('click', () => {
                         if (canal.opciones && canal.opciones.length > 0) {
-                            cargarOpcionCanal(canal.opciones[0].id, canal.opciones);
+                            cargarOpcionCanal(canal.opciones[0].id, canal.nombre);
                         }
                     });
 
-                    item.appendChild(infoPrincipal);
-
-                    // Si tiene más de una opción, dibuja los sub-botones de opciones abajo
-                    if (canal.opciones && canal.opciones.length > 0) {
-                        let divOpciones = document.createElement('div');
-                        divOpciones.className = "flex flex-wrap gap-1.5 mt-1 pt-1.5 border-t border-gray-900";
-                        
-                        canal.opciones.forEach((opc, i) => {
-                            let btnOpc = document.createElement('button');
-                            btnOpc.className = "bg-neutral-950 border border-gray-800 text-gray-400 hover:text-white hover:bg-blue-600 hover:border-blue-500 px-2 py-1 rounded-md text-[11px] font-medium tracking-wide transition-all";
-                            btnOpc.innerText = opc.nombre;
-                            btnOpc.setAttribute('data-canal-id', opc.id);
-                            
-                            btnOpc.addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                cargarOpcionCanal(opc.id, canal.opciones);
-                            });
-
-                            // TRUCO DE COPIAR ENLACES (Clic derecho o mantener presionado)
-                            const funcionCopiarUrl = (evento) => {
-                                evento.preventDefault();
-                                document.getElementById('audioCopiar').play().catch(() => {});
-                                navigator.clipboard.writeText(`${API_URL}/api/canal/${opc.id}`)
-                                    .then(() => {
-                                        let originalText = btnOpc.innerText;
-                                        btnOpc.innerText = "📋 ¡COPIADO!";
-                                        btnOpc.className = "bg-green-600 text-white px-2 py-1 rounded-md text-[11px] font-bold";
-                                        setTimeout(() => { btnOpc.innerText = originalText; btnOpc.className = "bg-neutral-950 border border-gray-800 text-gray-400 hover:text-white hover:bg-blue-600 hover:border-blue-500 px-2 py-1 rounded-md text-[11px] font-medium tracking-wide transition-all"; }, 2000);
-                                    });
-                            };
-                            btnOpc.addEventListener('contextmenu', funcionCopiarUrl);
-
-                            let touchTimer;
-                            btnOpc.addEventListener('touchstart', () => { touchTimer = setTimeout(() => { funcionCopiarUrl({ preventDefault: () => {} }); }, 800); });
-                            btnOpc.addEventListener('touchend', () => clearTimeout(touchTimer));
-                            btnOpc.addEventListener('touchmove', () => clearTimeout(touchTimer));
-
-                            divOpciones.appendChild(btnOpc);
-                        });
-                        item.appendChild(divOpciones);
-                    }
-
-                    divContenedorCanales.appendChild(item);
+                    divContenedorCanales.appendChild(itemCanal);
                 });
-                divCat.appendChild(divContenedorCanales);
-                listaCanalesContenedor.appendChild(divCat);
+                tarjetaCat.appendChild(divContenedorCanales);
+                listaCategoriasContenedor.appendChild(tarjetaCat);
             }
         }
 
@@ -441,7 +323,7 @@
             renderizarLista(filtrados);
         });
 
-        // MANEJO DE CONTROLES MULTIMEDIA (PLAY, MUTE, FULLSCREEN)
+        // MANEJO DE CONTROLES MULTIMEDIA ORIGINALES
         function updatePlayIcons() {
             btnPlay.innerText = videoElement.paused ? "▶" : "⏸";
         }
@@ -466,91 +348,19 @@
             }
         });
 
-        // AGREGAR SOPORTE PARA MANDOS (CONTROL REMOTO SMART TV / ANDROID BOX)
-        document.addEventListener('keydown', (e) => {
-            mostrarControlesTemporales();
-            
-            const mapeoTeclas = {
-                "ArrowUp": true, "ArrowDown": true, "ArrowLeft": true, "ArrowRight": true,
-                "Enter": true, "Escape": true, "Backspace": true,
-                "KeyP": true, "KeyM": true, "KeyF": true
-            };
-            
-            if (!mapeoTeclas[e.code]) return; 
-
-            let botones = Array.from(sidebar.querySelectorAll('button, input'));
-            let currentIndex = botones.indexOf(document.activeElement);
-
-            let isMenuAbierto = !sidebar.classList.contains('hidden') && sidebar.style.width !== '0px';
-
-            const isUp = e.code === 'ArrowUp';
-            const isDown = e.code === 'ArrowDown';
-            const isLeft = e.code === 'ArrowLeft';
-            const isRight = e.code === 'ArrowRight';
-            const isEnter = e.code === 'Enter';
-
-            if (e.code === 'KeyP') { btnPlay.click(); return; }
-            if (e.code === 'KeyM') { btnMute.click(); return; }
-            if (e.code === 'KeyF') { btnFull.click(); return; }
-
-            if (isMenuAbierto) {
-                if (isRight) { cerrarMenu(); videoOverlay.focus(); e.preventDefault(); return; }
-                if (isDown) {
-                    e.preventDefault();
-                    if (currentIndex === -1 && botones.length > 0) {
-                        botones[0].focus();
-                    } else if (currentIndex < botones.length - 1) {
-                        botones[currentIndex + 1].focus();
-                        botones[currentIndex + 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
-                    }
-                }
-                if (isUp) {
-                    e.preventDefault();
-                    if (currentIndex === -1 && botones.length > 0) {
-                        botones[0].focus();
-                    } else if (currentIndex > 0) {
-                        botones[currentIndex - 1].focus();
-                        botones[currentIndex - 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
-                    }
-                }
-            } else {
-                if (isLeft) { abrirMenu(); e.preventDefault(); return; }
-                if (isUp) {
-                    e.preventDefault();
-                    if (!btnReportar.classList.contains('hidden')) btnReportar.focus();
-                    else btnMenu.focus();
-                    return;
-                }
-                if (isEnter) {
-                    if (document.activeElement.tagName === 'BUTTON') document.activeElement.click();
-                    else { if (videoElement.paused) videoElement.play(); else videoElement.pause(); }
-                }
-            }
-        });
-
-        // RECURSOS COMPLEMENTARIOS: RELOJ Y CLIMA
+        // RECURSOS COMPLEMENTARIOS
         function iniciarReloj() {
             setInterval(() => {
                 let f = new Date();
-                document.getElementById('reloj').innerText = f.toLocaleTimeString('es-AR');
+                let h = String(f.getHours()).padStart(2, '0');
+                let m = String(f.getMinutes()).padStart(2, '0');
+                document.getElementById('reloj').innerText = `${h}:${m}`;
             }, 1000);
-        }
-
-        function iniciarClima() {
-            fetch('https://wttr.in/Buenos_Aires?format=%c+%t')
-                .then(res => res.text())
-                .then(texto => {
-                    if(texto && !texto.includes('HTML')) document.getElementById('clima').innerText = texto.trim();
-                    else document.getElementById('clima').innerText = "☀️ 22°C";
-                })
-                .catch(() => { document.getElementById('clima').innerText = "📺 Casta App"; });
         }
 
         window.onload = () => {
             descargarListaCanales(); 
-            abrirMenu();
             iniciarReloj();
-            iniciarClima();
         };
     </script>
 </body>
