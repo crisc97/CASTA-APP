@@ -44,7 +44,7 @@
     "tyc_scraper1": { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/", "opcionesBotones": [["Opción PC (Extensión)", "Opcion PC (Extension)"], ["Opción 3", "Opción3"]] },
     
     "america_nebu": { "urlScraping": "https://nebunexa.life/tok.html?get=QW1lcmljYVRW", "opcionesBotones": [] },
-    "america_new": {"base": "https://bestleague.top//tok.html?get=QW1lcmljYVRW","parametros": "","usarProxy": false},
+    "america_new": {"base": "https://bestleague.top//tok.html?get=QW1lcmljYVRW","parametros": "","usarProxy": true},
     "eltrece_nebu": { "urlScraping": "https://nebunexa.life/tok.html?get=QXJ0ZWFySEQ", "opcionesBotones": [] }
   }
 }
