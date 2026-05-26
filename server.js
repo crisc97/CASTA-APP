@@ -30,6 +30,7 @@ function cargarConfiguracion() {
     }
 }
 cargarConfiguracion(); 
+
 // ============================================================
 // CONVERTIDOR M3U A JSON (PARSER)
 // ============================================================
@@ -43,20 +44,16 @@ function parsearM3U(contenidoM3U) {
         
         if (linea.startsWith('#EXTINF:')) {
             canalActual = {};
-            // Extraer nombre del canal (lo que está después de la última coma)
             const partes = linea.split(',');
             canalActual.nombre = partes.length > 1 ? partes.pop().trim() : "Canal Desconocido";
             
-            // Extraer logo si existe (tvg-logo="url")
             const logoMatch = linea.match(/tvg-logo="([^"]+)"/);
             canalActual.logo = logoMatch ? logoMatch[1] : "logos_canales/default.png";
             
-            // Extraer categoría si existe (group-title="categoria")
             const grupoMatch = linea.match(/group-title="([^"]+)"/);
             canalActual.categoria = grupoMatch ? grupoMatch[1] : "General";
             
         } else if (linea && !linea.startsWith('#')) {
-            // Si no empieza con # y no está vacía, es la URL del stream
             canalActual.url = linea;
             if (canalActual.nombre && canalActual.url) {
                 canales.push({ ...canalActual });
@@ -65,7 +62,6 @@ function parsearM3U(contenidoM3U) {
     }
     return canales;
 }
-
 
 // ============================================================
 // RUTAS 
@@ -131,34 +127,42 @@ function esStream(url) {
 }
 
 async function correrBot(datosCanal, canalId) {
-    // Inteligencia del bot: Determina si debe buscar botones o es directo
     const tieneBotones = datosCanal.opcionesBotones && datosCanal.opcionesBotones.length > 0;
-    console.log(`🕵️ BOT: Scrapeando [${canalId}] | Modo: ${tieneBotones ? '🤖 Complejo (Con Clics)' : '⚡ Rápido (Sin clics)'}`);
     
+    // 🛑 MAGIA ANTI-RAM: single-process y gpu desactivada
     const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox', 
+            '--disable-dev-shm-usage', 
+            '--disable-gpu',
+            '--single-process' 
+        ]
     });
+    
     let linkVideoPuro = null;
 
     try {
         const page = await browser.newPage();
         await page.setViewport({ width: 800, height: 600 });
-        await page.setRequestInterception(true);
         
+        // 🛑 MAGIA ANTI-RAM: Bloqueamos imágenes, CSS, fuentes y basura publicitaria
+        await page.setRequestInterception(true);
         page.on('request', req => {
-            if (['image', 'stylesheet', 'font'].includes(req.resourceType())) { req.abort(); return; }
+            const tipo = req.resourceType();
+            if (['image', 'stylesheet', 'font', 'media'].includes(tipo)) { 
+                req.abort(); 
+                return; 
+            }
             if (esStream(req.url()) && !linkVideoPuro) {
                 linkVideoPuro = req.url();
-                console.log(`✅ [${canalId}] Enlace capturado exitosamente.`);
             }
             req.continue();
         });
 
-        // Cargamos la página
         await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
         
-        // Si el canal exige hacer clics (TV Libre), ejecutamos el bucle
         if (tieneBotones) {
             await new Promise(r => setTimeout(r, 1000));
             for (const variantes of datosCanal.opcionesBotones) {
@@ -171,7 +175,6 @@ async function correrBot(datosCanal, canalId) {
             }
         } 
         
-        // Si el video no arrancó solo (suele pasar en las listas nuevas), simulamos un clic en el centro de la pantalla
         if (!linkVideoPuro) {
             const viewport = page.viewport();
             await page.mouse.click(viewport.width / 2, viewport.height / 2);
@@ -188,6 +191,33 @@ async function correrBot(datosCanal, canalId) {
 }
 
 // ============================================================
+// 🧠 CACHÉ EN SEGUNDO PLANO (EL CEREBRO NINJA)
+// ============================================================
+async function actualizarCacheEnBackground() {
+    console.log("🤖 Iniciando patrullaje en segundo plano...");
+    for (const [idCanal, datosCanal] of Object.entries(dbCanales)) {
+        if (datosCanal.urlScraping) {
+            try {
+                const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, idCanal));
+                if (linkVideoPuro) {
+                    const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                    memoriaCache[idCanal] = { url: urlFinal, tiempo: Date.now() };
+                    console.log(`✅ [${idCanal}] Guardado en caché (Background)`);
+                }
+            } catch (e) {
+                console.log(`❌ Error en background para ${idCanal}`);
+            }
+        }
+    }
+    console.log("💤 Patrullaje terminado. Durmiendo 15 minutos.");
+}
+
+// Inicia el patrullaje 5 segundos después de que arranque el servidor
+setTimeout(actualizarCacheEnBackground, 5000);
+// Repite el patrullaje CADA 15 MINUTOS exactos
+setInterval(actualizarCacheEnBackground, 15 * 60 * 1000);
+
+// ============================================================
 // API STREAM: REPRODUCTOR MAESTRO UNIVERSAL
 // ============================================================
 app.get('/api/get-stream/:canal', async (req, res) => {
@@ -195,20 +225,20 @@ app.get('/api/get-stream/:canal', async (req, res) => {
     const datosCanal = dbCanales[canalId];
     if (!datosCanal) return res.status(404).json({ exito: false, error: "Canal no encontrado en JSON" });
 
-    // REEMPLAZÁS TODO TU BLOQUE TRY/CATCH DESDE ACÁ:
     try {
         if (datosCanal.urlScraping) {
             const ahora = Date.now();
-            // 1. Revisar Caché para no abrir navegadores de más
-            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 600000)) { // 2 horas de caché
+            
+            // 1. REVISAR LA MEMORIA CACHÉ (Responde en 1 milisegundo)
+            // Solo renovamos si pasaron más de 20 minutos (1200000 ms) para estar seguros
+            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 1200000)) { 
                 return res.json({ exito: true, url: memoriaCache[canalId].url, clearkey: datosCanal.clearkey });
             }
             
-            // 2. Mandar el Bot a trabajar
+            // 2. Si por algún motivo la caché está vacía, buscamos de emergencia
             const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
             
             if (linkVideoPuro) {
-                // Siempre usamos proxy para los enlaces raspados para evitar bloqueos
                 const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
                 memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
                 return res.json({ exito: true, url: urlFinal, clearkey: datosCanal.clearkey });
@@ -216,13 +246,14 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 return res.status(500).json({ exito: false, error: "No se pudo extraer el video de la página" });
             }
         } 
-        
-        // CASO B: Es un link de video puro DIRECTO (M3U8 o .ts)
         else if (datosCanal.base) {
-            const separador = datosCanal.parametros ? '?' : '';
-            const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
+            // Canales directos (Sin bot): Agregamos rompe-cachés ?v=fecha
+            const separador = datosCanal.base.includes('?') ? '&' : '?';
+            const urlConAntiCache = `${datosCanal.base}${separador}v=${Date.now()}`;
             
-            // Si le pusiste false, va directo al cliente. Si es true, pasa por el servidor.
+            const paramsFinales = datosCanal.parametros ? `&${datosCanal.parametros}` : '';
+            const urlCompleta = `${urlConAntiCache}${paramsFinales}`;
+            
             if (datosCanal.usarProxy === false) {
                 return res.json({ exito: true, url: urlCompleta, clearkey: datosCanal.clearkey });
             } else {
@@ -230,21 +261,19 @@ app.get('/api/get-stream/:canal', async (req, res) => {
                 return res.json({ exito: true, url: urlFinal, clearkey: datosCanal.clearkey });
             }
         } 
-        
         else {
-            return res.status(400).json({ exito: false, error: "El canal no tiene 'base' ni 'urlScraping' configurado" });
+            return res.status(400).json({ exito: false, error: "Configuración inválida en canal" });
         }
-
     } catch (error) {
         return res.status(500).json({ exito: false, error: error.message });
     }
-    // HASTA ACÁ. ABAJO YA SIGUE LA RUTA DEL PROXY (app.get('/proxy/stream'...)
 });
 
 // ============================================================
-// RUTA: CONVERTIR M3U (Sube una lista y te devuelve el JSON)
+// (SIGUEN TUS RUTAS DE CONVERSIÓN M3U, PROXY Y EPG INTACTAS...)
 // ============================================================
 app.post('/api/convertir-m3u', express.text({ type: '*/*', limit: '50mb' }), (req, res) => {
+    // ... [Mismo código original] ...
     try {
         const contenidoM3U = req.body;
         if (!contenidoM3U || !contenidoM3U.includes('#EXTM3U')) {
@@ -252,13 +281,11 @@ app.post('/api/convertir-m3u', express.text({ type: '*/*', limit: '50mb' }), (re
         }
 
         const canalesExtraidos = parsearM3U(contenidoM3U);
-        
-        // Formatear para tu estructura actual (frontend y backend)
         const nuevoFrontend = [];
         const nuevoBackend = {};
 
         canalesExtraidos.forEach((canal, index) => {
-            const idGenerado = `m3u_canal_${index}`; // Ej: m3u_canal_0
+            const idGenerado = `m3u_canal_${index}`; 
             
             nuevoFrontend.push({
                 nombre: canal.nombre,
@@ -270,7 +297,7 @@ app.post('/api/convertir-m3u', express.text({ type: '*/*', limit: '50mb' }), (re
             nuevoBackend[idGenerado] = {
                 base: canal.url,
                 parametros: "",
-                usarProxy: false // Por defecto, intentamos reproducir directo
+                usarProxy: false 
             };
         });
 
@@ -287,15 +314,13 @@ app.post('/api/convertir-m3u', express.text({ type: '*/*', limit: '50mb' }), (re
         res.status(500).json({ exito: false, error: error.message });
     }
 });
-// ============================================================
-// RUTA: CONVERTIR M3U DESDE UN LINK (URL)
-// ============================================================
+
 app.post('/api/convertir-m3u-url', async (req, res) => {
+    // ... [Mismo código original] ...
     try {
         const urlM3U = req.body.url;
         if (!urlM3U) return res.status(400).json({ exito: false, error: "Falta enviar la URL." });
 
-        // 1. El servidor va a buscar la lista a internet
         const respuesta = await axios.get(urlM3U);
         const contenidoM3U = respuesta.data;
 
@@ -303,14 +328,11 @@ app.post('/api/convertir-m3u-url', async (req, res) => {
             return res.status(400).json({ exito: false, error: "El enlace no devuelve un formato M3U válido." });
         }
 
-        // 2. Lo convierte usando la función que ya armamos
         const canalesExtraidos = parsearM3U(contenidoM3U);
-        
         const nuevoFrontend = [];
         const nuevoBackend = {};
 
         canalesExtraidos.forEach((canal, index) => {
-            // Le ponemos un número aleatorio al ID para que no se repitan si subís varias listas
             const idGenerado = `link_${Date.now()}_${index}`; 
             
             nuevoFrontend.push({
@@ -340,41 +362,34 @@ app.post('/api/convertir-m3u-url', async (req, res) => {
         res.status(500).json({ exito: false, error: error.message });
     }
 });
-// ============================================================
-// RUTA: CONVERTIR LISTAS JSON EXTERNAS A TU FORMATO
-// ============================================================
+
 app.post('/api/convertir-json-url', async (req, res) => {
+    // ... [Mismo código original] ...
     try {
         const urlJson = req.body.url;
         if (!urlJson) return res.status(400).json({ exito: false, error: "Falta enviar la URL." });
 
-        // 1. Descargamos el JSON de internet
         const respuesta = await axios.get(urlJson);
         let datos = respuesta.data;
 
-        // Intentamos detectar dónde están los canales (a veces es un Array directo, a veces está dentro de "channels" o "canales")
         let canalesExtraidos = [];
         if (Array.isArray(datos)) canalesExtraidos = datos;
         else if (datos.channels) canalesExtraidos = datos.channels;
         else if (datos.canales) canalesExtraidos = datos.canales;
-        else {
-            return res.status(400).json({ exito: false, error: "No se encontró una lista de canales reconocible en este JSON." });
-        }
+        else return res.status(400).json({ exito: false, error: "No se encontró una lista de canales reconocible." });
 
         const nuevoFrontend = [];
         const nuevoBackend = {};
 
-        // 2. Traducimos canal por canal a TU formato
         canalesExtraidos.forEach((canal, index) => {
             const idGenerado = `json_${Date.now()}_${index}`; 
             
-            // Buscamos cómo se llama la propiedad (cubrimos las palabras más comunes en inglés y español)
             const nombreCanal = canal.name || canal.nombre || canal.title || "Canal Desconocido";
             const categoriaCanal = canal.group || canal.categoria || canal.category || "General";
             const logoCanal = canal.logo || canal.icon || canal.imagen || "";
             const urlCanal = canal.url || canal.link || canal.stream || "";
 
-            if (urlCanal) { // Solo lo agregamos si tiene un enlace válido
+            if (urlCanal) {
                 nuevoFrontend.push({
                     nombre: nombreCanal,
                     categoria: categoriaCanal,
@@ -483,26 +498,22 @@ app.get('/proxy/stream', async (req, res) => {
 // ============================================================
 // GUÍA DE PROGRAMACIÓN (EPG - XMLTV)
 // ============================================================
-let guiaTV = {}; // Acá guardamos los horarios en la memoria
+let guiaTV = {}; 
 
-// Función para descargar y entender el XML
 async function actualizarEPG() {
     console.log("⏳ Descargando Guía EPG gratuita...");
     try {
-        // Enlace público y gratuito de EPG (podés cambiarlo a futuro)
         const epgUrl = 'https://raw.githubusercontent.com/globetvapp/epg/main/Argentina/argentina1.xml';
         const { data } = await axios.get(epgUrl);
         
-        // Un conversor casero y rápido de XML a JSON para no instalar librerías pesadas
         const programas = data.split('<programme');
-        guiaTV = {}; // Vaciamos la guía vieja
+        guiaTV = {}; 
 
         for (let i = 1; i < programas.length; i++) {
             const bloque = programas[i];
             
-            // Extraer el ID del canal, inicio, fin y título
             const canalMatch = bloque.match(/channel="([^"]+)"/);
-            const startMatch = bloque.match(/start="([^\\s]+) /); // Ej: 20240523130000
+            const startMatch = bloque.match(/start="([^\\s]+) /); 
             const stopMatch = bloque.match(/stop="([^\\s]+) /);
             const titleMatch = bloque.match(/<title[^>]*>([^<]+)<\/title>/);
 
@@ -510,13 +521,12 @@ async function actualizarEPG() {
                 const idCanal = canalMatch[1];
                 const titulo = titleMatch[1];
                 
-                // Formatear hora (de "20240523130000" a "13:00")
                 const formatearHora = (fechaSTR) => `${fechaSTR.substring(8, 10)}:${fechaSTR.substring(10, 12)}`;
                 
                 if (!guiaTV[idCanal]) guiaTV[idCanal] = [];
                 
                 guiaTV[idCanal].push({
-                    inicio: startMatch[1], // Guardamos el número crudo para calcular si está en vivo
+                    inicio: startMatch[1], 
                     horario: `${formatearHora(startMatch[1])} - ${formatearHora(stopMatch[1])}`,
                     titulo: titulo
                 });
@@ -528,18 +538,13 @@ async function actualizarEPG() {
     }
 }
 
-// Descargar EPG al iniciar el servidor y luego cada 12 horas
 actualizarEPG();
 setInterval(actualizarEPG, 12 * 60 * 60 * 1000);
 
-// ============================================================
-// RUTA PARA QUE EL FRONTEND PREGUNTE QUÉ HAY EN LA TELE (REAL)
-// ============================================================
 app.get('/api/epg/:canalId', (req, res) => {
     try {
         const idApp = req.params.canalId.toLowerCase(); 
 
-        // 1. Diccionario inteligente basado en tus IDs del config_canales.json
         const diccionario = {
             "telefe": ["telefe"],
             "eltrece": ["eltrece", "trece", "canal13"],
@@ -556,7 +561,6 @@ app.get('/api/epg/:canalId', (req, res) => {
             "discovery": ["discovery"]
         };
 
-        // Determinamos las palabras a buscar en el XML
         let palabrasClave = [idApp.split('_')[0]]; 
         for (const key in diccionario) {
             if (idApp.includes(key)) {
@@ -565,17 +569,14 @@ app.get('/api/epg/:canalId', (req, res) => {
             }
         }
 
-        // 2. Buscar si el canal existe en el XML descargado
         const idCanalXML = Object.keys(guiaTV).find(clave => {
             const claveLimpia = clave.toLowerCase();
             return palabrasClave.some(palabra => claveLimpia.includes(palabra));
         });
 
-        // 3. Si lo encuentra, calculamos el horario actual
         if (idCanalXML && guiaTV[idCanalXML]) {
             const programas = guiaTV[idCanalXML];
             
-            // Forzamos el reloj a la zona horaria de Argentina (UTC-3)
             const fechaAr = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Argentina/Buenos_Aires"}));
             const año = fechaAr.getFullYear();
             const mes = String(fechaAr.getMonth() + 1).padStart(2, '0');
@@ -583,13 +584,11 @@ app.get('/api/epg/:canalId', (req, res) => {
             const hora = String(fechaAr.getHours()).padStart(2, '0');
             const min = String(fechaAr.getMinutes()).padStart(2, '0');
             
-            // Creamos el número de hora actual para comparar (Ej: 20240523130000)
             const ahoraNum = parseInt(`${año}${mes}${dia}${hora}${min}00`); 
 
             let ahora = null;
             let siguiente = null;
 
-            // Recorremos los horarios para ver cuál coincide con este instante
             for (let i = 0; i < programas.length; i++) {
                 const progInicio = parseInt(programas[i].inicio);
                 const progFin = programas[i+1] ? parseInt(programas[i+1].inicio) : progInicio + 20000; 
@@ -606,7 +605,6 @@ app.get('/api/epg/:canalId', (req, res) => {
             }
         }
 
-        // Si el canal no está en la guía o no hay horarios, manda error para que el Frontend muestre el texto por defecto
         res.json({ exito: false });
 
     } catch (error) {

@@ -1,5 +1,0 @@
-#EXTM3U
-#EXTINF:-1 tvg-logo="https://mislogos.com/canal1.png" group-title="Deportes", Mi Canal Deportivo 1
-http://servidor-falso.com/deportes/index.m3u8
-#EXTINF:-1 tvg-logo="https://mislogos.com/cine.png" group-title="Cine", Canal de Peliculas
-http://servidor-falso.com/cine/pelis.ts

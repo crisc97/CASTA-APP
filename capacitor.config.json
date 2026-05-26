@@ -3,11 +3,13 @@
   "appName": "CASTA-APP",
   "webDir": "www",
   "server": {
-    "url": "https://crisc97.github.io/CASTA-APP/",
     "cleartext": true,
     "allowNavigation": [
-      "crisc97.github.io",
-      "*.onrender.com"
+      "casta-app.onrender.com",
+      "*.onrender.com",
+      "45.5.151.147:8000",
+      "*.bestleague.top",
+      "*.nebunexa.life"
     ]
   }
 }
