@@ -411,7 +411,7 @@
             }
         }
 
-        async function obtenerEnlaceServidor(canalId) {
+       async function obtenerEnlaceServidor(canalId) {
             mensajeError.classList.add('hidden');
             const esBot = canalesBot.includes(canalId);
             mostrarLoader(esBot);
@@ -422,7 +422,31 @@
                 const res = await fetch(`${API_URL}/api/get-stream/${canalId}`, { signal: controller.signal });
                 clearTimeout(timeoutId);
                 const data = await res.json();
-function ejecutarVideo(url, canalId, clearkeyUrl) {
+
+                // ACÁ ESTABA EL ERROR: Faltaba cerrar esta función
+                if (data.exito && data.url) {
+                    ejecutarVideo(data.url, canalId, data.clearkey);
+                } else {
+                    throw new Error("No enlace");
+                }
+            } catch (err) {
+                ocultarLoader();
+                mensajeError.classList.remove('hidden');
+                mensajeError.innerText = "Error: El servidor no responde o el canal no está disponible.";
+                abrirMenu();
+            }
+        }
+
+        async function reintentarCanal(canalId) {
+            const ahora = Date.now();
+            if (ahora - ultimoReintento < 30000) return ocultarLoader();
+            ultimoReintento = ahora;
+            mostrarLoader(canalesBot.includes(canalId), "🔄 Enlace caído, buscando nuevo...");
+            try { await fetch(`${API_URL}/api/clear-cache/${canalId}`).catch(() => {}); } catch (e) {}
+            setTimeout(() => { obtenerEnlaceServidor(canalId); }, 1000);
+        }
+
+        function ejecutarVideo(url, canalId, clearkeyUrl) {
             videoElement.setAttribute('poster', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
             if (hls) { hls.destroy(); hls = null; }
             if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
@@ -436,28 +460,28 @@ function ejecutarVideo(url, canalId, clearkeyUrl) {
                 dashPlayer = dashjs.MediaPlayer().create();
                 dashPlayer.initialize(videoElement, url, true);
                 
-             // 🔐 MAGIA DRM: Soporta tanto llaves en Dropbox (URL) como llaves crudas (KeyID:Key)
-        if (clearkeyUrl) {
-            if (clearkeyUrl.includes('http')) {
-                // Es un archivo de Dropbox o web (Ej: Tigo)
-                dashPlayer.setProtectionData({
-                    "org.w3.clearkey": { "serverURL": clearkeyUrl }
-                });
-            } else if (clearkeyUrl.includes(':')) {
-                // Son llaves crudas KeyID:Key (Ej: ESPN2HD de CVATTV)
-                const [keyIdHex, keyHex] = clearkeyUrl.split(':');
-                
-                // Función para convertir de Hexadecimal a Base64 (requerido por Dash.js)
-                const hexToBase64 = (hex) => btoa(String.fromCharCode.apply(null, hex.match(/\w{2}/g).map(a => parseInt(a, 16)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=*$/, '');
-                
-                const clearKeyData = {};
-                clearKeyData[hexToBase64(keyIdHex)] = hexToBase64(keyHex);
+                // 🔐 MAGIA DRM: Soporta tanto llaves en Dropbox (URL) como llaves crudas (KeyID:Key)
+                if (clearkeyUrl) {
+                    if (clearkeyUrl.includes('http')) {
+                        // Es un archivo de Dropbox o web (Ej: Tigo)
+                        dashPlayer.setProtectionData({
+                            "org.w3.clearkey": { "serverURL": clearkeyUrl }
+                        });
+                    } else if (clearkeyUrl.includes(':')) {
+                        // Son llaves crudas KeyID:Key (Ej: ESPN2HD de CVATTV)
+                        const [keyIdHex, keyHex] = clearkeyUrl.split(':');
+                        
+                        // Función para convertir de Hexadecimal a Base64 (requerido por Dash.js)
+                        const hexToBase64 = (hex) => btoa(String.fromCharCode.apply(null, hex.match(/\w{2}/g).map(a => parseInt(a, 16)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=*$/, '');
+                        
+                        const clearKeyData = {};
+                        clearKeyData[hexToBase64(keyIdHex)] = hexToBase64(keyHex);
 
-                dashPlayer.setProtectionData({
-                    "org.w3.clearkey": { "clearkeys": clearKeyData }
-                });
-            }
-        }
+                        dashPlayer.setProtectionData({
+                            "org.w3.clearkey": { "clearkeys": clearKeyData }
+                        });
+                    }
+                }
 
                 dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => { ocultarLoader(); updatePlayIcons(); });
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => {
@@ -487,74 +511,3 @@ function ejecutarVideo(url, canalId, clearkeyUrl) {
                 ocultarLoader();
             }
         }
-
-        // NAVEGACIÓN TOTAL BLINDADA PARA MANDO DE TV
-        document.addEventListener('keydown', (e) => {
-            const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
-            resetearInactividad();
-
-            const isUp = e.key === 'ArrowUp' || e.keyCode === 38;
-            const isDown = e.key === 'ArrowDown' || e.keyCode === 40;
-            const isLeft = e.key === 'ArrowLeft' || e.keyCode === 37;
-            const isRight = e.key === 'ArrowRight' || e.keyCode === 39;
-            const isEnter = e.key === 'Enter' || e.keyCode === 13;
-            const isBack = e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009;
-
-            if (isBack) {
-                if (isMenuAbierto) { cerrarMenu(); e.preventDefault(); }
-                return;
-            }
-
-            if (isMenuAbierto) {
-                if (isRight) { cerrarMenu(); e.preventDefault(); return; }
-                
-                const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
-                const currentIndex = botones.indexOf(document.activeElement);
-
-                if (isDown) {
-                    e.preventDefault();
-                    if (currentIndex === -1 && botones.length > 0) {
-                        botones[0].focus();
-                    } else if (currentIndex < botones.length - 1) {
-                        botones[currentIndex + 1].focus();
-                        botones[currentIndex + 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
-                    }
-                }
-                
-                if (isUp) {
-                    e.preventDefault();
-                    if (currentIndex === -1 && botones.length > 0) {
-                        botones[0].focus();
-                    } else if (currentIndex > 0) {
-                        botones[currentIndex - 1].focus();
-                        botones[currentIndex - 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
-                    }
-                }
-            } else {
-                if (isLeft) { abrirMenu(); e.preventDefault(); return; }
-                if (isUp) {
-                    e.preventDefault();
-                    if (!btnReportar.classList.contains('hidden')) btnReportar.focus();
-                    else btnMenu.focus();
-                    return;
-                }
-                if (isEnter) {
-                    if (document.activeElement.tagName === 'BUTTON') {
-                        document.activeElement.click();
-                    } else {
-                        if (videoElement.paused) videoElement.play();
-                        else videoElement.pause();
-                    }
-                }
-            }
-        });
-
-        window.onload = () => {
-            descargarListaCanales();
-            abrirMenu();
-            iniciarReloj();
-            iniciarClima();
-        };
-    </script>
-</body>
-</html>
