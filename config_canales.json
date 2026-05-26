@@ -18,7 +18,7 @@
     { "nombre": "Discovery", "categoria": "Cultura", "logo": "logos_canales/discovery.png", "opciones": [{ "nombre": "Opción 1", "id": "discovery_arg" }] },
     { "nombre": "Discovery ID", "categoria": "Cultura", "logo": "logos_canales/discoveryid.png", "opciones": [{ "nombre": "Opción 1", "id": "discoveryid_arg" }] },
     { "nombre": "ESPN (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_espn" }] },
-    { "nombre": "ESPN 2 (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn2.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_espn2" }] },
+    { "nombre": "ESPN 2 (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn2.png", "opciones": [{ "nombre": "Opción 1", "id": "espn2_hd" }] },
     { "nombre": "ESPN 3 (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn3.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_espn3" }] },
     { "nombre": "ESPN 4", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn4.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_espn4" }] },
     { "nombre": "ESPN 5", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn5.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_espn5" }] },
@@ -28,6 +28,12 @@
     { "nombre": "Fox Sports 3 (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHfoxsports3.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_fox3" }] }
   ],
   "backend": {
+"espn2_hd": {
+  "base": "https://cdn.cvattv.com.ar/live/c3eds/ESPN2HD/SA_Live_dash_enc_C/ESPN2HD.mpd",
+  "clearkey": "e884b711ab111beb8a7ba1e7bcbdc9bf:cb89ee3961599e3e648a5aad60895f34",
+  "usarProxy": false,
+  "parametros": ""
+}
     "tnt_1": { "base": "https://anden26.ddns.net/live/stream.m3u8", "parametros": "v=1777146764944", "usarProxy": false },
 
     "eltrece_directo":    { "base": "http://45.5.151.147:8000/play/a00f/index.m3u8", "parametros": "", "usarProxy": true },
@@ -58,7 +64,6 @@
     "america_new":   { "base": "https://bestleague.top/tok.html?get=QW1lcmljYVRW", "parametros": "", "usarProxy": true },
 
     "bestleague_espn":        { "urlScraping": "https://bestleague.top/tok.html?get=RVNQTjJIRA",                "opcionesBotones": [] },
-    "bestleague_espn2":       { "urlScraping": "https://bestleague.top/tok.html?get=RVNQTjJfQXJn",             "opcionesBotones": [] },
     "bestleague_espn3":       { "urlScraping": "https://bestleague.top/tok.html?get=RVNQTjM",                  "opcionesBotones": [] },
     "bestleague_espn4":       { "urlScraping": "https://bestleague.top/tok.html?get=RVNQTkhE",                 "opcionesBotones": [] },
     "bestleague_espn5":       { "urlScraping": "https://bestleague.top/tok.html?get=RVNQTjQ=",                 "opcionesBotones": [] },
