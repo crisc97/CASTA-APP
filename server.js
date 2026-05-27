@@ -175,11 +175,18 @@ async function correrBot(datosCanal, canalId) {
             }
         } 
         
-        if (!linkVideoPuro) {
+      if (!linkVideoPuro) {
             const viewport = page.viewport();
-            await page.mouse.click(viewport.width / 2, viewport.height / 2);
+            
+            // 🥊 TRUCO NINJA: Hacemos hasta 4 clics seguidos para romper los anuncios invisibles
+            for (let i = 0; i < 4; i++) {
+                if (linkVideoPuro) break; // Si ya encontró el video, frena los clics
+                await page.mouse.click(viewport.width / 2, viewport.height / 2);
+                await new Promise(r => setTimeout(r, 800)); // Espera un poquito entre cada clic
+            }
+            
             let esperaExtra = 0;
-            while (!linkVideoPuro && esperaExtra < 30) { await new Promise(r => setTimeout(r, 100)); esperaExtra++; }
+            while (!linkVideoPuro && esperaExtra < 40) { await new Promise(r => setTimeout(r, 200)); esperaExtra++; }
         }
         
     } catch (e) {
