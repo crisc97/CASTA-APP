@@ -422,7 +422,30 @@
                 const res = await fetch(`${API_URL}/api/get-stream/${canalId}`, { signal: controller.signal });
                 clearTimeout(timeoutId);
                 const data = await res.json();
-function ejecutarVideo(url, canalId, clearkeyUrl) {
+
+                if (data.exito && data.url) {
+                    ejecutarVideo(data.url, canalId, data.clearkey);
+                } else {
+                    throw new Error("No enlace");
+                }
+            } catch (err) {
+                ocultarLoader();
+                mensajeError.classList.remove('hidden');
+                mensajeError.innerText = "Error: El servidor no responde o el canal no está disponible.";
+                abrirMenu();
+            }
+        }
+
+        async function reintentarCanal(canalId) {
+            const ahora = Date.now();
+            if (ahora - ultimoReintento < 30000) return ocultarLoader();
+            ultimoReintento = ahora;
+            mostrarLoader(canalesBot.includes(canalId), "🔄 Enlace caído, buscando nuevo...");
+            try { await fetch(`${API_URL}/api/clear-cache/${canalId}`).catch(() => {}); } catch (e) {}
+            setTimeout(() => { obtenerEnlaceServidor(canalId); }, 1000);
+        }
+
+        function ejecutarVideo(url, canalId, clearkeyUrl) {
             videoElement.setAttribute('poster', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
             if (hls) { hls.destroy(); hls = null; }
             if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
@@ -436,28 +459,28 @@ function ejecutarVideo(url, canalId, clearkeyUrl) {
                 dashPlayer = dashjs.MediaPlayer().create();
                 dashPlayer.initialize(videoElement, url, true);
                 
-             // 🔐 MAGIA DRM: Soporta tanto llaves en Dropbox (URL) como llaves crudas (KeyID:Key)
-        if (clearkeyUrl) {
-            if (clearkeyUrl.includes('http')) {
-                // Es un archivo de Dropbox o web (Ej: Tigo)
-                dashPlayer.setProtectionData({
-                    "org.w3.clearkey": { "serverURL": clearkeyUrl }
-                });
-            } else if (clearkeyUrl.includes(':')) {
-                // Son llaves crudas KeyID:Key (Ej: ESPN2HD de CVATTV)
-                const [keyIdHex, keyHex] = clearkeyUrl.split(':');
-                
-                // Función para convertir de Hexadecimal a Base64 (requerido por Dash.js)
-                const hexToBase64 = (hex) => btoa(String.fromCharCode.apply(null, hex.match(/\w{2}/g).map(a => parseInt(a, 16)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=*$/, '');
-                
-                const clearKeyData = {};
-                clearKeyData[hexToBase64(keyIdHex)] = hexToBase64(keyHex);
+                // 🔐 MAGIA DRM: Soporta tanto llaves en Dropbox (URL) como llaves crudas (KeyID:Key)
+                if (clearkeyUrl) {
+                    if (clearkeyUrl.includes('http')) {
+                        // Es un archivo de Dropbox o web (Ej: Tigo)
+                        dashPlayer.setProtectionData({
+                            "org.w3.clearkey": { "serverURL": clearkeyUrl }
+                        });
+                    } else if (clearkeyUrl.includes(':')) {
+                        // Son llaves crudas KeyID:Key (Ej: ESPN2HD de CVATTV)
+                        const [keyIdHex, keyHex] = clearkeyUrl.split(':');
+                        
+                        // Función para convertir de Hexadecimal a Base64 (requerido por Dash.js)
+                        const hexToBase64 = (hex) => btoa(String.fromCharCode.apply(null, hex.match(/\w{2}/g).map(a => parseInt(a, 16)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=*$/, '');
+                        
+                        const clearKeyData = {};
+                        clearKeyData[hexToBase64(keyIdHex)] = hexToBase64(keyHex);
 
-                dashPlayer.setProtectionData({
-                    "org.w3.clearkey": { "clearkeys": clearKeyData }
-                });
-            }
-        }
+                        dashPlayer.setProtectionData({
+                            "org.w3.clearkey": { "clearkeys": clearKeyData }
+                        });
+                    }
+                }
 
                 dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => { ocultarLoader(); updatePlayIcons(); });
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => {

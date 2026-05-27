@@ -411,7 +411,7 @@
             }
         }
 
-       async function obtenerEnlaceServidor(canalId) {
+        async function obtenerEnlaceServidor(canalId) {
             mensajeError.classList.add('hidden');
             const esBot = canalesBot.includes(canalId);
             mostrarLoader(esBot);
@@ -423,7 +423,6 @@
                 clearTimeout(timeoutId);
                 const data = await res.json();
 
-                // ACÁ ESTABA EL ERROR: Faltaba cerrar esta función
                 if (data.exito && data.url) {
                     ejecutarVideo(data.url, canalId, data.clearkey);
                 } else {
@@ -511,3 +510,74 @@
                 ocultarLoader();
             }
         }
+
+        // NAVEGACIÓN TOTAL BLINDADA PARA MANDO DE TV
+        document.addEventListener('keydown', (e) => {
+            const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
+            resetearInactividad();
+
+            const isUp = e.key === 'ArrowUp' || e.keyCode === 38;
+            const isDown = e.key === 'ArrowDown' || e.keyCode === 40;
+            const isLeft = e.key === 'ArrowLeft' || e.keyCode === 37;
+            const isRight = e.key === 'ArrowRight' || e.keyCode === 39;
+            const isEnter = e.key === 'Enter' || e.keyCode === 13;
+            const isBack = e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009;
+
+            if (isBack) {
+                if (isMenuAbierto) { cerrarMenu(); e.preventDefault(); }
+                return;
+            }
+
+            if (isMenuAbierto) {
+                if (isRight) { cerrarMenu(); e.preventDefault(); return; }
+                
+                const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
+                const currentIndex = botones.indexOf(document.activeElement);
+
+                if (isDown) {
+                    e.preventDefault();
+                    if (currentIndex === -1 && botones.length > 0) {
+                        botones[0].focus();
+                    } else if (currentIndex < botones.length - 1) {
+                        botones[currentIndex + 1].focus();
+                        botones[currentIndex + 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
+                    }
+                }
+                
+                if (isUp) {
+                    e.preventDefault();
+                    if (currentIndex === -1 && botones.length > 0) {
+                        botones[0].focus();
+                    } else if (currentIndex > 0) {
+                        botones[currentIndex - 1].focus();
+                        botones[currentIndex - 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
+                    }
+                }
+            } else {
+                if (isLeft) { abrirMenu(); e.preventDefault(); return; }
+                if (isUp) {
+                    e.preventDefault();
+                    if (!btnReportar.classList.contains('hidden')) btnReportar.focus();
+                    else btnMenu.focus();
+                    return;
+                }
+                if (isEnter) {
+                    if (document.activeElement.tagName === 'BUTTON') {
+                        document.activeElement.click();
+                    } else {
+                        if (videoElement.paused) videoElement.play();
+                        else videoElement.pause();
+                    }
+                }
+            }
+        });
+
+        window.onload = () => {
+            descargarListaCanales();
+            abrirMenu();
+            iniciarReloj();
+            iniciarClima();
+        };
+    </script>
+</body>
+</html>
