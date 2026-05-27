@@ -225,6 +225,39 @@ setTimeout(actualizarCacheEnBackground, 5000);
 setInterval(actualizarCacheEnBackground, 15 * 60 * 1000);
 
 // ============================================================
+// PROXY NINJA PARA EVADIR CORS Y DRM (FLOW / DIRECTV)
+// ============================================================
+app.get('/proxy/stream', async (req, res) => {
+    const streamUrl = req.query.url;
+    if (!streamUrl) return res.status(400).send('Falta URL');
+
+    try {
+        const respuesta = await axios({
+            method: 'get',
+            url: streamUrl,
+            responseType: 'stream',
+            headers: {
+                // Acá ocurre la magia: Le mentimos a Flow diciendo que somos su web oficial
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+                'Origin': 'https://web.flow.com.ar', 
+                'Referer': 'https://web.flow.com.ar/',
+                'Accept': '*/*'
+            }
+        });
+
+        // Le avisamos a tu app que la vía está libre
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Content-Type', respuesta.headers['content-type'] || 'application/dash+xml');
+        
+        // Entregamos el video pedacito a pedacito (Streaming real)
+        respuesta.data.pipe(res);
+    } catch (error) {
+        console.error("❌ Error en Proxy Cors:", error.message);
+        res.status(500).send('Error de Proxy');
+    }
+});
+
+// ============================================================
 // API STREAM: REPRODUCTOR MAESTRO UNIVERSAL
 // ============================================================
 app.get('/api/get-stream/:canal', async (req, res) => {

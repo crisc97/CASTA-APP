@@ -1,6 +1,6 @@
 {
   "frontend": [
-    { "nombre": "ESPN Premium", "categoria": "Deportes", "logo": "logos_canales/espn.png", "opciones": [{ "nombre": "Opción 1", "id": "espn_scraper1" }, { "nombre": "Opción 2 (Bot)", "id": "espn_scraper2"}] },
+    { "nombre": "ESPN Premium", "categoria": "Deportes", "logo": "logos_canales/espn.png", "opciones": [{ "nombre": "Opción 1", "id": "espn_scraper" }] },
     { "nombre": "TNT Sports Premium", "categoria": "Deportes", "logo": "logos_canales/tnt.png", "opciones": [{ "nombre": "Opción 1", "id": "tnt_premium" }, { "nombre": "Opción 2", "id": "tnt_1" }, { "nombre": "Opción 3 (Bot)", "id": "tnt_scraper1" }] },
     { "nombre": "DirecTv Sports", "categoria": "Deportes", "logo": "logos_canales/dsports.png", "opciones": [{ "nombre": "Opción 1 (Bot)", "id": "dsports_scraper1" }] },
     { "nombre": "Fox Sports", "categoria": "Deportes", "logo": "logos_canales/foxs.png", "opciones": [{ "nombre": "Opción 1", "id": "foxsports_arg" }, { "nombre": "Opción 2 (Bot)", "id": "fox_scraper1" }] },
@@ -18,7 +18,7 @@
     { "nombre": "Discovery", "categoria": "Cultura", "logo": "logos_canales/discovery.png", "opciones": [{ "nombre": "Opción 1", "id": "discovery_arg" }] },
     { "nombre": "Discovery ID", "categoria": "Cultura", "logo": "logos_canales/discoveryid.png", "opciones": [{ "nombre": "Opción 1", "id": "discoveryid_arg" }] },
     { "nombre": "ESPN (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_espn" }] },
-    { "nombre": "ESPN 2 (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn2.png", "opciones": [{ "nombre": "Opción 1", "id": "espn2_hd" }] },
+    { "nombre": "ESPN 2 (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn2.png", "opciones": [{ "nombre": "Opción 1", "id": "espn2_flow_drm" }] },
     { "nombre": "ESPN 3 (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn3.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_espn3" }] },
     { "nombre": "ESPN 4", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn4.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_espn4" }] },
     { "nombre": "ESPN 5", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHespn5.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_espn5" }] },
@@ -28,8 +28,8 @@
     { "nombre": "Fox Sports 3 (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHfoxsports3.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_fox3" }] }
   ],
   "backend": {
-    "espn2_hd": { "base": "https://cdn.cvattv.com.ar/live/c3eds/ESPN2HD/SA_Live_dash_enc_C/ESPN2HD.mpd", "clearkey": "e884b711ab111beb8a7ba1e7bcbdc9bf:cb89ee3961599e3e648a5aad60895f34", "usarProxy": true,"parametros": ""},
-    "tnt_1": { "base": "https://anden26.ddns.net/live/stream.m3u8", "parametros": "v=1777146764944", "usarProxy": false },
+    "espn2_flow_drm": {"base": "https://chromecast.cvattv.com.ar/live/c6eds/ESPN2HD/SA_Live_dash_enc_C/ESPN2HD.mpd","parametros": "","usarProxy": true,"clearkey": "e884b711ab111beb8a7ba1e7bcbdc9bf:cb89ee3961599e3e648a5aad60895f34"}
+    "tnt_1":              { "base": "https://anden26.ddns.net/live/stream.m3u8", "parametros": "v=1777146764944", "usarProxy": false },
 
     "eltrece_directo":    { "base": "http://45.5.151.147:8000/play/a00f/index.m3u8", "parametros": "", "usarProxy": true },
     "telefe_directo":     { "base": "http://45.5.151.147:8000/play/a00g/index.m3u8", "parametros": "", "usarProxy": true },
@@ -39,7 +39,7 @@
     "ciudadmagazine_arg": { "base": "http://45.5.151.147:8000/play/a03i/index.m3u8", "parametros": "", "usarProxy": true },
     "discovery_arg":      { "base": "http://45.5.151.147:8000/play/a01s/index.m3u8", "parametros": "", "usarProxy": true },
     "discoveryid_arg":    { "base": "http://45.5.151.147:8000/play/a01u/index.m3u8", "parametros": "", "usarProxy": true },
-    "espn_scraper1":       { "urlScraping": "https://tvlibre-online.com/html/fl/?get=Rm94X1Nwb3J0c19QcmVtaXVuX0hE", "opcionesBotones": []},
+    "espn_scraper":       { "urlScraping": "https://streamtp-abc.net/global1.php?stream=espnpremium", "opcionesBotones": []},
     "espn_1":             { "base": "http://45.5.151.147:8000/play/a00i/index.m3u8", "parametros": "", "usarProxy": true },
     "espn_2":             { "base": "http://45.5.151.147:8000/play/a00j/index.m3u8", "parametros": "", "usarProxy": true },
     "espn_3":             { "base": "http://45.5.151.147:8000/play/a00k/index.m3u8", "parametros": "", "usarProxy": true },
