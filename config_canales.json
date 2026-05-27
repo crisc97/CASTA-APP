@@ -5,7 +5,7 @@
     { "nombre": "DirecTv Sports", "categoria": "Deportes", "logo": "logos_canales/dsports.png", "opciones": [{ "nombre": "Opción 1 (Bot)", "id": "dsports_scraper1" }] },
     { "nombre": "Fox Sports", "categoria": "Deportes", "logo": "logos_canales/foxs.png", "opciones": [{ "nombre": "Opción 1", "id": "foxsports_arg" }, { "nombre": "Opción 2 (Bot)", "id": "fox_scraper1" }] },
     { "nombre": "Fox Sports 3", "categoria": "Deportes", "logo": "logos_canales/foxs3.png", "opciones": [{ "nombre": "Opción 1", "id": "foxsports_arg3" }] },
-    { "nombre": "TyC Sports", "categoria": "Deportes", "logo": "logos_canales/tyc.png", "opciones": [{ "nombre": "Opción 1 (Bot)", "id": "tyc_scraper0" }, { "nombre": "Opción 2", "id": "tyc_scraper1" },{ "nombre": "Opción 3", "id": "tyc_scraper2" },{ "nombre": "Opción 2", "id": "tyc_scraper3" }] },
+    { "nombre": "TyC Sports", "categoria": "Deportes", "logo": "logos_canales/tyc.png", "opciones": [{ "nombre": "Opción 1 (Bot)", "id": "tyc_scraper0" }, { "nombre": "Opción 2", "id": "tyc_scraper1" },{ "nombre": "Opción 3", "id": "tyc_scraper2" },{ "nombre": "Opción 4", "id": "tyc_scraper3" }] },
     { "nombre": "ESPN 1", "categoria": "Deportes", "logo": "logos_canales/espn1.png", "opciones": [{ "nombre": "Opción 1", "id": "espn_1" }] },
     { "nombre": "ESPN 2", "categoria": "Deportes", "logo": "logos_canales/espn2.png", "opciones": [{ "nombre": "Opción 1", "id": "espn_2" }] },
     { "nombre": "ESPN 3", "categoria": "Deportes", "logo": "logos_canales/espn3.png", "opciones": [{ "nombre": "Opción 1", "id": "espn_3" }] },
@@ -60,7 +60,7 @@
     "tyc_scraper0":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/",   "opcionesBotones": [["Opción 1 (FL)"], ["Opción 2"], ["Opción 3"]]},
 "tyc_scraper1": { "urlScraping": "https://latamvidz1.com/canal.php?stream=tycsports", "opcionesBotones": [] },
 "tyc_scraper2": { "urlScraping": "https://la14hd.com/vivo/canales.php?stream=tycsports", "opcionesBotones": [] },
-"tyc_scraper3": { "urlScraping": "https://streamtpcloud.com/global1.php?stream=tycsports", "opcionesBotones": [] }
+"tyc_scraper3": { "urlScraping": "https://streamtpcloud.com/global1.php?stream=tycsports", "opcionesBotones": [] },
 
     "america_nebu":  { "urlScraping": "https://nebunexa.life/tok.html?get=QW1lcmljYVRW",  "opcionesBotones": [] },
     "eltrece_nebu":  { "urlScraping": "https://nebunexa.life/tok.html?get=QXJ0ZWFySEQ",  "opcionesBotones": [] },
