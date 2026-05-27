@@ -39,7 +39,7 @@
     "ciudadmagazine_arg": { "base": "http://45.5.151.147:8000/play/a03i/index.m3u8", "parametros": "", "usarProxy": true },
     "discovery_arg":      { "base": "http://45.5.151.147:8000/play/a01s/index.m3u8", "parametros": "", "usarProxy": true },
     "discoveryid_arg":    { "base": "http://45.5.151.147:8000/play/a01u/index.m3u8", "parametros": "", "usarProxy": true },
-    "espn_premium":       { "base": "https://embed.ksdjugfsddeports.com/embed/espnpremiumargentina.html", "parametros": "", "usarProxy": true},
+    "espn_premium":       { "base": "https://tvlibre-online.com/html/fl/?get=Rm94X1Nwb3J0c19QcmVtaXVuX0hE", "parametros": "", "usarProxy": true},
     "espn_1":             { "base": "http://45.5.151.147:8000/play/a00i/index.m3u8", "parametros": "", "usarProxy": true },
     "espn_2":             { "base": "http://45.5.151.147:8000/play/a00j/index.m3u8", "parametros": "", "usarProxy": true },
     "espn_3":             { "base": "http://45.5.151.147:8000/play/a00k/index.m3u8", "parametros": "", "usarProxy": true },
