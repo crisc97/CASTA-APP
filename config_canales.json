@@ -28,12 +28,7 @@
     { "nombre": "Fox Sports 3 (BestLeague)", "categoria": "Deportes", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/deportes/CHfoxsports3.png", "opciones": [{ "nombre": "Opción 1", "id": "bestleague_fox3" }] }
   ],
   "backend": {
-"espn2_hd": {
-  "base": "https://cdn.cvattv.com.ar/live/c3eds/ESPN2HD/SA_Live_dash_enc_C/ESPN2HD.mpd",
-  "clearkey": "e884b711ab111beb8a7ba1e7bcbdc9bf:cb89ee3961599e3e648a5aad60895f34",
-  "usarProxy": true,
-  "parametros": ""
-},
+    "espn2_hd": { "base": "https://cdn.cvattv.com.ar/live/c3eds/ESPN2HD/SA_Live_dash_enc_C/ESPN2HD.mpd", "clearkey": "e884b711ab111beb8a7ba1e7bcbdc9bf:cb89ee3961599e3e648a5aad60895f34", "usarProxy": true,"parametros": ""},
     "tnt_1": { "base": "https://anden26.ddns.net/live/stream.m3u8", "parametros": "v=1777146764944", "usarProxy": false },
 
     "eltrece_directo":    { "base": "http://45.5.151.147:8000/play/a00f/index.m3u8", "parametros": "", "usarProxy": true },
@@ -44,7 +39,7 @@
     "ciudadmagazine_arg": { "base": "http://45.5.151.147:8000/play/a03i/index.m3u8", "parametros": "", "usarProxy": true },
     "discovery_arg":      { "base": "http://45.5.151.147:8000/play/a01s/index.m3u8", "parametros": "", "usarProxy": true },
     "discoveryid_arg":    { "base": "http://45.5.151.147:8000/play/a01u/index.m3u8", "parametros": "", "usarProxy": true },
-    "espn_premium":       { "base": "https://embed.ksdjugfsddeports.com/embed/espnpremiumargentina.html", "parametros": "", "usarProxy": false},
+    "espn_premium":       { "base": "https://embed.ksdjugfsddeports.com/embed/espnpremiumargentina.html", "parametros": "", "usarProxy": true},
     "espn_1":             { "base": "http://45.5.151.147:8000/play/a00i/index.m3u8", "parametros": "", "usarProxy": true },
     "espn_2":             { "base": "http://45.5.151.147:8000/play/a00j/index.m3u8", "parametros": "", "usarProxy": true },
     "espn_3":             { "base": "http://45.5.151.147:8000/play/a00k/index.m3u8", "parametros": "", "usarProxy": true },
@@ -58,9 +53,9 @@
     "dsports_scraper1":{ "urlScraping": "https://tvlibre-online.com/en-vivo/dsports/",       "opcionesBotones": [["Opción 1"], ["Opción 2"]] },
     "fox_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/fox-sports/",    "opcionesBotones": [["Opción 1 (FL)"], ["Opción 2"], ["Opción 3"]]},
     "tyc_scraper0":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/",   "opcionesBotones": [["Opción 1 (FL)"], ["Opción 2"], ["Opción 3"]]},
-"tyc_scraper1": { "urlScraping": "https://latamvidz1.com/canal.php?stream=tycsports", "opcionesBotones": [] },
-"tyc_scraper2": { "urlScraping": "https://la14hd.com/vivo/canales.php?stream=tycsports", "opcionesBotones": [] },
-"tyc_scraper3": { "urlScraping": "https://streamtpcloud.com/global1.php?stream=tycsports", "opcionesBotones": [] },
+    "tyc_scraper1": { "urlScraping": "https://latamvidz1.com/canal.php?stream=tycsports", "opcionesBotones": [] },
+    "tyc_scraper2": { "urlScraping": "https://la14hd.com/vivo/canales.php?stream=tycsports", "opcionesBotones": [] },
+    "tyc_scraper3": { "urlScraping": "https://streamtpcloud.com/global1.php?stream=tycsports", "opcionesBotones": [] },
 
     "america_nebu":  { "urlScraping": "https://nebunexa.life/tok.html?get=QW1lcmljYVRW",  "opcionesBotones": [] },
     "eltrece_nebu":  { "urlScraping": "https://nebunexa.life/tok.html?get=QXJ0ZWFySEQ",  "opcionesBotones": [] },
