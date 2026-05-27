@@ -54,9 +54,7 @@
     "tyc_scraper0":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/",   "opcionesBotones": [["Opción 1 (FL)"], ["Opción 2"], ["Opción 3"]]},
     "tyc_scraper1": { "urlScraping": "https://latamvidz1.com/canal.php?stream=tycsports", "opcionesBotones": [] },
     "tyc_scraper2": { "urlScraping": "https://la14hd.com/vivo/canales.php?stream=tycsports", "opcionesBotones": [] },
-    "tyc_scraper3": { "urlScraping": "https://streamtpcloud.com/global1.php?stream=tycsports", "opcionesBotones": [] },
-
-
+    "tyc_scraper3": { "urlScraping": "https://streamtpcloud.com/global1.php?stream=tycsports", "opcionesBotones": [] }
  
   }
 }
