@@ -147,46 +147,72 @@ async function correrBot(datosCanal, canalId) {
         const page = await browser.newPage();
         await page.setViewport({ width: 800, height: 600 });
         
-        // 🛑 MAGIA ANTI-RAM: Bloqueamos imágenes, CSS, fuentes y basura publicitaria
+        // 🛑 MAGIA ANTI-RAM Y MODO TURBO RED
         await page.setRequestInterception(true);
         page.on('request', req => {
             const tipo = req.resourceType();
-            if (['image', 'stylesheet', 'font', 'media'].includes(tipo)) { 
+            const urlReq = req.url().toLowerCase();
+            
+            // Bloqueamos imágenes, CSS, fuentes y además agregamos basuras de "ads" o "analytics"
+            if (['image', 'stylesheet', 'font', 'media'].includes(tipo) || urlReq.includes('ads') || urlReq.includes('analytics')) { 
                 req.abort(); 
                 return; 
             }
-            if (esStream(req.url()) && !linkVideoPuro) {
-                linkVideoPuro = req.url();
+            if (esStream(urlReq) && !linkVideoPuro) {
+                linkVideoPuro = req.url(); // Guardamos el original
             }
             req.continue();
         });
 
-        await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        // 🕵️‍♂️ ESPÍA EN LA RESPUESTA (A veces el video no lo pide la página, se lo mandan por detrás)
+        page.on('response', async (response) => {
+            const urlRespuesta = response.url().toLowerCase();
+            if (esStream(urlRespuesta) && !urlRespuesta.includes('ad') && !linkVideoPuro) {
+                linkVideoPuro = response.url(); // Lo atrapamos en el aire
+            }
+        });
+
+        // Bajamos el timeout de 60s a 30s. ¡Si en 30s no cargó, no sirve!
+        await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 30000 });
         
         if (tieneBotones) {
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 500)); // Esperamos medio segundo en vez de uno
             for (const variantes of datosCanal.opcionesBotones) {
                 if (linkVideoPuro) break;
                 const clicOk = await clickBotonPorVariantes(page, variantes);
                 if (clicOk) {
                     let espera = 0;
-                    while (!linkVideoPuro && espera < 50) { await new Promise(r => setTimeout(r, 100)); espera++; }
+                    // Espera rápida mientras chequea si apareció el link
+                    while (!linkVideoPuro && espera < 30) { await new Promise(r => setTimeout(r, 100)); espera++; }
                 }
             }
         } 
         
-      if (!linkVideoPuro) {
+        // 🥊 ATAQUE DE IFRAMES Y CLICS NINJA (Ideal para PelotaLibre)
+        if (!linkVideoPuro) {
             const viewport = page.viewport();
             
-            // 🥊 TRUCO NINJA: Hacemos hasta 4 clics seguidos para romper los anuncios invisibles
+            // 1. Buscamos Iframes y les hacemos clic
+            const frames = page.frames();
+            for (const frame of frames) {
+                if (linkVideoPuro) break;
+                try {
+                    await frame.click('body', { delay: 50 });
+                    await new Promise(r => setTimeout(r, 100));
+                } catch (e) {
+                    // Si el iframe está bloqueado, lo ignoramos y pasamos al siguiente
+                }
+            }
+
+            // 2. Hacemos clics rápidos en el centro para romper publicidades invisibles
             for (let i = 0; i < 4; i++) {
-                if (linkVideoPuro) break; // Si ya encontró el video, frena los clics
+                if (linkVideoPuro) break; 
                 await page.mouse.click(viewport.width / 2, viewport.height / 2);
-                await new Promise(r => setTimeout(r, 800)); // Espera un poquito entre cada clic
+                await new Promise(r => setTimeout(r, 400)); // Pausas más cortitas
             }
             
             let esperaExtra = 0;
-            while (!linkVideoPuro && esperaExtra < 40) { await new Promise(r => setTimeout(r, 200)); esperaExtra++; }
+            while (!linkVideoPuro && esperaExtra < 30) { await new Promise(r => setTimeout(r, 200)); esperaExtra++; }
         }
         
     } catch (e) {
