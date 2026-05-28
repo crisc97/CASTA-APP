@@ -129,7 +129,7 @@ function esStream(url) {
 async function correrBot(datosCanal, canalId) {
     const tieneBotones = datosCanal.opcionesBotones && datosCanal.opcionesBotones.length > 0;
     
-    // 🛑 MAGIA ANTI-RAM: single-process y gpu desactivada
+   // 🛑 MAGIA ANTI-RAM Y ANTI-BLOQUEOS
     const browser = await puppeteer.launch({
         headless: true,
         args: [
@@ -137,7 +137,11 @@ async function correrBot(datosCanal, canalId) {
             '--disable-setuid-sandbox', 
             '--disable-dev-shm-usage', 
             '--disable-gpu',
-            '--single-process' 
+            '--single-process',
+            // --- NUEVOS ATAQUES ---
+            '--disable-web-security', // Rompe el bloqueo de iframes
+            '--disable-features=IsolateOrigins,site-per-process', // Permite clics cruzados
+            '--blink-settings=imagesEnabled=false' // Corta las imágenes desde la raíz
         ]
     });
     
@@ -146,6 +150,9 @@ async function correrBot(datosCanal, canalId) {
     try {
         const page = await browser.newPage();
         await page.setViewport({ width: 800, height: 600 });
+        
+        // ACÁ LE PONEMOS LA MÁSCARA AL BOT
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
         
         // 🛑 MAGIA ANTI-RAM Y MODO TURBO RED
         await page.setRequestInterception(true);
