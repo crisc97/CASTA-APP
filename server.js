@@ -258,56 +258,40 @@ setTimeout(actualizarCacheEnBackground, 5000);
 setInterval(actualizarCacheEnBackground, 15 * 60 * 1000);
 
 // ============================================================
-// API STREAM: REPRODUCTOR MAESTRO UNIVERSAL
+// CONSTRUCTOR DE CABECERAS PARA EL PROXY
 // ============================================================
-app.get('/api/get-stream/:canal', async (req, res) => {
-    const canalId = req.params.canal;
-    const datosCanal = dbCanales[canalId];
-    if (!datosCanal) return res.status(404).json({ exito: false, error: "Canal no encontrado en JSON" });
-
-    try {
-        if (datosCanal.urlScraping) {
-            const ahora = Date.now();
-            
-            // 1. REVISAR LA MEMORIA CACHÉ (Responde en 1 milisegundo)
-            // Solo renovamos si pasaron más de 20 minutos (1200000 ms) para estar seguros
-            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 1200000)) { 
-                return res.json({ exito: true, url: memoriaCache[canalId].url, clearkey: datosCanal.clearkey });
-            }
-            
-            // 2. Si por algún motivo la caché está vacía, buscamos de emergencia
-            const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
-            
-            if (linkVideoPuro) {
-                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
-                memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
-                return res.json({ exito: true, url: urlFinal, clearkey: datosCanal.clearkey });
-            } else {
-                return res.status(500).json({ exito: false, error: "No se pudo extraer el video de la página" });
-            }
-        } 
-        else if (datosCanal.base) {
-            // Canales directos (Sin bot): Agregamos rompe-cachés ?v=fecha
-            const separador = datosCanal.base.includes('?') ? '&' : '?';
-            const urlConAntiCache = `${datosCanal.base}${separador}v=${Date.now()}`;
-            
-            const paramsFinales = datosCanal.parametros ? `&${datosCanal.parametros}` : '';
-            const urlCompleta = `${urlConAntiCache}${paramsFinales}`;
-            
-            if (datosCanal.usarProxy === false) {
-                return res.json({ exito: true, url: urlCompleta, clearkey: datosCanal.clearkey });
-            } else {
-                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
-                return res.json({ exito: true, url: urlFinal, clearkey: datosCanal.clearkey });
-            }
-        } 
-        else {
-            return res.status(400).json({ exito: false, error: "Configuración inválida en canal" });
-        }
-    } catch (error) {
-        return res.status(500).json({ exito: false, error: error.message });
+function armarHeaders(targetUrl) {
+    if (targetUrl.includes('latinapro.net') || targetUrl.includes('45.5.151.147')) {
+        return {
+            'User-Agent': 'bocatvplay.beta/9.8 (Linux;Android 11) AndroidXMedia3/1.1.1',
+            'Referer': '', 
+            'Connection': 'keep-alive'
+        };
     }
-});
+
+    let referer = 'https://tvlibr3.com/';
+    let origin = 'https://tvlibr3.com';
+
+    if (targetUrl.includes('streameasthd') || targetUrl.includes('streamtpnew')) {
+        referer = 'https://streamtpnew.com/';
+        origin = 'https://streamtpnew.com';
+    } else if (targetUrl.includes('nebunexa') || targetUrl.includes('cvattv')) {
+        referer = 'https://pcn.nebunexa.life/';
+        origin = 'https://pcn.nebunexa.life';
+    } else if (targetUrl.includes('pelotalibretv')) {
+        referer = 'https://pelotalibretv.su/';
+        origin = 'https://pelotalibretv.su';
+    }
+
+    return {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+        'Referer': referer,
+        'Origin': origin,
+        'Accept': '*/*',
+        'Accept-Language': 'es-AR,es;q=0.9',
+        'Connection': 'keep-alive',
+    };
+}
 
 // ============================================================
 // (SIGUEN TUS RUTAS DE CONVERSIÓN M3U, PROXY Y EPG INTACTAS...)
@@ -469,43 +453,68 @@ function armarHeaders(targetUrl) {
     };
 }
 
+// ============================================================
+// SÚPER PROXY INTELIGENTE (Maneja m3u8, .ts, cors y llaves)
+// ============================================================
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
-    if (!targetUrl) return res.status(400).send('Falta URL');
+    if (!targetUrl) return res.status(400).send('Falta el parámetro url');
+
+    const headers = armarHeaders(targetUrl);
+    
+    // 🔥 FIX 1: Le decimos al servidor original que NO comprima el video. 
+    // Así evitamos que los fragmentos .ts se corrompan en el viaje.
+    headers['Accept-Encoding'] = 'identity';
+
+    if (req.headers.range) {
+        headers['Range'] = req.headers.range;
+    }
 
     try {
-        const headers = armarHeaders(targetUrl);
-        if (req.headers.range) headers['Range'] = req.headers.range;
-
         const response = await axios({
-            method: 'GET', url: targetUrl, responseType: 'stream', headers, timeout: 20000,
-            validateStatus: status => status >= 200 && status < 500
+            method: 'get',
+            url: targetUrl,
+            responseType: 'stream', 
+            headers,
+            timeout: 15000,
+            validateStatus: (status) => status >= 200 && status < 400
         });
 
         const contentType = response.headers['content-type'] || '';
+        console.log(`🔀 Proxy HTTP ${response.status}: ${targetUrl} [${contentType}]`);
 
-        if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL') || contentType.includes('dash+xml')) {
+        // A. SI ES UNA PLAYLIST (.m3u8) o DASH (.mpd)
+        if (targetUrl.includes('.m3u8') || targetUrl.includes('.mpd') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL') || contentType.includes('dash+xml')) {
             let data = '';
             response.data.on('data', chunk => data += chunk);
             response.data.on('end', () => {
                 if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL')) {
                     let contenido = data.split('\n').map(linea => {
-                        let l = linea.trim();
+                        const l = linea.trim();
                         if (!l) return linea;
 
-                        if (l.includes('URI="')) {
-                            return l.replace(/URI="([^"]+)"/, (match, p1) => {
+                        // 🔥 FIX 2: Si el video está encriptado, pasamos la LLAVE por el proxy
+                        if (l.startsWith('#EXT-X-KEY')) {
+                            const match = l.match(/URI="([^"]+)"/);
+                            if (match) {
                                 try {
-                                    const urlAbsoluta = new URL(p1, targetUrl).href;
-                                    return `URI="${API_URL}/proxy/stream?url=${encodeURIComponent(urlAbsoluta)}"`;
-                                } catch(e) { return match; }
-                            });
+                                    const keyUrl = new URL(match[1], targetUrl).href;
+                                    const proxyKeyUrl = `${API_URL}/proxy/stream?url=${encodeURIComponent(keyUrl)}`;
+                                    return l.replace(`URI="${match[1]}"`, `URI="${proxyKeyUrl}"`);
+                                } catch(e) {}
+                            }
+                            return l;
                         }
-                        if (l.startsWith('#')) return l;
+
+                        if (l.startsWith('#')) return l; // Dejamos intactas las demás etiquetas
+
+                        // Reescribimos los segmentos de video para que también pasen por tu proxy
                         try {
                             const urlSegmento = new URL(l, targetUrl).href;
                             return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
-                        } catch (e) { return l; }
+                        } catch (e) {
+                            return l; 
+                        }
                     }).join('\n');
 
                     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
@@ -522,19 +531,33 @@ app.get('/proxy/stream', async (req, res) => {
             return;
         }
 
+        // B. SI ES SEGMENTO DE VIDEO (.ts) -> Pipe directo a máxima velocidad
         res.setHeader('Content-Type', contentType || 'video/mp2t');
         res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Accept-Ranges', 'bytes');
+        
+        // 🔥 FIX 3: NO reenviamos el Content-Length original.
+        // Si Node modificó 1 byte del tamaño al descargarlo, el reproductor cortaba el video y se ponía negro.
         if (response.headers['content-range']) res.setHeader('Content-Range', response.headers['content-range']);
+        
         if (response.status === 206) res.status(206);
 
-        req.on('close', () => { try { if (!response.data.destroyed) response.data.destroy(); } catch (e) {} });
+        req.on('close', () => {
+            if (!response.data.destroyed) {
+                response.data.destroy();
+            }
+        });
+
         response.data.pipe(res);
+
     } catch (err) {
-        if (!res.headersSent) res.status(500).json({ exito: false, error: err.message });
+        console.error(`❌ Error en proxy para ${targetUrl}:`, err.message);
+        if (!res.headersSent) {
+            res.status(502).send('Error al obtener el stream');
+        }
     }
 });
-
 // ============================================================
 // GUÍA DE PROGRAMACIÓN (EPG - XMLTV)
 // ============================================================
