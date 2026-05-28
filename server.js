@@ -1,92 +1,80 @@
 const express = require('express');
 const cors = require('cors');
+const nodemailer = require('nodemailer');
 const axios = require('axios');
+const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
+
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const API_URL = process.env.API_URL || 'https://casta-app.onrender.com';
 
-// ============================================================
-// CARGAR LISTA DE CANALES IPTV (JSON)
-// ============================================================
-let dbCanales = {};
-let frontendCanales = [];
+// Ruta principal
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-function cargarConfiguracion() {
-    try {
-        const rawData = fs.readFileSync(path.join(__dirname, 'config_canales.json'), 'utf8');
-        const data = JSON.parse(rawData);
-        dbCanales = data.backend || {};
-        frontendCanales = data.frontend || [];
-        console.log(`✅ Lista cargada: ${frontendCanales.length} canales.`);
-    } catch (error) {
-        console.error("❌ Error al leer config_canales.json:", error.message);
-    }
-}
-cargarConfiguracion(); 
-
-// ============================================================
-// CONVERTIDOR M3U A JSON (PARSER)
-// ============================================================
-function parsearM3U(contenidoM3U) {
-    const lineas = contenidoM3U.split('\n');
-    const canales = [];
-    let canalActual = {};
-
-    for (let i = 0; i < lineas.length; i++) {
-        const linea = lineas[i].trim();
-        
-        if (linea.startsWith('#EXTINF:')) {
-            canalActual = {};
-            const partes = linea.split(',');
-            canalActual.nombre = partes.length > 1 ? partes.pop().trim() : "Canal Desconocido";
-            
-            const logoMatch = linea.match(/tvg-logo="([^"]+)"/);
-            canalActual.logo = logoMatch ? logoMatch[1] : "logos_canales/default.png";
-            
-            const grupoMatch = linea.match(/group-title="([^"]+)"/);
-            canalActual.categoria = grupoMatch ? grupoMatch[1] : "General";
-            
-        } else if (linea && !linea.startsWith('#')) {
-            canalActual.url = linea;
-            if (canalActual.nombre && canalActual.url) {
-                canales.push({ ...canalActual });
-            }
-        }
-    }
-    return canales;
-}
-
-// ============================================================
-// RUTAS 
-// ============================================================
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+// 🏓 Ruta de ping para mantener el servidor despierto
 app.get('/ping', (req, res) => res.send('ok'));
 
-app.get('/api/canales', (req, res) => {
-    res.json(frontendCanales);
-});
-
-app.get('/api/recargar-lista', (req, res) => {
-    cargarConfiguracion();
-    res.json({ exito: true, mensaje: "Lista recargada exitosamente" });
-});
-
-const memoriaCache = {};
+// 🗑️ Ruta para limpiar caché de un canal (usada en reintento automático)
 app.get('/api/clear-cache/:canal', (req, res) => {
     const canalId = req.params.canal;
-    if (memoriaCache[canalId]) delete memoriaCache[canalId];
+    if (memoriaCache[canalId]) {
+        delete memoriaCache[canalId];
+        console.log(`🗑️ Caché borrada para: ${canalId}`);
+    }
     res.json({ ok: true });
 });
 
+// --- BASE DE DATOS DE CANALES ---
+const dbCanales = {
+    'tnt_1': { base: 'https://anden26.ddns.net/live/stream.m3u8', parametros: 'v=1777146764944' },
+    'telefe_directo': { base: 'http://45.5.151.147:8000/play/a00g/index.m3u8', parametros: '', usarProxy: true  },
+    'eltrece_directo': { base: 'http://45.5.151.147:8000/play/a00g/index.m3u8', parametros: '', usarProxy: true  },
+    'elnueve_directo': { base: 'http://45.5.151.147:8000/play/a00e/index.m3u8', parametros: '', usarProxy: true },
+    'america_directo': { base: 'http://45.5.151.147:8000/play/a00c/index.m3u8', parametros: '', usarProxy: true },
+    'tvpublica_directo': { base: 'http://45.5.151.147:8000/play/a00h/index.m3u8', parametros: '', usarProxy: true },
+    
+    'ciudadmagazine_arg': { base: 'http://45.5.151.147:8000/play/a03i/index.m3u8', parametros: '', usarProxy: true },
+    'espn_premium_HD': { base: 'http://latinapro.net:25461/live/lazaroperez/perez3/index.m3u8', parametros: '', usarProxy: true },
+    'espn_premium': { base: 'http://45.5.151.147:8000/play/a00m/index.m3u8', parametros: '', usarProxy: true },
+    
+    'espn_1': { base: 'http://45.5.151.147:8000/play/a00i/index.m3u8', parametros: '', usarProxy: true },
+    'espn_2': { base: 'http://45.5.151.147:8000/play/a00j/index.m3u8', parametros: '', usarProxy: true },
+    'espn_3': { base: 'http://45.5.151.147:8000/play/a00k/index.m3u8', parametros: '', usarProxy: true },
+    'tnt_premium': { base: 'http://45.5.151.147:8000/play/a00r/index.m3u8', parametros: '', usarProxy: true },
+    'tyc_arg': { base: 'http://45.5.151.147:8000/play/a00s/index.m3u8', parametros: '', usarProxy: true },
+    'foxsports_arg': { base: 'http://45.5.151.147:8000/play/a00n/index.m3u8', parametros: '', usarProxy: true },
+    'foxsports_arg3': { base: 'http://45.5.151.147:8000/play/a00p/index.m3u8', parametros: '', usarProxy: true },
+    'discovery_arg': { base: 'http://45.5.151.147:8000/play/a01s/index.m3u8', parametros: '', usarProxy: true },
+    'discoveryid_arg': { base: 'http://45.5.151.147:8000/play/a01u/index.m3u8', parametros: '', usarProxy: true },
+    
+    // 🔥 CANALES BOT (Puppeteer scraper)
+    'espn_scraper1': { urlScraping: 'https://tvlibr3.com/en-vivo/espn-premium/', opcionesBotones: [['Opción 3', 'Opción3'], ['Opción 1 (FL)', 'Opcion 1 (FL)']] },
+    'espn_scraper2': { urlScraping: 'https://latamvidz1.com/canal.php?stream=espnpremium', opcionesBotones: [] },
+    'dsports_scraper1': { urlScraping: 'https://tvlibr3.com/en-vivo/dsports/', opcionesBotones: [['Opción 2', 'Opción2']] },
+    'dsports_scraper2': { urlScraping: 'https://latamvidz1.com/canal.php?stream=dsports', opcionesBotones: [] },
+    'tnt_scraper1': { urlScraping: 'https://tvlibr3.com/en-vivo/tnt-sports/', opcionesBotones: [['Opción 2', 'Opción2'], ['Opción 1 (FL)', 'Opcion 1 (FL)']] },
+    'tnt_scraper2': { urlScraping: 'https://latamvidz1.com/canal.php?stream=tntsports', opcionesBotones: [] },
+    'fox_scraper1': { urlScraping: 'https://tvlibr3.com/en-vivo/fox-sports/', opcionesBotones: [['Opción 3', 'Opcion 3', 'Opción3'], ['Opción 2', 'Opcion 2', 'Opción2']] },
+    'fox_scraper2': { urlScraping: 'https://latamvidz1.com/canal.php?stream=foxsports', opcionesBotones: [] },
+    'tyc_scraper1': { urlScraping: 'https://tvlibr3.com/en-vivo/tyc-sports/', opcionesBotones: [['Opción 3', 'Opcion 3', 'Opción3'], ['Opción 2', 'Opcion 2', 'Opción2']] },
+    'tyc_scraper2': { urlScraping: 'https://latamvidz1.com/canal.php?stream=tycsports', opcionesBotones: [] },
+    'telefe_scraper': { urlScraping: 'https://tvlibr3.com/en-vivo/telefe/', opcionesBotones: [['Opción 1 (FL)', 'Opcion 1 (FL)']] },
+    'eltrece_scraper': { urlScraping: 'https://tvlibr3.com/en-vivo/el-trece/', opcionesBotones: [['Opción 1 (FL)', 'Opcion 1 (FL)']] },
+    'elnueve_scraper': { urlScraping: 'https://tvlibr3.com/en-vivo/el-nueve/', opcionesBotones: [['Opción 1 (FL)', 'Opcion 1 (FL)']] },
+};
+
+const memoriaCache = {};
+
 // ============================================================
-// BOTS: COLA Y FUNCIONES INTELIGENTES
+// 🧠 COLA DE BOTS — solo un browser a la vez para ahorrar RAM
 // ============================================================
 let botEnEjecucion = false;
 const colaDeBots = [];
@@ -101,165 +89,31 @@ function ejecutarSiguienteBot() {
 function encolarBot(fn) {
     return new Promise((resolve, reject) => {
         colaDeBots.push(async () => {
-            try { resolve(await fn()); } 
-            catch (e) { reject(e); } 
-            finally { botEnEjecucion = false; ejecutarSiguienteBot(); }
+            try {
+                const resultado = await fn();
+                resolve(resultado);
+            } catch (e) {
+                reject(e);
+            } finally {
+                botEnEjecucion = false;
+                if (global.gc) {
+                    global.gc();
+                    console.log('🧹 Garbage collection forzado');
+                }
+                ejecutarSiguienteBot();
+            }
         });
         ejecutarSiguienteBot();
     });
 }
 
-async function clickBotonPorVariantes(page, variantes) {
-    try {
-        return await page.evaluate((textos) => {
-            const elementos = Array.from(document.querySelectorAll('button, a, span, div, li, p'));
-            for (const texto of textos) {
-                const el = elementos.find(e => (e.innerText || e.textContent || '').trim() === texto || (e.innerText || '').startsWith(texto));
-                if (el) { el.click(); return texto; }
-            }
-            return null;
-        }, variantes);
-    } catch (e) { return null; }
-}
-
 function esStream(url) {
-    return url ? (url.includes('.m3u8') || url.includes('.mpd')) : false;
+    if (!url || url === 'about:blank' || url === 'about:srcdoc') return false;
+    const basura = ['ad', 'tracker', 'dummy', 'blank', 'pixel'];
+    if (basura.some(palabra => url.toLowerCase().includes(palabra))) return false;
+    return url.includes('.m3u8') || url.includes('.mpd');
 }
 
-async function correrBot(datosCanal, canalId) {
-    const tieneBotones = datosCanal.opcionesBotones && datosCanal.opcionesBotones.length > 0;
-    
-   // 🛑 MAGIA ANTI-RAM Y ANTI-BLOQUEOS
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox', 
-            '--disable-dev-shm-usage', 
-            '--disable-gpu',
-            '--single-process',
-            // --- NUEVOS ATAQUES ---
-            '--disable-web-security', // Rompe el bloqueo de iframes
-            '--disable-features=IsolateOrigins,site-per-process', // Permite clics cruzados
-            '--blink-settings=imagesEnabled=false' // Corta las imágenes desde la raíz
-        ]
-    });
-    
-    let linkVideoPuro = null;
-
-    try {
-        const page = await browser.newPage();
-        await page.setViewport({ width: 800, height: 600 });
-        
-        // ACÁ LE PONEMOS LA MÁSCARA AL BOT
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
-        
-        // 🛑 MAGIA ANTI-RAM Y MODO TURBO RED
-        await page.setRequestInterception(true);
-        page.on('request', req => {
-            const tipo = req.resourceType();
-            const urlReq = req.url().toLowerCase();
-            
-            // Bloqueamos imágenes, CSS, fuentes y además agregamos basuras de "ads" o "analytics"
-            if (['image', 'stylesheet', 'font', 'media'].includes(tipo) || urlReq.includes('ads') || urlReq.includes('analytics')) { 
-                req.abort(); 
-                return; 
-            }
-            if (esStream(urlReq) && !linkVideoPuro) {
-                linkVideoPuro = req.url(); // Guardamos el original
-            }
-            req.continue();
-        });
-
-        // 🕵️‍♂️ ESPÍA EN LA RESPUESTA (A veces el video no lo pide la página, se lo mandan por detrás)
-        page.on('response', async (response) => {
-            const urlRespuesta = response.url().toLowerCase();
-            if (esStream(urlRespuesta) && !urlRespuesta.includes('ad') && !linkVideoPuro) {
-                linkVideoPuro = response.url(); // Lo atrapamos en el aire
-            }
-        });
-
-        // Bajamos el timeout de 60s a 30s. ¡Si en 30s no cargó, no sirve!
-        await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        
-        if (tieneBotones) {
-            await new Promise(r => setTimeout(r, 500)); // Esperamos medio segundo en vez de uno
-            for (const variantes of datosCanal.opcionesBotones) {
-                if (linkVideoPuro) break;
-                const clicOk = await clickBotonPorVariantes(page, variantes);
-                if (clicOk) {
-                    let espera = 0;
-                    // Espera rápida mientras chequea si apareció el link
-                    while (!linkVideoPuro && espera < 30) { await new Promise(r => setTimeout(r, 100)); espera++; }
-                }
-            }
-        } 
-        
-        // 🥊 ATAQUE DE IFRAMES Y CLICS NINJA (Ideal para PelotaLibre)
-        if (!linkVideoPuro) {
-            const viewport = page.viewport();
-            
-            // 1. Buscamos Iframes y les hacemos clic
-            const frames = page.frames();
-            for (const frame of frames) {
-                if (linkVideoPuro) break;
-                try {
-                    await frame.click('body', { delay: 50 });
-                    await new Promise(r => setTimeout(r, 100));
-                } catch (e) {
-                    // Si el iframe está bloqueado, lo ignoramos y pasamos al siguiente
-                }
-            }
-
-            // 2. Hacemos clics rápidos en el centro para romper publicidades invisibles
-            for (let i = 0; i < 4; i++) {
-                if (linkVideoPuro) break; 
-                await page.mouse.click(viewport.width / 2, viewport.height / 2);
-                await new Promise(r => setTimeout(r, 400)); // Pausas más cortitas
-            }
-            
-            let esperaExtra = 0;
-            while (!linkVideoPuro && esperaExtra < 30) { await new Promise(r => setTimeout(r, 200)); esperaExtra++; }
-        }
-        
-    } catch (e) {
-        console.error(`❌ Error en el bot para ${canalId}:`, e.message);
-    } finally {
-        try { await browser.close(); } catch (e) {}
-    }
-    return linkVideoPuro;
-}
-
-// ============================================================
-// 🧠 CACHÉ EN SEGUNDO PLANO (EL CEREBRO NINJA)
-// ============================================================
-async function actualizarCacheEnBackground() {
-    console.log("🤖 Iniciando patrullaje en segundo plano...");
-    for (const [idCanal, datosCanal] of Object.entries(dbCanales)) {
-        if (datosCanal.urlScraping) {
-            try {
-                const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, idCanal));
-                if (linkVideoPuro) {
-                    const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
-                    memoriaCache[idCanal] = { url: urlFinal, tiempo: Date.now() };
-                    console.log(`✅ [${idCanal}] Guardado en caché (Background)`);
-                }
-            } catch (e) {
-                console.log(`❌ Error en background para ${idCanal}`);
-            }
-        }
-    }
-    console.log("💤 Patrullaje terminado. Durmiendo 15 minutos.");
-}
-
-// Inicia el patrullaje 5 segundos después de que arranque el servidor
-setTimeout(actualizarCacheEnBackground, 5000);
-// Repite el patrullaje CADA 15 MINUTOS exactos
-setInterval(actualizarCacheEnBackground, 15 * 60 * 1000);
-
-// ============================================================
-// CONSTRUCTOR DE CABECERAS PARA EL PROXY
-// ============================================================
 function armarHeaders(targetUrl) {
     if (targetUrl.includes('latinapro.net') || targetUrl.includes('45.5.151.147')) {
         return {
@@ -293,169 +147,36 @@ function armarHeaders(targetUrl) {
     };
 }
 
-// ============================================================
-// (SIGUEN TUS RUTAS DE CONVERSIÓN M3U, PROXY Y EPG INTACTAS...)
-// ============================================================
-app.post('/api/convertir-m3u', express.text({ type: '*/*', limit: '50mb' }), (req, res) => {
-    // ... [Mismo código original] ...
+async function clickBotonPorVariantes(page, variantes) {
     try {
-        const contenidoM3U = req.body;
-        if (!contenidoM3U || !contenidoM3U.includes('#EXTM3U')) {
-            return res.status(400).json({ exito: false, error: "El archivo no parece ser un M3U válido." });
-        }
-
-        const canalesExtraidos = parsearM3U(contenidoM3U);
-        const nuevoFrontend = [];
-        const nuevoBackend = {};
-
-        canalesExtraidos.forEach((canal, index) => {
-            const idGenerado = `m3u_canal_${index}`; 
-            
-            nuevoFrontend.push({
-                nombre: canal.nombre,
-                categoria: canal.categoria,
-                logo: canal.logo,
-                opciones: [{ nombre: "Opción 1", id: idGenerado }]
-            });
-
-            nuevoBackend[idGenerado] = {
-                base: canal.url,
-                parametros: "",
-                usarProxy: false 
-            };
-        });
-
-        res.json({
-            exito: true,
-            total_canales: canalesExtraidos.length,
-            estructura_generada: {
-                frontend: nuevoFrontend,
-                backend: nuevoBackend
-            }
-        });
-
-    } catch (error) {
-        res.status(500).json({ exito: false, error: error.message });
-    }
-});
-
-app.post('/api/convertir-m3u-url', async (req, res) => {
-    // ... [Mismo código original] ...
-    try {
-        const urlM3U = req.body.url;
-        if (!urlM3U) return res.status(400).json({ exito: false, error: "Falta enviar la URL." });
-
-        const respuesta = await axios.get(urlM3U);
-        const contenidoM3U = respuesta.data;
-
-        if (!contenidoM3U || typeof contenidoM3U !== 'string' || !contenidoM3U.includes('#EXTM3U')) {
-            return res.status(400).json({ exito: false, error: "El enlace no devuelve un formato M3U válido." });
-        }
-
-        const canalesExtraidos = parsearM3U(contenidoM3U);
-        const nuevoFrontend = [];
-        const nuevoBackend = {};
-
-        canalesExtraidos.forEach((canal, index) => {
-            const idGenerado = `link_${Date.now()}_${index}`; 
-            
-            nuevoFrontend.push({
-                nombre: canal.nombre,
-                categoria: canal.categoria,
-                logo: canal.logo,
-                opciones: [{ nombre: "Opción 1", id: idGenerado }]
-            });
-
-            nuevoBackend[idGenerado] = {
-                base: canal.url,
-                parametros: "",
-                usarProxy: false 
-            };
-        });
-
-        res.json({
-            exito: true,
-            total_canales: canalesExtraidos.length,
-            estructura_generada: {
-                frontend: nuevoFrontend,
-                backend: nuevoBackend
-            }
-        });
-
-    } catch (error) {
-        res.status(500).json({ exito: false, error: error.message });
-    }
-});
-
-app.post('/api/convertir-json-url', async (req, res) => {
-    // ... [Mismo código original] ...
-    try {
-        const urlJson = req.body.url;
-        if (!urlJson) return res.status(400).json({ exito: false, error: "Falta enviar la URL." });
-
-        const respuesta = await axios.get(urlJson);
-        let datos = respuesta.data;
-
-        let canalesExtraidos = [];
-        if (Array.isArray(datos)) canalesExtraidos = datos;
-        else if (datos.channels) canalesExtraidos = datos.channels;
-        else if (datos.canales) canalesExtraidos = datos.canales;
-        else return res.status(400).json({ exito: false, error: "No se encontró una lista de canales reconocible." });
-
-        const nuevoFrontend = [];
-        const nuevoBackend = {};
-
-        canalesExtraidos.forEach((canal, index) => {
-            const idGenerado = `json_${Date.now()}_${index}`; 
-            
-            const nombreCanal = canal.name || canal.nombre || canal.title || "Canal Desconocido";
-            const categoriaCanal = canal.group || canal.categoria || canal.category || "General";
-            const logoCanal = canal.logo || canal.icon || canal.imagen || "";
-            const urlCanal = canal.url || canal.link || canal.stream || "";
-
-            if (urlCanal) {
-                nuevoFrontend.push({
-                    nombre: nombreCanal,
-                    categoria: categoriaCanal,
-                    logo: logoCanal,
-                    opciones: [{ nombre: "Opción 1", id: idGenerado }]
+        const resultado = await page.evaluate((textos) => {
+            const elementos = Array.from(document.querySelectorAll('button, a, span, div, li, p'));
+            for (const texto of textos) {
+                const el = elementos.find(e => {
+                    const t = (e.innerText || e.textContent || '').trim();
+                    return t === texto || t.startsWith(texto);
                 });
-
-                nuevoBackend[idGenerado] = {
-                    base: urlCanal,
-                    parametros: "",
-                    usarProxy: false 
-                };
+                if (el) {
+                    el.click();
+                    return texto;
+                }
             }
-        });
+            return null;
+        }, variantes);
 
-        res.json({
-            exito: true,
-            total_canales: nuevoFrontend.length,
-            estructura_generada: {
-                frontend: nuevoFrontend,
-                backend: nuevoBackend
-            }
-        });
-
-    } catch (error) {
-        res.status(500).json({ exito: false, error: error.message });
+        if (resultado) {
+            console.log(`✅ Clic exitoso en botón: "${resultado}"`);
+        } else {
+            console.log(`⚠️ No se encontró: ${JSON.stringify(variantes)}`);
+        }
+        return resultado;
+    } catch (e) {
+        console.log(`❌ Error al hacer clic: ${e.message}`);
+        return null;
     }
-});
-
-// ============================================================
-// PROXY
-// ============================================================
-function armarHeaders(targetUrl) {
-    return {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122 Safari/537.36',
-        'Accept': '*/*', 'Connection': 'keep-alive', 'Accept-Encoding': 'identity', 'Origin': '*', 'Referer': targetUrl
-    };
 }
 
-// ============================================================
-// SÚPER PROXY INTELIGENTE (Maneja m3u8, .ts, cors y llaves)
-// ============================================================
+// --- PROXY INTELIGENTE (Pipe para video, Buffer para texto) ---
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
@@ -508,7 +229,7 @@ app.get('/proxy/stream', async (req, res) => {
 
                         if (l.startsWith('#')) return l; // Dejamos intactas las demás etiquetas
 
-                        // Reescribimos los segmentos de video para que también pasen por tu proxy
+                        // Reescribimos los segmentos de video
                         try {
                             const urlSegmento = new URL(l, targetUrl).href;
                             return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
@@ -531,7 +252,7 @@ app.get('/proxy/stream', async (req, res) => {
             return;
         }
 
-        // B. SI ES SEGMENTO DE VIDEO (.ts) -> Pipe directo a máxima velocidad
+        // B. SI ES SEGMENTO DE VIDEO (.ts) -> Pipe directo
         res.setHeader('Content-Type', contentType || 'video/mp2t');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-cache');
@@ -558,125 +279,141 @@ app.get('/proxy/stream', async (req, res) => {
         }
     }
 });
-// ============================================================
-// GUÍA DE PROGRAMACIÓN (EPG - XMLTV)
-// ============================================================
-let guiaTV = {}; 
 
-async function actualizarEPG() {
-    console.log("⏳ Descargando Guía EPG gratuita...");
+// --- FUNCIÓN DEL BOT (aislada para la cola) ---
+async function correrBot(datosCanal, canalId) {
+    console.log(`🕵️‍♂️ Bot iniciando para: ${canalId}...`);
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: [
+            '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
+            '--disable-gpu', '--disable-extensions', '--disable-background-networking',
+            '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows',
+            '--mute-audio', '--single-process', '--memory-pressure-off', '--js-flags=--max-old-space-size=128',
+        ]
+    });
+
+    let linkVideoPuro = null;
+
     try {
-        const epgUrl = 'https://raw.githubusercontent.com/globetvapp/epg/main/Argentina/argentina1.xml';
-        const { data } = await axios.get(epgUrl);
-        
-        const programas = data.split('<programme');
-        guiaTV = {}; 
+        const page = await browser.newPage();
+        await page.setViewport({ width: 800, height: 600 });
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
 
-        for (let i = 1; i < programas.length; i++) {
-            const bloque = programas[i];
-            
-            const canalMatch = bloque.match(/channel="([^"]+)"/);
-            const startMatch = bloque.match(/start="([^\\s]+) /); 
-            const stopMatch = bloque.match(/stop="([^\\s]+) /);
-            const titleMatch = bloque.match(/<title[^>]*>([^<]+)<\/title>/);
-
-            if (canalMatch && startMatch && stopMatch && titleMatch) {
-                const idCanal = canalMatch[1];
-                const titulo = titleMatch[1];
-                
-                const formatearHora = (fechaSTR) => `${fechaSTR.substring(8, 10)}:${fechaSTR.substring(10, 12)}`;
-                
-                if (!guiaTV[idCanal]) guiaTV[idCanal] = [];
-                
-                guiaTV[idCanal].push({
-                    inicio: startMatch[1], 
-                    horario: `${formatearHora(startMatch[1])} - ${formatearHora(stopMatch[1])}`,
-                    titulo: titulo
-                });
-            }
-        }
-        console.log("✅ Guía EPG actualizada correctamente.");
-    } catch (error) {
-        console.log("⚠️ No se pudo descargar la EPG:", error.message);
-    }
-}
-
-actualizarEPG();
-setInterval(actualizarEPG, 12 * 60 * 60 * 1000);
-
-app.get('/api/epg/:canalId', (req, res) => {
-    try {
-        const idApp = req.params.canalId.toLowerCase(); 
-
-        const diccionario = {
-            "telefe": ["telefe"],
-            "eltrece": ["eltrece", "trece", "canal13"],
-            "elnueve": ["elnueve", "nueve", "canal9"],
-            "america": ["america"],
-            "tvpublica": ["publica", "tvp"],
-            "espn_premium": ["espnpremium"],
-            "espn": ["espn"],
-            "tnt": ["tntsports"],
-            "fox": ["foxsports"],
-            "tyc": ["tyc"],
-            "dsports": ["dsports", "directv"],
-            "ciudad": ["ciudadmagazine", "ciudad"],
-            "discovery": ["discovery"]
-        };
-
-        let palabrasClave = [idApp.split('_')[0]]; 
-        for (const key in diccionario) {
-            if (idApp.includes(key)) {
-                palabrasClave = diccionario[key];
-                break;
-            }
-        }
-
-        const idCanalXML = Object.keys(guiaTV).find(clave => {
-            const claveLimpia = clave.toLowerCase();
-            return palabrasClave.some(palabra => claveLimpia.includes(palabra));
+        browser.on('targetcreated', async (target) => {
+            const newPage = await target.page();
+            if (!newPage) return;
+            await newPage.setRequestInterception(true).catch(() => {});
+            newPage.on('request', (req) => {
+                const url = req.url();
+                if (esStream(url) && !linkVideoPuro) linkVideoPuro = url;
+                req.continue().catch(() => {});
+            });
         });
 
-        if (idCanalXML && guiaTV[idCanalXML]) {
-            const programas = guiaTV[idCanalXML];
-            
-            const fechaAr = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Argentina/Buenos_Aires"}));
-            const año = fechaAr.getFullYear();
-            const mes = String(fechaAr.getMonth() + 1).padStart(2, '0');
-            const dia = String(fechaAr.getDate()).padStart(2, '0');
-            const hora = String(fechaAr.getHours()).padStart(2, '0');
-            const min = String(fechaAr.getMinutes()).padStart(2, '0');
-            
-            const ahoraNum = parseInt(`${año}${mes}${dia}${hora}${min}00`); 
-
-            let ahora = null;
-            let siguiente = null;
-
-            for (let i = 0; i < programas.length; i++) {
-                const progInicio = parseInt(programas[i].inicio);
-                const progFin = programas[i+1] ? parseInt(programas[i+1].inicio) : progInicio + 20000; 
-
-                if (ahoraNum >= progInicio && ahoraNum < progFin) {
-                    ahora = programas[i];
-                    siguiente = programas[i+1] || { titulo: "Continuación de transmisión", horario: "--:--" };
-                    break;
-                }
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            const url = req.url();
+            if (['image', 'stylesheet', 'font', 'websocket'].includes(req.resourceType())) {
+                req.abort();
+                return;
             }
+            if (esStream(url) && !linkVideoPuro) linkVideoPuro = url;
+            req.continue().catch(() => {});
+        });
 
-            if (ahora) {
-                return res.json({ exito: true, ahora, siguiente });
+        page.on('framenavigated', async (frame) => {
+            const frameUrl = frame.url();
+            if (frameUrl === 'about:blank' || frameUrl === '') return;
+            if (esStream(frameUrl) && !linkVideoPuro) linkVideoPuro = frameUrl;
+        });
+
+        await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        for (const variantes of (datosCanal.opcionesBotones || [])) {
+            if (linkVideoPuro) break;
+            const clicOk = await clickBotonPorVariantes(page, variantes);
+            if (clicOk) {
+                let espera = 0;
+                while (!linkVideoPuro && espera < 60) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    espera++;
+                }
             }
         }
 
-        res.json({ exito: false });
+        if (!linkVideoPuro) {
+            const viewport = page.viewport();
+            await page.mouse.click(viewport.width / 2, viewport.height / 2);
+            let espera = 0;
+            while (!linkVideoPuro && espera < 30) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                espera++;
+            }
+        }
+
+    } finally {
+        try {
+            await browser.close();
+            console.log(`🔒 Browser cerrado para: ${canalId}`);
+        } catch (e) {
+            console.error(`⚠️ Error al cerrar browser: ${e.message}`);
+        }
+    }
+
+    return linkVideoPuro;
+}
+
+// --- RUTA INTELIGENTE PARA OBTENER ENLACES ---
+app.get('/api/get-stream/:canal', async (req, res) => {
+    const canalId = req.params.canal;
+    const datosCanal = dbCanales[canalId];
+
+    if (!datosCanal) return res.status(404).json({ exito: false, mensaje: "Canal no encontrado" });
+
+    try {
+        if (datosCanal.urlScraping) {
+            const ahora = Date.now();
+            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
+                return res.json({ exito: true, url: memoriaCache[canalId].url });
+            }
+
+            const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
+
+            if (linkVideoPuro) {
+                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
+                return res.json({ exito: true, url: urlFinal });
+            } else {
+                return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún stream." });
+            }
+
+        } else if (datosCanal.dominio && datosCanal.token && datosCanal.ruta) {
+            return res.json({ exito: true, url: `${datosCanal.dominio}${datosCanal.token}${datosCanal.ruta}` });
+        } else {
+            const separador = datosCanal.parametros ? '?' : '';
+            const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
+            
+            if (datosCanal.usarProxy) {
+                return res.json({ exito: true, url: `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}` });
+            }
+
+            return res.json({ exito: true, url: urlCompleta });
+        }
 
     } catch (error) {
-        console.error("Error en EPG:", error);
-        res.json({ exito: false });
+        return res.status(500).json({ exito: false, error: error.message });
     }
 });
 
+// --- ENCENDIDO DEL SERVIDOR ---
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor iniciado en puerto ${PORT}`);
-    setInterval(async () => { try { await axios.get(`${API_URL}/ping`); } catch (e) {} }, 14 * 60 * 1000);
+    console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
+    setInterval(async () => {
+        try {
+            await axios.get(`${API_URL}/ping`);
+        } catch (e) {}
+    }, 14 * 60 * 1000);
 });
