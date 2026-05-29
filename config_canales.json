@@ -17,41 +17,41 @@
     { "nombre": "Ciudad Magazine", "categoria": "Entretenimiento nacional", "logo": "logos_canales/cmagazine.png", "opciones": [{ "nombre": "Opción 1", "id": "ciudadmagazine_arg" }] },
     { "nombre": "Discovery", "categoria": "Cultura", "logo": "logos_canales/discovery.png", "opciones": [{ "nombre": "Opción 1", "id": "discovery_arg" }] },
     { "nombre": "Discovery ID", "categoria": "Cultura", "logo": "logos_canales/discoveryid.png", "opciones": [{ "nombre": "Opción 1", "id": "discoveryid_arg" }] }
-],
+  ],
   "backend": {
-
-    "tnt_1":              { "base": "https://anden26.ddns.net/live/stream.m3u8", "parametros": "v=1777146764944", "usarProxy": false },
-
-    "eltrece_directo":    { "base": "http://45.5.151.147:8000/play/a00f/87700318.m3u8", "parametros": "", "usarProxy": true },
-    "telefe_directo":     { "base": "http://45.5.151.147:8000/play/a00g/43206468.m3u8", "parametros": "", "usarProxy": true },
-    "elnueve_directo":    { "base": "http://45.5.151.147:8000/play/a00e/83306027.m3u8", "parametros": "", "usarProxy": true },
-    "america_directo":    { "base": "http://45.5.151.147:8000/play/a00c/63841454.m3u8", "parametros": "", "usarProxy": true },
-    "tvpublica_directo":  { "base": "http://45.5.151.147:8000/play/a00h/34435841.m3u8", "parametros": "", "usarProxy": true },
+    "telefe_directo":     { "urlScraping": "https://pelotalibretv.su/telefe/", "opcionesBotones": [["Opción 1"]] },
+    "eltrece_directo":    { "urlScraping": "https://pelotalibretv.su/el-trece/", "opcionesBotones": [["Opción 1"]] },
+    "elnueve_directo":    { "urlScraping": "https://pelotalibretv.su/el-nueve/", "opcionesBotones": [["Opción 1"]] },
+    "america_directo":    { "urlScraping": "https://pelotalibretv.su/america-tv/", "opcionesBotones": [["Opción 1"]] },
+    "tvpublica_directo":  { "urlScraping": "https://tvlibre-online.com/en-vivo/tv-publica/", "opcionesBotones": [["Opción 1"]] },
     "tvpublica_scraper1": { "urlScraping": "https://pelotalibretv.su/tv-publica/", "opcionesBotones": []},
-    "ciudadmagazine_arg": { "base": "http://45.5.151.147:8000/play/a03i/83439053.m3u8", "parametros": "", "usarProxy": true },
-    "discovery_arg":      { "base": "http://45.5.151.147:8000/play/a01s/11530821.m3u8", "parametros": "", "usarProxy": true },
-    "discoveryid_arg":    { "base": "http://45.5.151.147:8000/play/a01u/40934066.m3u8", "parametros": "", "usarProxy": true },
-    "espn_2":             { "base": "http://45.5.151.147:8000/play/a00j/96761982.m3u8", "parametros": "", "usarProxy": true },
-    "espn_3":             { "base": "http://45.5.151.147:8000/play/a00k/29906542.m3u8", "parametros": "", "usarProxy": true },
-    "tnt_2":              { "base": "http://45.5.151.147:8000/play/a00r/22068914.m3u8", "parametros": "", "usarProxy": true },
-    "tyc_arg":            { "base": "http://45.5.151.147:8000/play/a00s/42070182.m3u8", "parametros": "", "usarProxy": true },
-    "foxsports_arg":      { "base": "http://45.5.151.147:8000/play/a00n/89171206.m3u8", "parametros": "", "usarProxy": true },
-    "foxsports_arg3":     { "base": "http://45.5.151.147:8000/play/a00p/24722847.m3u8", "parametros": "", "usarProxy": true },
-
-    "espn_op1": { "base": "https://latamvidz1.com/canal.php?stream=espnpremium", "parametros": "", "usarProxy": false },
-    "espn_op2": { "base": "https://la14hd.com/vivo/canal.php?stream=espnpremium", "parametros": "", "usarProxy": false },
-    "espn_op3": { "base": "https://streamtpcloud.com/global1.php?stream=espnpremium", "parametros": "", "usarProxy": false },
-    "espn_scraper1":    { "urlScraping": "https://pelotalibretv.su/espn-1/",   "opcionesBotones": [["Opción 1"]]},
-    "tnt_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 3"]]},
-    "tnt_scraper2":    { "urlScraping": "https://pelotalibretv.su/tnt-sports/", "opcionesBotones": [["Opción 1"]]},
-    "dsports_scraper1":{ "urlScraping": "https://tvlibre-online.com/en-vivo/dsports/", "opcionesBotones": [["Opción 2"]] },
-    "dsports_scraper2":{ "urlScraping": "https://pelotalibretv.su/directv-sports/", "opcionesBotones": [["Opción 1"]] },
-    "fox_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/fox-sports/", "opcionesBotones": [["Opción 3"]]},
-    "fox_scraper2":    { "urlScraping": "https://pelotalibretv.su/fox-sports/", "opcionesBotones": []},
-    "tyc_scraper0":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/", "opcionesBotones": [["Opción 3"]]},
-    "tyc_scraper1": { "urlScraping": "https://pelotalibretv.su/tyc-sports/", "opcionesBotones": [["Opción 1"]] },
-    "tyc_scraper2": { "urlScraping": "https://la14hd.com/vivo/canales.php?stream=tycsports", "opcionesBotones": [] }
+    "ciudadmagazine_arg": { "urlScraping": "https://tvlibre-online.com/en-vivo/ciudad-magazine/", "opcionesBotones": [["Opción 1"]] },
+    "discovery_arg":      { "urlScraping": "https://tvlibre-online.com/en-vivo/discovery-channel/", "opcionesBotones": [["Opción 1"]] },
+    "discoveryid_arg":    { "urlScraping": "https://tvlibre-online.com/en-vivo/investigation-discovery/", "opcionesBotones": [["Opción 1"]] },
     
- 
+    "espn_op1":           { "urlScraping": "https://pelotalibretv.su/espn-premium/", "opcionesBotones": [["Opción 1"]] },
+    "espn_op2":           { "urlScraping": "https://tvlibre-online.com/en-vivo/espn-premium/", "opcionesBotones": [["Opción 2"]] },
+    "espn_op3":           { "urlScraping": "https://pelotalibretv.su/espn-premium/", "opcionesBotones": [["Opción 3"]] },
+    "espn_scraper1":      { "urlScraping": "https://pelotalibretv.su/espn-1/", "opcionesBotones": [["Opción 1"]]},
+    "espn_2":             { "urlScraping": "https://pelotalibretv.su/espn-2/", "opcionesBotones": [["Opción 1"]] },
+    "espn_3":             { "urlScraping": "https://pelotalibretv.su/espn-3/", "opcionesBotones": [["Opción 1"]] },
+    
+    "tnt_1":              { "urlScraping": "https://pelotalibretv.su/tnt-sports/", "opcionesBotones": [["Opción 2"]] },
+    "tnt_2":              { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 1"]] },
+    "tnt_scraper1":       { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 3"]]},
+    "tnt_scraper2":       { "urlScraping": "https://pelotalibretv.su/tnt-sports/", "opcionesBotones": [["Opción 1"]]},
+    
+    "dsports_scraper1":   { "urlScraping": "https://tvlibre-online.com/en-vivo/dsports/", "opcionesBotones": [["Opción 2"]] },
+    "dsports_scraper2":   { "urlScraping": "https://pelotalibretv.su/directv-sports/", "opcionesBotones": [["Opción 1"]] },
+    
+    "foxsports_arg":      { "urlScraping": "https://pelotalibretv.su/fox-sports/", "opcionesBotones": [["Opción 1"]] },
+    "fox_scraper1":       { "urlScraping": "https://tvlibre-online.com/en-vivo/fox-sports/", "opcionesBotones": [["Opción 3"]]},
+    "fox_scraper2":       { "urlScraping": "https://pelotalibretv.su/fox-sports/", "opcionesBotones": []},
+    "foxsports_arg3":     { "urlScraping": "https://pelotalibretv.su/fox-sports-3/", "opcionesBotones": [["Opción 1"]] },
+    
+    "tyc_scraper0":       { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/", "opcionesBotones": [["Opción 3"]]},
+    "tyc_scraper1":       { "urlScraping": "https://pelotalibretv.su/tyc-sports/", "opcionesBotones": [["Opción 1"]] },
+    "tyc_scraper2":       { "urlScraping": "https://la14hd.com/vivo/canales.php?stream=tycsports", "opcionesBotones": [] },
+    "tyc_arg":            { "urlScraping": "https://pelotalibretv.su/tyc-sports/", "opcionesBotones": [["Opción 2"]] }
   }
 }

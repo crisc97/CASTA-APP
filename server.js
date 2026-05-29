@@ -17,23 +17,115 @@ const PORT = process.env.PORT || 3000;
 const API_URL = process.env.API_URL || 'https://casta-app.onrender.com';
 
 // ============================================================
-// CARGAR LISTA DE CANALES IPTV (JSON)
+// CONFIGURACIÓN DE LISTAS EXTERNAS (EL TRUCO AVANZADO)
 // ============================================================
+const URLS_EXTERNAS = [
+    { id: 'tvlibre_2', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/TVLIBRE-2.json', categoria: 'CineCity TV Libre' },
+    { id: 'canales_m3u8', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Canales_m3u8.json', categoria: 'Canales M3U8 Directos' },
+    { id: 'pluto_tv', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Pluto-TV.json', categoria: 'Pluto TV (CineCity)' },
+    { id: 'claro_video', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/clarovideo.json', categoria: 'Claro Video' },
+    { id: 'futbol_libre', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/futbol-libre.json', categoria: 'Fútbol Libre Eventos' },
+    { id: 'bola_loca', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/BolaLoca.json', categoria: 'Bola Loca Deportes' },
+    { id: 'ddeports', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/ddeports.json', categoria: 'DDeports Agenda' },
+    { id: 'coin_tv', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/CoinTV.json', categoria: 'Coin TV' },
+    { id: 'cine_2026', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Cine_2026.json', categoria: 'Cine 2026' },
+    { id: 'peliculas_hd', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Peliculas_HD.json', categoria: 'Películas HD' }
+];
+
 let dbCanales = {};
 let frontendCanales = [];
 
-function cargarConfiguracion() {
+// Función para orquestar la carga total
+async function inicializarBaseDeDatos() {
     try {
+        console.log("-------------------------------------------------------");
+        console.log("⚙️ Cargando configuración local (config_canales.json)...");
+        
+        // 1. Cargar canales locales fijados por vos
         const rawData = fs.readFileSync(path.join(__dirname, 'config_canales.json'), 'utf8');
         const data = JSON.parse(rawData);
         dbCanales = data.backend || {};
         frontendCanales = data.frontend || [];
-        console.log(`✅ Lista cargada: ${frontendCanales.length} canales.`);
+        console.log(`✅ Base local cargada: ${frontendCanales.length} canales principales.`);
+
+        // 2. Descargar y fusionar las listas dinámicas de GitHub
+        await cargarListasExternas();
+        console.log("-------------------------------------------------------");
     } catch (error) {
-        console.error("❌ Error al leer config_canales.json:", error.message);
+        console.error("❌ Error general al inicializar base de datos:", error.message);
     }
 }
-cargarConfiguracion();
+
+// Adaptador flexible para procesar listas dinámicas
+async function cargarListasExternas() {
+    console.log("🔄 Conectando con los repositorios remotos de GitHub...");
+    
+    for (const lista of URLS_EXTERNAS) {
+        try {
+            const response = await axios.get(lista.url, { timeout: 12000 });
+            let datos = response.data;
+
+            if (typeof datos === 'string') {
+                datos = JSON.parse(datos);
+            }
+
+            // Identificar si la lista es un array directo o viene envuelta en un objeto
+            let items = [];
+            if (Array.isArray(datos)) {
+                items = datos;
+            } else if (datos && typeof datos === 'object') {
+                const claveArray = Object.keys(datos).find(k => Array.isArray(datos[k]));
+                if (claveArray) items = datos[claveArray];
+            }
+
+            if (items.length === 0) continue;
+
+            items.forEach((item, index) => {
+                // Mapeador flexible de propiedades mutables (CineCity usa variables variantes)
+                const nombre = item.name || item.title || item.nombre || item.label || `${lista.id} - Item ${index + 1}`;
+                const urlVideo = item.link || item.url || item.enlace || item.file || item.stream;
+                const logoItem = item.logo || item.image || item.img || item.thumbnail || "";
+
+                if (!urlVideo) return; // Omitir si no posee link de reproducción
+
+                const idUnico = `ext_${lista.id}_${index}`;
+                
+                // Determinar si requiere Scraping Dinámico con Puppeteer (Deportes/Agendas complejas)
+                const requiereScraping = lista.id === 'futbol_libre' || lista.id === 'bola_loca' || lista.id === 'ddeports' || urlVideo.includes('html');
+
+                if (requiereScraping) {
+                    dbCanales[idUnico] = {
+                        urlScraping: urlVideo,
+                        opcionesBotones: [["Opción 1"], ["Opción 2"], ["Reproducir"], ["VIVO"]]
+                    };
+                } else {
+                    // Si es un .m3u8 estático, película o Pluto TV, va por vía rápida
+                    dbCanales[idUnico] = {
+                        base: urlVideo,
+                        parametros: "",
+                        // Evitamos usar el proxy en Pluto TV para no reventar el ancho de banda mensual de Render
+                        usarProxy: !urlVideo.includes('pluto.tv') && !urlVideo.includes('plutotv')
+                    };
+                }
+
+                // Inyectar en la lista del Frontend
+                frontendCanales.push({
+                    nombre: nombre,
+                    categoria: lista.categoria,
+                    logo: logoItem.startsWith('http') ? logoItem : `${API_URL}/logos_canales/cinecity.png`,
+                    opciones: [{ nombre: "Reproducir", id: idUnico }]
+                });
+            });
+
+            console.log(`📦 Lista [${lista.categoria}] sincronizada. +${items.length} elementos añadidos.`);
+        } catch (err) {
+            console.error(`⚠️ No se pudo sincronizar la lista externa [${lista.categoria}]:`, err.message);
+        }
+    }
+}
+
+// Disparar carga inicial
+inicializarBaseDeDatos();
 
 // ============================================================
 // RUTAS BÁSICAS Y FRONTEND
@@ -274,18 +366,13 @@ async function clickBotonPorVariantes(page, variantes) {
 async function correrBot(datosCanal, canalId) {
     console.log(`🕵️‍♂️ Bot iniciando para: ${canalId}...`);
     const browser = await puppeteer.launch({
-    headless: true, // Que corra en segundo plano
-    args: [
-        '--no-sandbox',               // OBLIGATORIO en Docker
-        '--disable-setuid-sandbox',   // OBLIGATORIO en Docker
-        '--disable-dev-shm-usage',    // Evita que Render se quede sin memoria RAM
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',           // Consume menos recursos
-        '--disable-gpu'
-    ]
-});
+        headless: true,
+        args: [
+            '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
+            '--disable-gpu', '--single-process', '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process'
+        ]
+    });
 
     let linkVideoPuro = null;
 
@@ -435,9 +522,17 @@ app.get('/play/:canal', async (req, res) => {
 // --- ENCENDIDO DEL SERVIDOR ---
 app.listen(PORT, () => {
     console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
+    
+    // Auto-ping para mantener Render despierto
     setInterval(async () => {
         try {
             await axios.get(`${API_URL}/ping`);
         } catch (e) {}
     }, 14 * 60 * 1000);
+
+    // AUTO-REFRESH: Vuelve a descargar todas las listas de GitHub cada 3 horas para tener links frescos
+    setInterval(async () => {
+        console.log("🕒 Ejecutando Auto-Refresh programado de listas de GitHub...");
+        await inicializarBaseDeDatos();
+    }, 3 * 60 * 60 * 1000);
 });
