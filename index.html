@@ -259,16 +259,15 @@
             // Pausamos y limpiamos el video nativo por defecto
             videoElement.pause();
             videoElement.src = "";
-
-            // --- CASO 1: REPRODUCTORES EXTERNOS (IFRAMES COMO PELOTA LIBRE) ---
-            if (url.includes('canal.php') || url.includes('.php') || url.includes('latamvidz') || url.includes('la14hd') || url.includes('streamtpcloud') || url.includes('elcanaldeportivo')) {
-                videoElement.classList.add('hidden');       // Ocultamos etiqueta <video>
-                iframeElement.classList.remove('hidden');    // Mostramos etiqueta <iframe>
-                
-                iframeElement.src = url;                    // Seteamos la web externa de Pelota Libre
-                ocultarLoader();                            // El iframe maneja su propia carga interna
-                return;
-            }
+// --- CASO 1: REPRODUCTORES EXTERNOS (IFRAMES COMO PELOTA LIBRE) SÓLO SI NO ES PROXY ---
+if (!url.includes('/proxy/stream') && (url.includes('canal.php') || url.includes('.php') || url.includes('latamvidz') || url.includes('la14hd') || url.includes('streamtpcloud') || url.includes('elcanaldeportivo'))) {
+    videoElement.classList.add('hidden');       // Ocultamos etiqueta <video>
+    iframeElement.classList.remove('hidden');    // Mostramos etiqueta <iframe>
+    
+    iframeElement.src = url;                    // Seteamos la web externa
+    ocultarLoader();                            // El iframe maneja su propia carga interna
+    return;
+}
 
             // --- SI NO ES IFRAME, SE DETECTA VIDEO NATIVO M3U8 / MPD ---
             iframeElement.classList.add('hidden');
