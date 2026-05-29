@@ -41,14 +41,12 @@ async function inicializarBaseDeDatos() {
         console.log("-------------------------------------------------------");
         console.log("⚙️ Cargando configuración local (config_canales.json)...");
         
-        // 1. Cargar canales locales fijados por vos
         const rawData = fs.readFileSync(path.join(__dirname, 'config_canales.json'), 'utf8');
         const data = JSON.parse(rawData);
         dbCanales = data.backend || {};
         frontendCanales = data.frontend || [];
         console.log(`✅ Base local cargada: ${frontendCanales.length} canales principales.`);
 
-        // 2. Descargar y fusionar las listas dinámicas de GitHub
         await cargarListasExternas();
         console.log("-------------------------------------------------------");
     } catch (error) {
@@ -69,7 +67,6 @@ async function cargarListasExternas() {
                 datos = JSON.parse(datos);
             }
 
-            // Identificar si la lista es un array directo o viene envuelta en un objeto
             let items = [];
             if (Array.isArray(datos)) {
                 items = datos;
@@ -81,17 +78,14 @@ async function cargarListasExternas() {
             if (items.length === 0) continue;
 
             items.forEach((item, index) => {
-                // Mapeador flexible de propiedades mutables (CineCity usa variables variantes)
                 const nombre = item.name || item.title || item.nombre || item.label || `${lista.id} - Item ${index + 1}`;
                 const urlVideo = item.link || item.url || item.enlace || item.file || item.stream;
                 const logoItem = item.logo || item.image || item.img || item.thumbnail || "";
 
-                if (!urlVideo) return; // Omitir si no posee link de reproducción
+                if (!urlVideo) return; 
 
                 const idUnico = `ext_${lista.id}_${index}`;
-                
-                // Determinar si requiere Scraping Dinámico con Puppeteer (Deportes/Agendas complejas)
-                const requiereScraping = lista.id === 'futbol_libre' || lista.id === 'bola_loca' || lista.id === 'ddeports' || urlVideo.includes('html');
+                const requiereScraping = lista.id === 'futbol_libre' || lista.id === 'bola_loca' || lista.id === 'ddeports' || urlVideo.toLowerCase().includes('html');
 
                 if (requiereScraping) {
                     dbCanales[idUnico] = {
@@ -99,16 +93,17 @@ async function cargarListasExternas() {
                         opcionesBotones: [["Opción 1"], ["Opción 2"], ["Reproducir"], ["VIVO"]]
                     };
                 } else {
-                    // Si es un .m3u8 estático, película o Pluto TV, va por vía rápida
+                    // FILTRO ULTRA-SEGURO: Si la URL directa contiene .mpd, usarProxy pasa a ser FALSE automáticamente
+                    const esMpd = urlVideo.toLowerCase().includes('.mpd');
+                    const esPluto = urlVideo.toLowerCase().includes('pluto.tv') || urlVideo.toLowerCase().includes('plutotv');
+
                     dbCanales[idUnico] = {
                         base: urlVideo,
                         parametros: "",
-                        // Evitamos usar el proxy en Pluto TV para no reventar el ancho de banda mensual de Render
-                        usarProxy: !urlVideo.includes('pluto.tv') && !urlVideo.includes('plutotv')
+                        usarProxy: !esPluto && !esMpd
                     };
                 }
 
-                // Inyectar en la lista del Frontend
                 frontendCanales.push({
                     nombre: nombre,
                     categoria: lista.categoria,
@@ -124,7 +119,6 @@ async function cargarListasExternas() {
     }
 }
 
-// Disparar carga inicial
 inicializarBaseDeDatos();
 
 // ============================================================
@@ -195,9 +189,7 @@ function encolarBot(fn) {
                 reject(e);
             } finally {
                 botEnEjecucion = false;
-                if (global.gc) {
-                    global.gc();
-                }
+                if (global.gc) global.gc();
                 ejecutarSiguienteBot();
             }
         });
@@ -220,7 +212,6 @@ function armarHeaders(targetUrl) {
             'Connection': 'keep-alive'
         };
     }
-
     let referer = 'https://tvlibr3.com/';
     let origin = 'https://tvlibr3.com';
 
@@ -255,9 +246,7 @@ app.get('/proxy/stream', async (req, res) => {
     const headers = armarHeaders(targetUrl);
     headers['Accept-Encoding'] = 'identity';
 
-    if (req.headers.range) {
-        headers['Range'] = req.headers.range;
-    }
+    if (req.headers.range) headers['Range'] = req.headers.range;
 
     try {
         const response = await axios({
@@ -297,9 +286,7 @@ app.get('/proxy/stream', async (req, res) => {
                         try {
                             const urlSegmento = new URL(l, targetUrl).href;
                             return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
-                        } catch (e) {
-                            return l; 
-                        }
+                        } catch (e) { return l; }
                     }).join('\n');
 
                     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
@@ -322,21 +309,16 @@ app.get('/proxy/stream', async (req, res) => {
         res.setHeader('Accept-Ranges', 'bytes');
         
         if (response.headers['content-range']) res.setHeader('Content-Range', response.headers['content-range']);
-        
         if (response.status === 206) res.status(206);
 
         req.on('close', () => {
-            if (!response.data.destroyed) {
-                response.data.destroy();
-            }
+            if (!response.data.destroyed) response.data.destroy();
         });
 
         response.data.pipe(res);
 
     } catch (err) {
-        if (!res.headersSent) {
-            res.status(502).send('Error al obtener el stream');
-        }
+        if (!res.headersSent) res.status(502).send('Error al obtener el stream');
     }
 });
 
@@ -345,7 +327,7 @@ app.get('/proxy/stream', async (req, res) => {
 // ============================================================
 async function clickBotonPorVariantes(page, variantes) {
     try {
-        const resultado = await page.evaluate((textos) => {
+        return await page.evaluate((textos) => {
             const elementos = Array.from(document.querySelectorAll('button, a, span, div, li, p'));
             for (const texto of textos) {
                 const el = elementos.find(e => {
@@ -359,7 +341,6 @@ async function clickBotonPorVariantes(page, variantes) {
             }
             return null;
         }, variantes);
-        return resultado;
     } catch (e) { return null; }
 }
 
@@ -390,17 +371,13 @@ async function correrBot(datosCanal, canalId) {
                 req.abort(); 
                 return; 
             }
-            if (esStream(urlReq) && !linkVideoPuro) {
-                linkVideoPuro = req.url(); 
-            }
+            if (esStream(urlReq) && !linkVideoPuro) linkVideoPuro = req.url(); 
             req.continue();
         });
 
         page.on('response', async (response) => {
             const urlRespuesta = response.url().toLowerCase();
-            if (esStream(urlRespuesta) && !urlRespuesta.includes('ad') && !linkVideoPuro) {
-                linkVideoPuro = response.url(); 
-            }
+            if (esStream(urlRespuesta) && !urlRespuesta.includes('ad') && !linkVideoPuro) linkVideoPuro = response.url(); 
         });
 
         await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -442,7 +419,7 @@ async function correrBot(datosCanal, canalId) {
 }
 
 // ============================================================
-// RUTA PARA LA APP (MANTIENE LA COMPATIBILIDAD CON EL INDEX)
+// RUTA PARA LA APP (COMPATIBILIDAD INDEX.HTML)
 // ============================================================
 app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
     const canalId = req.params.canal;
@@ -460,7 +437,12 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
             const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
 
             if (linkVideoPuro) {
-                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                // BYPASS DINÁMICO EN BOT: Si el bot extrajo un .mpd, se lo mandamos directo al celu
+                const esMpdDescubierto = linkVideoPuro.toLowerCase().includes('.mpd');
+                const urlFinal = esMpdDescubierto 
+                    ? linkVideoPuro 
+                    : `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+
                 memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
                 return res.json({ exito: true, url: urlFinal });
             } else {
@@ -487,7 +469,7 @@ app.get('/play/:canal', async (req, res) => {
     const canalId = req.params.canal;
     const datosCanal = dbCanales[canalId];
 
-    if (!datosCanal) return res.status(404).send("Error: Canal no encontrado en la base de datos.");
+    if (!datosCanal) return res.status(404).send("Error: Canal no encontrado.");
 
     try {
         if (datosCanal.urlScraping) {
@@ -499,11 +481,15 @@ app.get('/play/:canal', async (req, res) => {
             const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
 
             if (linkVideoPuro) {
-                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                const esMpdDescubierto = linkVideoPuro.toLowerCase().includes('.mpd');
+                const urlFinal = esMpdDescubierto 
+                    ? linkVideoPuro 
+                    : `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+
                 memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
                 return res.redirect(302, urlFinal);
             } else {
-                return res.status(500).send("Error: El bot no encontró ningún stream válido.");
+                return res.status(500).send("Error: El bot no encontró ningún stream.");
             }
         } else {
             const separador = datosCanal.parametros ? '?' : '';
@@ -515,22 +501,18 @@ app.get('/play/:canal', async (req, res) => {
             return res.redirect(302, urlCompleta);
         }
     } catch (error) {
-        return res.status(500).send(`Error interno del servidor: ${error.message}`);
+        return res.status(500).send(`Error: ${error.message}`);
     }
 });
 
-// --- ENCENDIDO DEL SERVIDOR ---
+// --- ENCENDIDO ---
 app.listen(PORT, () => {
     console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
     
-    // Auto-ping para mantener Render despierto
     setInterval(async () => {
-        try {
-            await axios.get(`${API_URL}/ping`);
-        } catch (e) {}
+        try { await axios.get(`${API_URL}/ping`); } catch (e) {}
     }, 14 * 60 * 1000);
 
-    // AUTO-REFRESH: Vuelve a descargar todas las listas de GitHub cada 3 horas para tener links frescos
     setInterval(async () => {
         console.log("🕒 Ejecutando Auto-Refresh programado de listas de GitHub...");
         await inicializarBaseDeDatos();
