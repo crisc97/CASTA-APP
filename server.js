@@ -274,13 +274,18 @@ async function clickBotonPorVariantes(page, variantes) {
 async function correrBot(datosCanal, canalId) {
     console.log(`🕵️‍♂️ Bot iniciando para: ${canalId}...`);
     const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-            '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
-            '--disable-gpu', '--single-process', '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process'
-        ]
-    });
+    headless: true, // Que corra en segundo plano
+    args: [
+        '--no-sandbox',               // OBLIGATORIO en Docker
+        '--disable-setuid-sandbox',   // OBLIGATORIO en Docker
+        '--disable-dev-shm-usage',    // Evita que Render se quede sin memoria RAM
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',           // Consume menos recursos
+        '--disable-gpu'
+    ]
+});
 
     let linkVideoPuro = null;
 
