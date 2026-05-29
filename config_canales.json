@@ -1,6 +1,6 @@
 {
   "frontend": [
-    { "nombre": "ESPN Premium", "categoria": "Deportes", "logo": "logos_canales/espn.png", "opciones": [{ "nombre": "Opción 1", "id": "espnpremium_scraper1" }] },
+    { "nombre": "ESPN Premium", "categoria": "Deportes", "logo": "logos_canales/espn.png", "opciones": [{ "nombre": "Opción 1", "id": "espn_op1" },{ "nombre": "Opción 2", "id": "espn_op2" },{ "nombre": "Opción 3", "id": "espn_op3" }] },
     { "nombre": "TNT Sports Premium", "categoria": "Deportes", "logo": "logos_canales/tnt.png", "opciones": [{ "nombre": "Opción 1", "id": "tnt_scraper1" }, { "nombre": "Opción 2", "id": "tnt_1" }, { "nombre": "Opción 3", "id": "tnt_scraper2" },{ "nombre": "Opción 4", "id": "tnt_2" }] },
     { "nombre": "DirecTv Sports", "categoria": "Deportes", "logo": "logos_canales/dsports.png", "opciones": [{ "nombre": "Opción 1", "id": "dsports_scraper1" },{ "nombre": "Opción 2", "id": "dsports_scraper2" }] },
     { "nombre": "Fox Sports", "categoria": "Deportes", "logo": "logos_canales/foxs.png", "opciones": [{ "nombre": "Opción 1", "id": "foxsports_arg" }, { "nombre": "Opción 2", "id": "fox_scraper1" }, { "nombre": "Opción 3", "id": "fox_scraper2" }] },
@@ -38,7 +38,9 @@
     "foxsports_arg":      { "base": "http://45.5.151.147:8000/play/a00n/89171206.m3u8", "parametros": "", "usarProxy": true },
     "foxsports_arg3":     { "base": "http://45.5.151.147:8000/play/a00p/24722847.m3u8", "parametros": "", "usarProxy": true },
 
-    "espnpremium_scraper1":    { "urlScraping": "https://pelotalibretv.su/espn-premium/",   "opcionesBotones": [["Opción 1"]]},
+    "espn_op1": { "base": "https://latamvidz1.com/canal.php?stream=espnpremium", "parametros": "", "usarProxy": false },
+    "espn_op2": { "base": "https://la14hd.com/vivo/canal.php?stream=espnpremium", "parametros": "", "usarProxy": false },
+    "espn_op3": { "base": "https://streamtpcloud.com/global1.php?stream=espnpremium", "parametros": "", "usarProxy": false }
     "espn_scraper1":    { "urlScraping": "https://pelotalibretv.su/espn-1/",   "opcionesBotones": [["Opción 1"]]},
     "tnt_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 3"]]},
     "tnt_scraper2":    { "urlScraping": "https://pelotalibretv.su/tnt-sports/", "opcionesBotones": [["Opción 1"]]},
