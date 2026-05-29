@@ -97,7 +97,7 @@ async function cargarListasExternas() {
                 if (!urlVideo) return; 
 
                 // ==========================================================
-                // 🔥 FILTRO DE LISTA NEGRA (ACTÚA ACÁ)
+                // 🚫 FILTRO DE LISTA NEGRA
                 // ==========================================================
                 const debaIgnorar = CANALES_BANEADOS.some(palabra => 
                     nombre.toLowerCase().includes(palabra.toLowerCase())
@@ -105,7 +105,7 @@ async function cargarListasExternas() {
                 
                 if (debaIgnorar) {
                     console.log(`🚫 Canal omitido por Lista Negra: ${nombre}`);
-                    return; // Salta este canal de GitHub y pasa al que sigue
+                    return; 
                 }
                 // ==========================================================
 
@@ -113,19 +113,18 @@ async function cargarListasExternas() {
                 const requiereScraping = lista.id === 'futbol_libre' || lista.id === 'bola_loca' || lista.id === 'ddeports' || urlVideo.toLowerCase().includes('html');
 
                 if (requiereScraping) {
+                    // Los eventos deportivos dinámicos siguen usando tu sistema de Bots
                     dbCanales[idUnico] = {
                         urlScraping: urlVideo,
                         opcionesBotones: [["Opción 1"], ["Opción 2"], ["Reproducir"], ["VIVO"]]
                     };
                 } else {
-                    // FILTRO ULTRA-SEGURO: Si la URL directa contiene .mpd, usarProxy pasa a ser FALSE automáticamente
-                    const esMpd = urlVideo.toLowerCase().includes('.mpd');
-                    const esPluto = urlVideo.toLowerCase().includes('pluto.tv') || urlVideo.toLowerCase().includes('plutotv');
-
+                    // ⚡ CONEXIÓN DIRECTA ABSOLUTA (SIN PROXY)
+                    // Forzamos a que TODOS los canales de las listas JSON vayan directo de la IP del usuario a la fuente
                     dbCanales[idUnico] = {
                         base: urlVideo,
                         parametros: "",
-                        usarProxy: !esPluto && !esMpd
+                        usarProxy: false 
                     };
                 }
 
@@ -143,7 +142,6 @@ async function cargarListasExternas() {
         }
     }
 }
-
 inicializarBaseDeDatos();
 
 // ============================================================
