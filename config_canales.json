@@ -40,7 +40,7 @@
 
     "espn_op1": { "base": "https://latamvidz1.com/canal.php?stream=espnpremium", "parametros": "", "usarProxy": false },
     "espn_op2": { "base": "https://la14hd.com/vivo/canal.php?stream=espnpremium", "parametros": "", "usarProxy": false },
-    "espn_op3": { "base": "https://streamtpcloud.com/global1.php?stream=espnpremium", "parametros": "", "usarProxy": false }
+    "espn_op3": { "base": "https://streamtpcloud.com/global1.php?stream=espnpremium", "parametros": "", "usarProxy": false },
     "espn_scraper1":    { "urlScraping": "https://pelotalibretv.su/espn-1/",   "opcionesBotones": [["Opción 1"]]},
     "tnt_scraper1":    { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 3"]]},
     "tnt_scraper2":    { "urlScraping": "https://pelotalibretv.su/tnt-sports/", "opcionesBotones": [["Opción 1"]]},
