@@ -11,6 +11,7 @@ const app = express();
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());
+app.use('/logos_canales', express.static(path.join(__dirname, 'logos_canales')));
 
 const PORT = process.env.PORT || 3000;
 const API_URL = process.env.API_URL || 'https://casta-app.onrender.com';
@@ -351,7 +352,7 @@ async function correrBot(datosCanal, canalId) {
 // ============================================================
 // RUTA PARA LA APP (MANTIENE LA COMPATIBILIDAD CON EL INDEX)
 // ============================================================
-app.get('/api/get-stream/:canal', async (req, res) => {
+app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
     const canalId = req.params.canal;
     const datosCanal = dbCanales[canalId];
 
