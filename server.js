@@ -36,9 +36,11 @@ const URLS_EXTERNAS = [
 // ============================================================
 const CANALES_BANEADOS = [
     "Canal de Prueba",
-    "Adultos",         // Bloquea cualquier canal que tenga esta palabra
+    "🔞 Adultos",         // Bloquea cualquier canal que tenga esta palabra
     "Telefe Interior", // Bloquea este canal específico si no te interesa
     "Premium 18+",
+    "Venus",
+    "Sextreme",
     "EWTN"             // Ejemplo de canal religioso o de otro país que quieras sacar
 ];
 
