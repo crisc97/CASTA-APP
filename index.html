@@ -10,11 +10,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
     <style>
         body { background-color: black !important; }
-        
-        /* Eliminamos controles nativos y ocultamos barras por defecto */
         video::-webkit-media-controls { display: none !important; }
         video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none !important; }
-
         #sidebar::-webkit-scrollbar { width: 6px; }
         #sidebar::-webkit-scrollbar-track { background: transparent; }
         #sidebar::-webkit-scrollbar-thumb { background-color: #1e3a8a; border-radius: 10px; }
@@ -66,6 +63,12 @@
         </button>
 
         <div class="flex gap-4 pointer-events-auto">
+            <!-- AGREGADO: BOTÓN DESCARGAR LISTA M3U -->
+            <a href="/lista.m3u" download="CastaApp.m3u" class="bg-black/70 hover:bg-green-600 focus:bg-green-600 focus:ring-4 focus:ring-white text-white pl-4 pr-5 py-2 rounded-xl border border-gray-600 shadow-lg transition duration-300 font-bold flex items-center gap-2.5 outline-none backdrop-blur-md" title="Descargar M3U">
+                <span class="text-xl shrink-0">📥</span>
+                <span class="text-left text-xs sm:text-sm leading-tight tracking-wide">Descargar<br><span class="font-medium text-gray-300">Lista M3U</span></span>
+            </a>
+            
             <button id="btnReportar" class="hidden bg-black/70 hover:bg-red-600 focus:bg-red-600 focus:ring-4 focus:ring-white text-white pl-4 pr-5 py-2 rounded-xl border border-gray-600 shadow-lg transition duration-300 font-bold flex items-center gap-2.5 outline-none backdrop-blur-md" title="Reportar Falla">
                 <span class="text-xl shrink-0">⚠️</span>
                 <span class="text-left text-xs sm:text-sm leading-tight tracking-wide">Reportar<br><span class="font-medium text-gray-300">NO funcional</span></span>
@@ -137,7 +140,6 @@
         let ultimoReintento = 0;
         let timeoutInactividad; 
 
-        // DETECTOR INTELIGENTE DE SMART TV
         const ua = navigator.userAgent.toLowerCase();
         const esTV = /tv|smarttv|googletv|appletv|tizen|webos|hbbtv|crkey|netcast|viera|bravia|large|box|roku|firetv|playstation|xbox|kftv/i.test(ua);
 
@@ -151,7 +153,6 @@
             'tyc_scraper1', 'tyc_scraper2', 'telefe_scraper', 'eltrece_scraper', 'elnueve_scraper'
         ];
 
-        // Lista dinámica conectada a Render
         let misCanales = [];
 
         async function descargarListaCanales() {
@@ -353,7 +354,7 @@
                 const logoFinal = canal.logo ? (canal.logo.startsWith('http') ? canal.logo : `${API_URL}/${canal.logo}`) : '';
                 const iniciales = canal.nombre.substring(0, 3).toUpperCase();
                 const logoHtml = logoFinal 
-                    ? `<img src="${logoFinal}" alt="${iniciales}" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-xs font-black tracking-tighter text-gray-800\\'>${iniciales}</span>';">`
+                    ? `<img src="${logoFinal}" alt="${iniciales}" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\'text-xs font-black tracking-tighter text-gray-800\'>${iniciales}</span>';">`
                     : `<span class="text-xs font-black tracking-tighter text-gray-800">${iniciales}</span>`;
 
                 btnPrincipal.innerHTML = `
@@ -459,20 +460,14 @@
                 dashPlayer = dashjs.MediaPlayer().create();
                 dashPlayer.initialize(videoElement, url, true);
                 
-                // 🔐 MAGIA DRM: Soporta tanto llaves en Dropbox (URL) como llaves crudas (KeyID:Key)
                 if (clearkeyUrl) {
                     if (clearkeyUrl.includes('http')) {
-                        // Es un archivo de Dropbox o web (Ej: Tigo)
                         dashPlayer.setProtectionData({
                             "org.w3.clearkey": { "serverURL": clearkeyUrl }
                         });
                     } else if (clearkeyUrl.includes(':')) {
-                        // Son llaves crudas KeyID:Key (Ej: ESPN2HD de CVATTV)
                         const [keyIdHex, keyHex] = clearkeyUrl.split(':');
-                        
-                        // Función para convertir de Hexadecimal a Base64 (requerido por Dash.js)
                         const hexToBase64 = (hex) => btoa(String.fromCharCode.apply(null, hex.match(/\w{2}/g).map(a => parseInt(a, 16)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=*$/, '');
-                        
                         const clearKeyData = {};
                         clearKeyData[hexToBase64(keyIdHex)] = hexToBase64(keyHex);
 
@@ -487,15 +482,25 @@
                     ocultarLoader();
                     if (canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
                 });
-            } else if (url.includes('.m3u8') || url.includes('/proxy/stream') || url.includes(':8000')) {
-                if (Hls.isSupported()) {
-                    hls = new Hls({ debug: false });
-                    hls.loadSource(url);
-                    hls.attachMedia(videoElement);
-                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        ocultarLoader();
-                        videoElement.play().catch(() => { videoElement.muted = true; videoElement.play(); });
-                    });
+           } else if (url.includes('.m3u8') || url.includes('/proxy/stream') || url.includes(':8000')) {
+        if (Hls.isSupported()) {
+            // --- NUEVA CONFIGURACIÓN CON MÁS TIEMPO DE ESPERA ---
+            hls = new Hls({ 
+                debug: false,
+                manifestLoadingTimeOut: 25000, // Espera hasta 25 segundos
+                manifestLoadingMaxRetry: 5,    // Intenta 5 veces si falla
+                levelLoadingTimeOut: 25000,
+                fragLoadingTimeOut: 30000,
+                enableWorker: true
+            });
+            // ----------------------------------------------------
+            
+            hls.loadSource(url);
+            hls.attachMedia(videoElement);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                ocultarLoader();
+                videoElement.play().catch(() => { videoElement.muted = true; videoElement.play(); });
+            });
                     hls.on(Hls.Events.ERROR, function (event, data) {
                         if (data.fatal && canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
                     });
@@ -511,7 +516,6 @@
             }
         }
 
-        // NAVEGACIÓN TOTAL BLINDADA PARA MANDO DE TV
         document.addEventListener('keydown', (e) => {
             const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
             resetearInactividad();
@@ -562,7 +566,7 @@
                     return;
                 }
                 if (isEnter) {
-                    if (document.activeElement.tagName === 'BUTTON') {
+                    if (document.activeElement.tagName === 'BUTTON' || document.activeElement.tagName === 'A') {
                         document.activeElement.click();
                     } else {
                         if (videoElement.paused) videoElement.play();

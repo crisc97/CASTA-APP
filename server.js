@@ -43,7 +43,6 @@ app.get('/', (req, res) => {
 
 app.get('/ping', (req, res) => res.send('ok'));
 
-// 🔥 ESTA ES LA RUTA QUE FALTABA Y ROMPÍA LA CONEXIÓN
 app.get('/api/canales', (req, res) => {
     res.json(frontendCanales);
 });
@@ -57,10 +56,31 @@ app.get('/api/clear-cache/:canal', (req, res) => {
     res.json({ ok: true });
 });
 
+// ============================================================
+// 📄 GENERADOR DE LISTA M3U DINÁMICA
+// ============================================================
+app.get('/lista.m3u', (req, res) => {
+    let m3u = "#EXTM3U\n\n";
+    frontendCanales.forEach(canal => {
+        const categoria = canal.categoria || "General";
+        let logo = "";
+        if (canal.logo) {
+            logo = canal.logo.startsWith('http') ? canal.logo : `${API_URL}/${canal.logo}`;
+        }
+        canal.opciones.forEach((opcion) => {
+            m3u += `#EXTINF:-1 tvg-logo="${logo}" group-title="${categoria}", ${canal.nombre} (${opcion.nombre})\n`;
+            m3u += `${API_URL}/play/${opcion.id}\n\n`;
+        });
+    });
+    res.setHeader('Content-Type', 'audio/x-mpegurl; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="canales.m3u"');
+    res.send(m3u);
+});
+
 const memoriaCache = {};
 
 // ============================================================
-// 🧠 COLA DE BOTS — solo un browser a la vez para ahorrar RAM
+// 🧠 COLA DE BOTS
 // ============================================================
 let botEnEjecucion = false;
 const colaDeBots = [];
@@ -99,9 +119,6 @@ function esStream(url) {
     return url.includes('.m3u8') || url.includes('.mpd');
 }
 
-// ============================================================
-// CONSTRUCTOR DE CABECERAS PARA EL PROXY
-// ============================================================
 function armarHeaders(targetUrl) {
     if (targetUrl.includes('latinapro.net') || targetUrl.includes('45.5.151.147')) {
         return {
@@ -136,15 +153,13 @@ function armarHeaders(targetUrl) {
 }
 
 // ============================================================
-// SÚPER PROXY INTELIGENTE (Maneja m3u8, .ts y cors)
+// SÚPER PROXY INTELIGENTE
 // ============================================================
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
 
     const headers = armarHeaders(targetUrl);
-    
-    // 🔥 FIX 1: NO comprimir el video para evitar corrupción
     headers['Accept-Encoding'] = 'identity';
 
     if (req.headers.range) {
@@ -163,7 +178,6 @@ app.get('/proxy/stream', async (req, res) => {
 
         const contentType = response.headers['content-type'] || '';
 
-        // A. SI ES UNA PLAYLIST (.m3u8) o DASH (.mpd)
         if (targetUrl.includes('.m3u8') || targetUrl.includes('.mpd') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL') || contentType.includes('dash+xml')) {
             let data = '';
             response.data.on('data', chunk => data += chunk);
@@ -173,7 +187,6 @@ app.get('/proxy/stream', async (req, res) => {
                         const l = linea.trim();
                         if (!l) return linea;
 
-                        // 🔥 FIX 2: Proxy para la llave de encriptación (DRM/AES)
                         if (l.startsWith('#EXT-X-KEY')) {
                             const match = l.match(/URI="([^"]+)"/);
                             if (match) {
@@ -188,7 +201,6 @@ app.get('/proxy/stream', async (req, res) => {
 
                         if (l.startsWith('#')) return l;
 
-                        // Reescribir segmentos al proxy
                         try {
                             const urlSegmento = new URL(l, targetUrl).href;
                             return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
@@ -211,13 +223,11 @@ app.get('/proxy/stream', async (req, res) => {
             return;
         }
 
-        // B. SI ES SEGMENTO DE VIDEO (.ts)
         res.setHeader('Content-Type', contentType || 'video/mp2t');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Accept-Ranges', 'bytes');
         
-        // 🔥 FIX 3: Eliminar Content-Length para que el video no se corte
         if (response.headers['content-range']) res.setHeader('Content-Range', response.headers['content-range']);
         
         if (response.status === 206) res.status(206);
@@ -339,7 +349,7 @@ async function correrBot(datosCanal, canalId) {
 }
 
 // ============================================================
-// RUTA PARA OBTENER EL ENLACE DEL VIDEO
+// RUTA PARA LA APP (MANTIENE LA COMPATIBILIDAD CON EL INDEX)
 // ============================================================
 app.get('/api/get-stream/:canal', async (req, res) => {
     const canalId = req.params.canal;
@@ -374,6 +384,45 @@ app.get('/api/get-stream/:canal', async (req, res) => {
         }
     } catch (error) {
         return res.status(500).json({ exito: false, error: error.message });
+    }
+});
+
+// ============================================================
+// RUTA DE REPRODUCCIÓN DIRECTA M3U (REDIRECT 302)
+// ============================================================
+app.get('/play/:canal', async (req, res) => {
+    const canalId = req.params.canal;
+    const datosCanal = dbCanales[canalId];
+
+    if (!datosCanal) return res.status(404).send("Error: Canal no encontrado en la base de datos.");
+
+    try {
+        if (datosCanal.urlScraping) {
+            const ahora = Date.now();
+            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
+                return res.redirect(302, memoriaCache[canalId].url);
+            }
+
+            const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
+
+            if (linkVideoPuro) {
+                const urlFinal = `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
+                return res.redirect(302, urlFinal);
+            } else {
+                return res.status(500).send("Error: El bot no encontró ningún stream válido.");
+            }
+        } else {
+            const separador = datosCanal.parametros ? '?' : '';
+            const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
+            
+            if (datosCanal.usarProxy) {
+                return res.redirect(302, `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`);
+            }
+            return res.redirect(302, urlCompleta);
+        }
+    } catch (error) {
+        return res.status(500).send(`Error interno del servidor: ${error.message}`);
     }
 });
 
