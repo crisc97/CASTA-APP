@@ -31,6 +31,16 @@ const URLS_EXTERNAS = [
     { id: 'cine_2026', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Cine_2026.json', categoria: 'Cine 2026' },
     { id: 'peliculas_hd', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Peliculas_HD.json', categoria: 'Películas HD' }
 ];
+// ============================================================
+// LISTA NEGRA: Canales que NO querés que aparezcan en tu App
+// ============================================================
+const CANALES_BANEADOS = [
+    "Canal de Prueba",
+    "Adultos",         // Bloquea cualquier canal que tenga esta palabra
+    "Telefe Interior", // Bloquea este canal específico si no te interesa
+    "Premium 18+",
+    "EWTN"             // Ejemplo de canal religioso o de otro país que quieras sacar
+];
 
 let dbCanales = {};
 let frontendCanales = [];
@@ -83,6 +93,19 @@ async function cargarListasExternas() {
                 const logoItem = item.logo || item.image || item.img || item.thumbnail || "";
 
                 if (!urlVideo) return; 
+
+                // ==========================================================
+                // 🔥 FILTRO DE LISTA NEGRA (ACTÚA ACÁ)
+                // ==========================================================
+                const debaIgnorar = CANALES_BANEADOS.some(palabra => 
+                    nombre.toLowerCase().includes(palabra.toLowerCase())
+                );
+                
+                if (debaIgnorar) {
+                    console.log(`🚫 Canal omitido por Lista Negra: ${nombre}`);
+                    return; // Salta este canal de GitHub y pasa al que sigue
+                }
+                // ==========================================================
 
                 const idUnico = `ext_${lista.id}_${index}`;
                 const requiereScraping = lista.id === 'futbol_libre' || lista.id === 'bola_loca' || lista.id === 'ddeports' || urlVideo.toLowerCase().includes('html');
