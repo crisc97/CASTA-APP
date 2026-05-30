@@ -31,17 +31,18 @@ const URLS_EXTERNAS = [
     { id: 'cine_2026', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Cine_2026.json', categoria: 'Cine 2026' },
     { id: 'peliculas_hd', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Peliculas_HD.json', categoria: 'Películas HD' }
 ];
+
 // ============================================================
 // LISTA NEGRA: Canales que NO querés que aparezcan en tu App
 // ============================================================
 const CANALES_BANEADOS = [
     "Canal de Prueba",
-    "🔞 Adultos",         // Bloquea cualquier canal que tenga esta palabra
-    "Telefe Interior", // Bloquea este canal específico si no te interesa
+    "🔞 Adultos",         
+    "Telefe Interior", 
     "Premium 18+",
     "Venus",
     "Sextreme",
-    "EWTN"             // Ejemplo de canal religioso o de otro país que quieras sacar
+    "EWTN"             
 ];
 
 let dbCanales = {};
@@ -222,11 +223,24 @@ function encolarBot(fn) {
 
 function esStream(url) {
     if (!url || url === 'about:blank' || url === 'about:srcdoc') return false;
-    const basura = ['ad', 'tracker', 'dummy', 'blank', 'pixel'];
+    
+    // Filtro de basura publicitaria
+    const basura = ['ad', 'tracker', 'dummy', 'blank', 'pixel', 'doubleclick', 'popunder'];
     if (basura.some(palabra => url.toLowerCase().includes(palabra))) return false;
-    return url.includes('.m3u8') || url.includes('.mpd');
-}
+    
+    const urlLower = url.toLowerCase();
+    
+    // 📡 RADAR DE PRECISIÓN: Si es un fragmento de video (.ts), lo ignoramos para no apurarnos
+    if (urlLower.includes('.ts?') || urlLower.endsWith('.ts')) return false;
 
+    // Solo atrapamos las Listas Maestras
+    return urlLower.includes('.m3u8') || 
+           urlLower.includes('.mpd') || 
+           urlLower.includes('playlist') || 
+           urlLower.includes('chunklist') ||
+           urlLower.includes('get_m3u8') ||
+           urlLower.includes('stream.php');
+}
 function armarHeaders(targetUrl) {
     if (targetUrl.includes('latinapro.net') || targetUrl.includes('45.5.151.147')) {
         return {
@@ -235,6 +249,7 @@ function armarHeaders(targetUrl) {
             'Connection': 'keep-alive'
         };
     }
+    
     let referer = 'https://tvlibr3.com/';
     let origin = 'https://tvlibr3.com';
 
@@ -244,7 +259,8 @@ function armarHeaders(targetUrl) {
     } else if (targetUrl.includes('nebunexa') || targetUrl.includes('cvattv')) {
         referer = 'https://pcn.nebunexa.life/';
         origin = 'https://pcn.nebunexa.life';
-    } else if (targetUrl.includes('pelotalibretv')) {
+    } else if (targetUrl.includes('pelotalibretv') || targetUrl.includes('envivoslatam.org') || targetUrl.includes('token=')) {
+        // 👇 ACÁ ESTÁ LA MAGIA PARA FÚTBOL LIBRE
         referer = 'https://pelotalibretv.su/';
         origin = 'https://pelotalibretv.su';
     }
@@ -258,7 +274,6 @@ function armarHeaders(targetUrl) {
         'Connection': 'keep-alive',
     };
 }
-
 // ============================================================
 // SÚPER PROXY INTELIGENTE
 // ============================================================
@@ -370,7 +385,7 @@ async function clickBotonPorVariantes(page, variantes) {
 async function correrBot(datosCanal, canalId) {
     console.log(`🕵️‍♂️ Bot iniciando para: ${canalId}...`);
     const browser = await puppeteer.launch({
-        headless: true,
+        headless: true, // ⚠️ Dejalo en false en tu PC
         args: [
             '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
             '--disable-gpu', '--single-process', '--disable-web-security',
@@ -379,6 +394,7 @@ async function correrBot(datosCanal, canalId) {
     });
 
     let linkVideoPuro = null;
+    let historialUrls = []; // 🧠 NUEVO: Memoria fotográfica del bot
 
     try {
         const page = await browser.newPage();
@@ -386,61 +402,129 @@ async function correrBot(datosCanal, canalId) {
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
 
         await page.setRequestInterception(true);
+        
         page.on('request', (req) => {
             const tipo = req.resourceType();
             const urlReq = req.url().toLowerCase();
             
-            if (['image', 'stylesheet', 'font', 'media'].includes(tipo) || urlReq.includes('ads') || urlReq.includes('analytics')) { 
+            if (['image', 'stylesheet', 'font'].includes(tipo) || urlReq.includes('ads') || urlReq.includes('analytics')) { 
                 req.abort(); 
                 return; 
             }
-            if (esStream(urlReq) && !linkVideoPuro) linkVideoPuro = req.url(); 
             req.continue();
         });
 
         page.on('response', async (response) => {
-            const urlRespuesta = response.url().toLowerCase();
-            if (esStream(urlRespuesta) && !urlRespuesta.includes('ad') && !linkVideoPuro) linkVideoPuro = response.url(); 
+            try {
+                const urlRespuesta = response.url();
+                const urlLower = urlRespuesta.toLowerCase();
+                
+                // Guardamos TODO el tráfico útil en la memoria fotográfica
+                if (!urlLower.includes('ad') && !urlLower.includes('tracker') && !urlLower.includes('google')) {
+                    historialUrls.push(urlRespuesta);
+                }
+
+                if (!linkVideoPuro) {
+                    const headers = response.headers();
+                    const contentType = (headers['content-type'] || '').toLowerCase();
+                    if (esStream(urlLower) || contentType.includes('mpegurl') || contentType.includes('dash+xml')) {
+                        linkVideoPuro = urlRespuesta; 
+                    }
+                }
+            } catch(e) {}
         });
 
-        await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await new Promise(r => setTimeout(r, 500));
+        browser.on('targetcreated', async (target) => {
+            if (target.type() === 'page') {
+                const newPage = await target.page();
+                if (newPage && newPage !== page) {
+                    try { await newPage.close(); } catch(e) {}
+                }
+            }
+        });
 
+        console.log(`[BOT] 🌐 Entrando a la web: ${datosCanal.urlScraping}`);
+        await page.goto(datosCanal.urlScraping, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await new Promise(r => setTimeout(r, 2000)); 
+
+        console.log(`[BOT] 🖱️ Buscando botones y haciendo clics tácticos...`);
         for (const variantes of (datosCanal.opcionesBotones || [])) {
             if (linkVideoPuro) break;
+            
             const clicOk = await clickBotonPorVariantes(page, variantes);
             if (clicOk) {
+                console.log(`[BOT] 💥 Primer clic en "${clicOk}"...`);
+                await new Promise(r => setTimeout(r, 1500));
+                
+                console.log(`[BOT] 👉 Segundo clic en "${clicOk}"...`);
+                await clickBotonPorVariantes(page, variantes);
+
                 let espera = 0;
-                while (!linkVideoPuro && espera < 30) { await new Promise(r => setTimeout(r, 100)); espera++; }
+                while (!linkVideoPuro && espera < 150) { await new Promise(r => setTimeout(r, 100)); espera++; }
             }
         }
 
         if (!linkVideoPuro) {
-            const viewport = page.viewport();
+            console.log(`[BOT] ⚠️ Inyectando play en iframes...`);
             const frames = page.frames();
             for (const frame of frames) {
                 if (linkVideoPuro) break;
                 try {
-                    await frame.click('body', { delay: 50 });
-                    await new Promise(r => setTimeout(r, 100));
+                    await frame.click('body', { delay: 50 }); 
+                    let esperaEmergencia = 0;
+                    while (!linkVideoPuro && esperaEmergencia < 50) { await new Promise(r => setTimeout(r, 100)); esperaEmergencia++; }
                 } catch (e) {}
             }
-            for (let i = 0; i < 4; i++) {
-                if (linkVideoPuro) break; 
-                await page.mouse.click(viewport.width / 2, viewport.height / 2);
-                await page.keyboard.press('Space');
-                await page.keyboard.press('Enter');
-                await new Promise(r => setTimeout(r, 400)); 
+        }
+
+        // ==========================================================
+        // 🚨 NUEVO: ANÁLISIS FORENSE POST-MORTEM 🚨
+        // ==========================================================
+        if (!linkVideoPuro) {
+            console.log(`[BOT] 🧠 Analizando memoria fotográfica en busca del archivo camuflado...`);
+            
+            // Buscamos si detectó al menos un fragmento de video (.ts)
+            const archivosTs = historialUrls.filter(u => u.toLowerCase().includes('.ts?') || u.toLowerCase().endsWith('.ts'));
+
+            if (archivosTs.length > 0) {
+                const muestraTs = archivosTs[0];
+                console.log(`[BOT] 🎯 ¡Tráfico de video detectado! Extrayendo Token de seguridad...`);
+
+                // Cortamos la URL para sacar solo el Token
+                const partesToken = muestraTs.split('?');
+                if (partesToken.length > 1) {
+                    const token = partesToken[1]; // ej: token=6bcc357bc521fdc74...
+
+                    // Revisamos el historial DE ATRÁS PARA ADELANTE buscando el archivo que usó el Token pero NO es .ts
+                    const listaOculta = historialUrls.reverse().find(u => u.includes(token) && !u.toLowerCase().includes('.ts'));
+
+                    if (listaOculta) {
+                        linkVideoPuro = listaOculta;
+                        console.log(`[BOT] 🕵️‍♂️ ¡BINGO! Lista maestra desenmascarada usando el Token.`);
+                    } else {
+                        console.log(`[BOT] ⚠️ No se encontró la lista original, intentando adivinar ruta...`);
+                        // Adivina la ruta subiendo un par de carpetas
+                        const urlBase = partesToken[0].split('/').slice(0, 5).join('/'); 
+                        linkVideoPuro = `${urlBase}/playlist.m3u8?${token}`;
+                    }
+                }
             }
         }
+        // ==========================================================
+
+        if (linkVideoPuro) {
+            console.log(`[BOT] ✅ ¡Link FINAL ENCONTRADO!: ${linkVideoPuro}`);
+        } else {
+            console.log(`[BOT] ❌ Fracaso definitivo. No hubo tráfico de video.`);
+        }
+
     } catch (e) {
-        console.error(`❌ Error bot:`, e.message);
+        console.error(`❌ Error en el proceso del bot:`, e.message);
     } finally {
         try { await browser.close(); } catch (e) {}
     }
     return linkVideoPuro;
 }
-
 // ============================================================
 // RUTA PARA LA APP (COMPATIBILIDAD INDEX.HTML)
 // ============================================================
