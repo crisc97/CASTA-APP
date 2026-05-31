@@ -19,18 +19,7 @@ const API_URL = process.env.API_URL || 'https://casta-app.onrender.com';
 // ============================================================
 // CONFIGURACIÓN DE LISTAS EXTERNAS (EL TRUCO AVANZADO)
 // ============================================================
-const URLS_EXTERNAS = [
-    { id: 'tvlibre_2', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/TVLIBRE-2.json', categoria: 'CineCity TV Libre' },
-    { id: 'canales_m3u8', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Canales_m3u8.json', categoria: 'Canales M3U8 Directos' },
-    { id: 'pluto_tv', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Pluto-TV.json', categoria: 'Pluto TV (CineCity)' },
-    { id: 'claro_video', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/clarovideo.json', categoria: 'Claro Video' },
-    { id: 'futbol_libre', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/futbol-libre.json', categoria: 'Fútbol Libre Eventos' },
-    { id: 'bola_loca', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/BolaLoca.json', categoria: 'Bola Loca Deportes' },
-    { id: 'ddeports', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/ddeports.json', categoria: 'DDeports Agenda' },
-    { id: 'coin_tv', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/CoinTV.json', categoria: 'Coin TV' },
-    { id: 'cine_2026', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Cine_2026.json', categoria: 'Cine 2026' },
-    { id: 'peliculas_hd', url: 'https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/scripts-album/Peliculas_HD.json', categoria: 'Películas HD' }
-];
+const URLS_EXTERNAS = [];
 
 // ============================================================
 // LISTA NEGRA: Canales que NO querés que aparezcan en tu App

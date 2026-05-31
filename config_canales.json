@@ -1,7 +1,7 @@
 {
   "frontend": [
     { "nombre": "ESPN Premium", "categoria": "Deportes", "logo": "logos_canales/espn.png", "opciones": [{ "nombre": "Opción 1", "id": "espn_op1" },{ "nombre": "Opción 2", "id": "espn_op2" },{ "nombre": "Opción 3", "id": "espn_op3" }] },
-    { "nombre": "TNT Sports Premium", "categoria": "Deportes", "logo": "logos_canales/tnt.png", "opciones": [{ "nombre": "Opción 1", "id": "tnt_scraper1" }, { "nombre": "Opción 2", "id": "tnt_1" }, { "nombre": "Opción 3", "id": "tnt_scraper2" },{ "nombre": "Opción 4", "id": "tnt_2" }] },
+    { "nombre": "TNT Sports Premium", "categoria": "Deportes", "logo": "logos_canales/tnt.png", "opciones": [{ "nombre": "Opción 1", "id": "tnt_scraper1" }, { "nombre": "Opción 2", "id": "tnt_1" }, { "nombre": "Opción 3", "id": "tnt_scraper2" }] },
     { "nombre": "DirecTv Sports", "categoria": "Deportes", "logo": "logos_canales/dsports.png", "opciones": [{ "nombre": "Opción 1", "id": "dsports_scraper1" },{ "nombre": "Opción 2", "id": "dsports_scraper2" }] },
     { "nombre": "Fox Sports", "categoria": "Deportes", "logo": "logos_canales/foxs.png", "opciones": [{ "nombre": "Opción 1", "id": "foxsports_arg" }, { "nombre": "Opción 2", "id": "fox_scraper1" }, { "nombre": "Opción 3", "id": "fox_scraper2" }] },
     { "nombre": "Fox Sports 3", "categoria": "Deportes", "logo": "logos_canales/foxs3.png", "opciones": [{ "nombre": "Opción 1", "id": "foxsports_arg3" }] },
@@ -19,39 +19,42 @@
     { "nombre": "Discovery ID", "categoria": "Cultura", "logo": "logos_canales/discoveryid.png", "opciones": [{ "nombre": "Opción 1", "id": "discoveryid_arg" }] }
   ],
   "backend": {
-    "telefe_directo":     { "urlScraping": "https://pelotalibretv.su/telefe/", "opcionesBotones": [["Opción 1"]] },
-    "eltrece_directo":    { "urlScraping": "https://pelotalibretv.su/el-trece/", "opcionesBotones": [["Opción 1"]] },
-    "elnueve_directo":    { "urlScraping": "https://pelotalibretv.su/el-nueve/", "opcionesBotones": [["Opción 1"]] },
-    "america_directo":    { "urlScraping": "https://pelotalibretv.su/america-tv/", "opcionesBotones": [["Opción 1"]] },
-    "tvpublica_directo":  { "urlScraping": "https://tvlibre-online.com/en-vivo/tv-publica/", "opcionesBotones": [["Opción 1"]] },
+    "telefe_directo":     { "urlScraping": "http://45.5.151.147:8000/play/a00g/71156425.m3u8", "opcionesBotones": [] },
+    "eltrece_directo":    { "urlScraping": "http://45.5.151.147:8000/play/a00f/68001639.m3u8", "opcionesBotones": [] },
+    "elnueve_directo":    { "urlScraping": "http://45.5.151.147:8000/play/a00e/98978784.m3u8", "opcionesBotones": [] },
+    "america_directo":    { "urlScraping": "http://45.5.151.147:8000/play/a00c/87584539.m3u8", "opcionesBotones": [] },
+    "tvpublica_directo":  { "urlScraping": "https://tvlibre-online.com/en-vivo/tv-publica/", "opcionesBotones": [["Opción 1 (FL)"], ["Opción 2"]] },
     "tvpublica_scraper1": { "urlScraping": "https://pelotalibretv.su/tv-publica/", "opcionesBotones": []},
-    "ciudadmagazine_arg": { "urlScraping": "https://tvlibre-online.com/en-vivo/ciudad-magazine/", "opcionesBotones": [["Opción 1"]] },
-    "discovery_arg":      { "urlScraping": "https://tvlibre-online.com/en-vivo/discovery-channel/", "opcionesBotones": [["Opción 1"]] },
-    "discoveryid_arg":    { "urlScraping": "https://tvlibre-online.com/en-vivo/investigation-discovery/", "opcionesBotones": [["Opción 1"]] },
+    "ciudadmagazine_arg": { "urlScraping": "", "opcionesBotones": [["Opción 1"]] },
+    "discovery_arg":      { "urlScraping": "", "opcionesBotones": [["Opción 1"]] },
+    "discoveryid_arg":    { "urlScraping": "", "opcionesBotones": [["Opción 1"]] },
     
     "espn_op1":           { "urlScraping": "https://pelotalibretv.su/espn-premium/", "opcionesBotones": [["Opción 1"]] },
-    "espn_op2":           { "urlScraping": "https://tvlibre-online.com/en-vivo/espn-premium/", "opcionesBotones": [["Opción 2"]] },
-    "espn_op3":           { "urlScraping": "https://pelotalibretv.su/espn-premium/", "opcionesBotones": [["Opción 3"]] },
+    "espn_op2":           { "urlScraping": "https://tvlibre-online.com/en-vivo/espn-premium/", "opcionesBotones": [["Opción 3"],["Opción 1 (FL)"]] },
+    "espn_op3":           { "urlScraping": "http://45.5.151.147:8000/play/a00m/84571601.m3u8", "opcionesBotones": [] },
     "espn_scraper1":      { "urlScraping": "https://pelotalibretv.su/espn-1/", "opcionesBotones": [["Opción 1"]]},
-    "espn_2":             { "urlScraping": "https://pelotalibretv.su/espn-2/", "opcionesBotones": [["Opción 1"]] },
-    "espn_3":             { "urlScraping": "https://pelotalibretv.su/espn-3/", "opcionesBotones": [["Opción 1"]] },
-    
-    "tnt_1":              { "urlScraping": "https://pelotalibretv.su/tnt-sports/", "opcionesBotones": [["Opción 2"]] },
-    "tnt_2":              { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 1"]] },
-    "tnt_scraper1":       { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 3"]]},
+    "espn_scraper2":      { "urlScraping": "http://45.5.151.147:8000/play/a00i/16324648.m3u8", "opcionesBotones": []},
+    "espn_2":             { "urlScraping": "http://45.5.151.147:8000/play/a00j/58484034.m3u8", "opcionesBotones": [] },
+    "espn_3":             { "urlScraping": "http://45.5.151.147:8000/play/a00k/16741271.m3u8", "opcionesBotones": [] },
+    "espn_4":             { "urlScraping": "http://45.5.151.147:8000/play/a00l/77197225.m3u8", "opcionesBotones": [] },
+
+    "tnt_1":              { "base": "https://anden26.ddns.net/live/stream.m3u8", "parametros": "v=1777146764944"},
+    "tnt_scraper1":       { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 3"],["Opción 1 (FL)"]]},
     "tnt_scraper2":       { "urlScraping": "https://pelotalibretv.su/tnt-sports/", "opcionesBotones": [["Opción 1"]]},
+    "tnt_scraper3":       { "urlScraping": "http://45.5.151.147:8000/play/a00r/23038077.m3u8", "opcionesBotones": []},
     
     "dsports_scraper1":   { "urlScraping": "https://tvlibre-online.com/en-vivo/dsports/", "opcionesBotones": [["Opción 2"]] },
     "dsports_scraper2":   { "urlScraping": "https://pelotalibretv.su/directv-sports/", "opcionesBotones": [["Opción 1"]] },
     
-    "foxsports_arg":      { "urlScraping": "https://pelotalibretv.su/fox-sports/", "opcionesBotones": [["Opción 1"]] },
-    "fox_scraper1":       { "urlScraping": "https://tvlibre-online.com/en-vivo/fox-sports/", "opcionesBotones": [["Opción 3"]]},
-    "fox_scraper2":       { "urlScraping": "https://pelotalibretv.su/fox-sports/", "opcionesBotones": []},
-    "foxsports_arg3":     { "urlScraping": "https://pelotalibretv.su/fox-sports-3/", "opcionesBotones": [["Opción 1"]] },
+    "foxsports_arg":      { "urlScraping": "https://pelotalibretv.su/fox-sports/", "opcionesBotones": [] },
+    "fox_scraper1":       { "urlScraping": "https://tvlibre-online.com/en-vivo/fox-sports/", "opcionesBotones": [["Opción 2"],["Opción 1 (FL)"]]},
+    "fox_scraper2":       { "urlScraping": "http://45.5.151.147:8000/play/a00n/16228031.m3u8", "opcionesBotones": []},
+    "fox2_scraper1":      { "urlScraping": "http://45.5.151.147:8000/play/a00o/63875793.m3u8", "opcionesBotones": []},
+    "foxsports_arg3":     { "urlScraping": "http://45.5.151.147:8000/play/a00p/23374000.m3u8", "opcionesBotones": []},
     
-    "tyc_scraper0":       { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/", "opcionesBotones": [["Opción 3"]]},
+    "tyc_scraper0":       { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/", "opcionesBotones": [["Opción 3"],["Opción 1 (FL)"]]},
     "tyc_scraper1":       { "urlScraping": "https://pelotalibretv.su/tyc-sports/", "opcionesBotones": [["Opción 1"]] },
     "tyc_scraper2":       { "urlScraping": "https://la14hd.com/vivo/canales.php?stream=tycsports", "opcionesBotones": [] },
-    "tyc_arg":            { "urlScraping": "https://pelotalibretv.su/tyc-sports/", "opcionesBotones": [["Opción 2"]] }
+    "tyc_arg":            { "urlScraping": "http://45.5.151.147:8000/play/a00s/27817180.m3u8", "opcionesBotones": [] }
   }
 }

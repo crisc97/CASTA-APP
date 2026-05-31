@@ -18,536 +18,404 @@
         #sidebar { -ms-overflow-style: none; scrollbar-width: thin; scrollbar-color: #1e3a8a transparent; -webkit-overflow-scrolling: touch; }
     </style>
 </head>
-<body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen relative font-sans select-none">
+<body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen flex flex-col md:flex-row font-sans">
 
-    <div id="videoContainer" class="absolute inset-0 w-full h-full z-0 flex items-center justify-center bg-black">
-        <video id="reproductor" class="w-full h-full outline-none object-contain" tabindex="-1" autoplay playsinline poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
-
-        <div id="loading" class="absolute hidden z-10 flex-col items-center gap-4 bg-[#070819]/95 p-6 sm:p-8 rounded-2xl backdrop-blur-xl border border-gray-800 shadow-[0_25px_65px_-15px_rgba(0,0,0,0.9)]">
-            <div class="relative w-24 h-24 flex items-center justify-center">
-                <div class="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-blue-500 absolute inset-0"></div>
-                <img id="loadingLogo" src="" alt="Cargando..." class="w-14 h-14 object-contain hidden bg-white p-1 rounded-lg shadow-md">
+    <div class="flex-1 relative flex items-center md:items-start justify-center bg-black overflow-hidden select-none md:pt-14">
+        
+        <div id="loader" class="absolute z-50 hidden flex flex-col items-center justify-center bg-black bg-opacity-90 backdrop-blur-sm p-6 rounded-2xl pointer-events-none text-center border border-gray-800 shadow-2xl">
+            <div class="relative flex items-center justify-center mb-5 w-24 h-24">
+                <div class="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-l-4 border-transparent border-t-blue-500 border-b-blue-600 absolute opacity-80"></div>
+                <img id="loaderLogo" class="w-14 h-14 object-contain rounded-lg bg-white p-1 hidden z-10 shadow-lg" src="" alt="logo">
             </div>
-            <p id="loadingMsg" class="text-gray-200 text-xs sm:text-sm font-semibold text-center px-4 py-2.5 bg-black/60 rounded-xl border border-white/5 shadow-inner drop-shadow-md whitespace-pre-line max-w-[280px] sm:max-w-xs mt-1"></p>
+            <p class="text-base font-bold tracking-wider text-blue-400 mb-2 drop-shadow-md">🤖 Buscando enlace del canal...</p>
+            <p class="text-sm text-gray-300 font-medium mb-1">Esto puede tardar hasta 60 segundos</p>
+            <p class="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse mt-2">cargando transmisión, gracias por esperar</p>
         </div>
+        
+        <video id="videoElement" class="w-full h-full object-contain bg-black" playsinline></video>
 
-        <div id="mensajeError" class="absolute z-10 bottom-20 left-1/2 transform -translate-x-1/2 hidden bg-red-900/90 text-white p-4 rounded-xl border border-red-500 shadow-2xl font-semibold text-center w-[90%] sm:w-auto max-w-lg"></div>
+        <iframe id="iframeElement" allow="encrypted-media" allowfullscreen frameborder="0" scrolling="no" class="w-full h-full bg-black hidden"></iframe>
 
-        <div id="bottomControls" class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black via-black/80 to-transparent pt-12 pb-6 px-6 z-30 flex justify-between items-center transition-opacity duration-500 opacity-0 pointer-events-none">
-            <div class="flex items-center gap-6 pointer-events-auto">
-                <button id="btnMobilePlay" class="text-white hover:text-blue-500 outline-none transition transform active:scale-90">
-                    <svg id="iconMobilePlay" class="w-10 h-10 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    <svg id="iconMobilePause" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                </button>
-                <button id="btnVolume" class="text-white hover:text-blue-500 outline-none transition transform active:scale-90">
-                    <svg id="iconVolOn" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5 10v4a2 2 0 002 2h2l5 5V3l-5 5H7a2 2 0 00-2 2z"></path></svg>
-                    <svg id="iconVolOff" class="w-8 h-8 hidden text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z m9.172-1.414l4.242-4.242m0 4.242l-4.242-4.242"></path></svg>
-                </button>
+        <div id="topInfo" class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none z-10 transition-opacity duration-300">
+            <div class="flex flex-col bg-black bg-opacity-40 backdrop-blur-sm p-2 rounded-lg border border-gray-800">
+                <span id="txtReloj" class="text-2xl font-bold font-mono text-white tracking-widest drop-shadow">00:00:00</span>
+                <span id="txtFecha" class="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-0.5">--- -- ---</span>
             </div>
-            
-            <div class="flex items-center gap-4 pointer-events-auto">
-                <button id="btnQuality" class="text-white text-xs sm:text-sm font-bold bg-white/10 px-3 py-1.5 rounded-lg border border-gray-500 hover:bg-blue-600 outline-none transition">AUTO</button>
-                <button id="btnFullscreen" class="text-white hover:text-blue-500 outline-none transition transform active:scale-90">
-                    <svg id="iconFullEnter" class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4rm-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                    <svg id="iconFullExit" class="w-9 h-9 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4M4 14l5 5M20 10h-4V6m4 4l-5-5M4 10h4V6m-4 4l5-5M20 14h-4v4m4-4l-5 5"></path></svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="sidebarOverlay" class="absolute inset-0 bg-black/60 z-40 hidden opacity-0 transition-opacity duration-350 pointer-events-none backdrop-blur-xs"></div>
-
-    <div id="topNav" class="absolute top-8 left-4 right-4 sm:top-10 sm:left-8 sm:right-8 z-40 flex justify-between items-start pointer-events-none transition-opacity duration-500">
-        <button id="btnMenu" class="pointer-events-auto bg-black/70 hover:bg-blue-600 focus:bg-blue-600 focus:ring-4 focus:ring-white text-white p-3.5 rounded-full border border-gray-600 shadow-lg transition duration-300 outline-none backdrop-blur-md">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-        </button>
-
-        <div class="flex gap-4 pointer-events-auto">
-            <!-- AGREGADO: BOTÓN DESCARGAR LISTA M3U -->
-            <a href="/lista.m3u" download="CastaApp.m3u" class="bg-black/70 hover:bg-green-600 focus:bg-green-600 focus:ring-4 focus:ring-white text-white pl-4 pr-5 py-2 rounded-xl border border-gray-600 shadow-lg transition duration-300 font-bold flex items-center gap-2.5 outline-none backdrop-blur-md" title="Descargar M3U">
-                <span class="text-xl shrink-0">📥</span>
-                <span class="text-left text-xs sm:text-sm leading-tight tracking-wide">Descargar<br><span class="font-medium text-gray-300">Lista M3U</span></span>
-            </a>
-            
-            <button id="btnReportar" class="hidden bg-black/70 hover:bg-red-600 focus:bg-red-600 focus:ring-4 focus:ring-white text-white pl-4 pr-5 py-2 rounded-xl border border-gray-600 shadow-lg transition duration-300 font-bold flex items-center gap-2.5 outline-none backdrop-blur-md" title="Reportar Falla">
-                <span class="text-xl shrink-0">⚠️</span>
-                <span class="text-left text-xs sm:text-sm leading-tight tracking-wide">Reportar<br><span class="font-medium text-gray-300">NO funcional</span></span>
-            </button>
-        </div>
-    </div>
-
-    <div id="sidebar" class="absolute top-0 left-0 h-full w-[85vw] max-w-xs sm:w-72 bg-[#050514]/95 backdrop-blur-lg z-50 transform -translate-x-[130%] transition-transform duration-300 ease-in-out border-r border-[#1e204a] shadow-[20px_0_40px_rgba(0,0,0,0.9)] flex flex-col">
-        <div class="p-5 border-b border-[#1e204a] flex flex-col gap-1 relative pt-10">
-            <button id="btnCerrar" class="absolute top-8 right-4 text-gray-500 hover:text-white focus:text-white text-4xl font-bold focus:outline-none transition">&times;</button>
-            <h1 class="text-xl sm:text-2xl font-black text-blue-500 tracking-wider mt-2">📺CASTA-APP⚽</h1>
-            <p class="text-[10px] sm:text-xs text-gray-400 tracking-widest uppercase">Seleccione un canal</p>
-            <div class="grid grid-cols-[1fr_auto_1fr] gap-3 items-center mt-4 bg-black/30 p-3 rounded-lg border border-white/5 shadow-inner">
-                <div class="flex flex-col items-start justify-center">
-                    <span class="text-[10px] text-[#5c6bc0] font-semibold uppercase tracking-wider mb-1">Horario</span>
-                    <div id="relojLocal" class="text-white font-mono font-bold text-lg sm:text-xl tracking-widest leading-none">--:--:--</div>
-                </div>
-                <div class="w-[1px] h-8 bg-[#3949ab]/50 rounded-full"></div>
-                <div class="flex flex-col items-end justify-center overflow-hidden w-full">
-                    <span id="climaCiudad" class="text-[10px] text-[#5c6bc0] font-semibold uppercase tracking-wider mb-1 truncate w-full text-right">Ubicación...</span>
-                    <div class="flex items-center gap-1 text-white">
-                        <span id="climaTemp" class="font-bold text-lg sm:text-xl leading-none">--°C</span>
-                        <span id="climaIcono" class="text-xl sm:text-2xl leading-none pb-1">🌍</span>
+            <div id="boxClima" class="hidden flex items-center bg-black bg-opacity-40 backdrop-blur-sm px-3 py-2 rounded-lg border border-gray-800 text-right">
+                <div class="mr-2 flex flex-col justify-center">
+                    <div class="flex items-center justify-end gap-1">
+                        <span id="lblDiaNoche" class="text-xs">☀️</span>
+                        <div id="txtTemp" class="text-lg font-bold text-white leading-none">0°C</div>
                     </div>
+                    <div id="txtClimaDesc" class="text-[9px] text-blue-400 font-bold uppercase tracking-wider mt-0.5">Cargando...</div>
+                    <div id="txtCiudad" class="text-[8px] text-gray-500 font-medium uppercase tracking-wider">LA PLATA</div>
                 </div>
+                <img id="imgClima" class="w-8 h-8 object-contain bg-neutral-900/60 rounded p-0.5 border border-gray-800" src="" alt="clima">
             </div>
         </div>
-        <div class="bg-[#0f112e] px-5 py-2 border-b border-[#1e204a]">
-            <span class="text-sm font-semibold text-[#8c9eff] uppercase tracking-widest">Deportes</span>
+
+        <div id="alertBox" class="absolute top-24 left-1/2 transform -translate-x-1/2 bg-red-600 bg-opacity-90 text-white font-bold px-4 py-2 rounded shadow-lg text-sm z-50 hidden transition-all duration-300 border border-red-500 uppercase tracking-wider">
+            ¡ERROR AL CARGAR EL CANAL!
         </div>
-        <div id="listaCanales" class="flex-1 overflow-y-auto p-3 flex flex-col gap-2 pb-6"></div>
+
+        <div id="bottomControls" class="absolute bottom-4 left-4 right-4 flex flex-col items-center bg-black bg-opacity-60 backdrop-blur-md p-3 rounded-xl border border-gray-800 shadow-2xl z-10 opacity-0 pointer-events-none transition-opacity duration-300">
+            <div class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2" id="lblOpcionesCanal">OPCIONES DISPONIBLES</div>
+            <div id="containerOpciones" class="flex flex-wrap gap-2 justify-center w-full"></div>
+            
+            <div id="pcMobileControls" class="flex flex-wrap items-center gap-2 mt-3 border-t border-gray-800/80 pt-2.5 w-full justify-center pointer-events-auto">
+                <button id="btnVolMenos" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-2.5 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔉 Vol -</button>
+                <button id="btnSilenciar" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-2.5 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔇 Silenciar</button>
+                <button id="btnVolMas" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-2.5 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔊 Vol +</button>
+                <button id="btnFullscreen" class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-3 py-1.5 rounded font-black transition-colors uppercase tracking-wider ml-1 shadow-md focus:outline-none">Expandir 🖥️</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sidebar" class="w-full md:w-80 h-1/2 md:h-full bg-neutral-950 border-t md:border-t-0 md:border-r border-gray-900 flex flex-col overflow-y-auto p-4 transition-transform duration-300 z-20">
+        <div class="flex flex-col mb-4 border-b border-gray-900 pb-3 gap-1">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center">
+                    <h1 class="text-lg font-black tracking-wider bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">📺CASTA-APP⚽</h1>
+                </div>
+                <div class="flex gap-1.5 items-center">
+                    <button id="btnReportar" class="bg-neutral-900/60 text-gray-500 border border-gray-800/60 text-[9px] px-2 py-1 rounded font-medium transition-colors hidden uppercase tracking-wider text-center leading-tight cursor-not-allowed flex-shrink-0">
+                        Reportar<br><span class="text-[8px] text-red-500/70 block font-bold mt-0.5">NO funcional</span>
+                    </button>
+                    <button id="btnMenu" class="bg-neutral-900 hover:bg-neutral-800 text-white border border-gray-800 text-xs px-2.5 py-2 rounded font-medium transition-colors uppercase tracking-wider flex-shrink-0">Categorías</button>
+                </div>
+            </div>
+            <span class="text-xs text-gray-500 font-semibold tracking-wide uppercase mt-0.5">Seleccione un canal</span>
+        </div>
+
+        <div id="listaCanales" class="flex flex-col gap-1.5 flex-1"></div>
+    </div>
+
+    <div id="modalCategorias" class="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-neutral-950 border border-gray-800 rounded-xl max-w-md w-full max-h-[80vh] flex flex-col p-4 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-900 pb-2">
+                <h2 class="text-base font-bold tracking-wider text-gray-300 uppercase">Seleccionar Categoría</h2>
+                <button id="btnCerrarModal" class="text-gray-500 hover:text-white text-sm font-bold bg-neutral-900 px-2 py-1 rounded border border-gray-800 transition-colors">ESC</button>
+            </div>
+            <div id="listaCategorias" class="flex flex-col gap-1.5 overflow-y-auto pr-1"></div>
+        </div>
     </div>
 
     <script>
-        const API_URL = "https://casta-app.onrender.com";
-
-        const videoElement = document.getElementById('reproductor');
-        const listaCanalesDiv = document.getElementById('listaCanales');
-        const mensajeError = document.getElementById('mensajeError');
-        const loader = document.getElementById('loading');
-        const loadingMsg = document.getElementById('loadingMsg');
-        const loadingLogo = document.getElementById('loadingLogo');
-
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebarOverlay'); 
-        const topNav = document.getElementById('topNav'); 
-        const bottomControls = document.getElementById('bottomControls');
-
+        const videoElement = document.getElementById('videoElement');
+        const iframeElement = document.getElementById('iframeElement'); 
+        const loader = document.getElementById('loader');
+        const loaderLogo = document.getElementById('loaderLogo');
+        const alertBox = document.getElementById('alertBox');
+        const listaCanales = document.getElementById('listaCanales');
         const btnMenu = document.getElementById('btnMenu');
-        const btnCerrar = document.getElementById('btnCerrar');
         const btnReportar = document.getElementById('btnReportar');
-
-        const btnMobilePlay = document.getElementById('btnMobilePlay');
-        const iconMobilePlay = document.getElementById('iconMobilePlay');
-        const iconMobilePause = document.getElementById('iconMobilePause');
+        const modalCategorias = document.getElementById('modalCategorias');
+        const btnCerrarModal = document.getElementById('btnCerrarModal');
+        const listaCategorias = document.getElementById('listaCategorias');
+        const bottomControls = document.getElementById('bottomControls');
+        const containerOpciones = document.getElementById('containerOpciones');
+        const topInfo = document.getElementById('topInfo');
         
-        const btnVolume = document.getElementById('btnVolume');
-        const iconVolOn = document.getElementById('iconVolOn');
-        const iconVolOff = document.getElementById('iconVolOff');
-
+        const pcMobileControls = document.getElementById('pcMobileControls');
+        const btnVolMenos = document.getElementById('btnVolMenos');
+        const btnSilenciar = document.getElementById('btnSilenciar');
+        const btnVolMas = document.getElementById('btnVolMas');
         const btnFullscreen = document.getElementById('btnFullscreen');
-        const iconFullEnter = document.getElementById('iconFullEnter');
-        const iconFullExit = document.getElementById('iconFullExit');
 
-        let hls;
-        let dashPlayer;
-        let canalActualId = "";
-        let canalActualLogo = ""; 
-        let ultimoReintento = 0;
-        let timeoutInactividad; 
+        let cacheCanalesGlobal = [];
+        let categoriaSeleccionada = "TODOS";
+        let canalActualGlobal = null;
+        let hls = null;
+        let dashPlayer = null;
+        let timeoutControles = null;
 
-        const ua = navigator.userAgent.toLowerCase();
-        const esTV = /tv|smarttv|googletv|appletv|tizen|webos|hbbtv|crkey|netcast|viera|bravia|large|box|roku|firetv|playstation|xbox|kftv/i.test(ua);
-
-        if (esTV) {
-            bottomControls.classList.add('!hidden');
-        }
-
-        const canalesBot = [
-            'espn_scraper1', 'espn_scraper2', 'tnt_scraper1', 'tnt_scraper2',
-            'dsports_scraper1', 'dsports_scraper2', 'fox_scraper1', 'fox_scraper2',
-            'tyc_scraper1', 'tyc_scraper2', 'telefe_scraper', 'eltrece_scraper', 'elnueve_scraper'
-        ];
-
-        let misCanales = [];
-
-        async function descargarListaCanales() {
-            try {
-                const res = await fetch(`${API_URL}/api/canales`);
-                misCanales = await res.json();
-                if (misCanales && misCanales.length > 0) {
-                    renderizarCanales();
-                } else {
-                    console.error("El JSON vino vacío.");
-                    listaCanalesDiv.innerHTML = '<p class="text-center text-xs text-red-400">Error: Lista vacía</p>';
-                }
-            } catch (error) {
-                console.error("Error al descargar canales:", error);
-                listaCanalesDiv.innerHTML = '<p class="text-center text-xs text-red-500">Error de conexión con Render</p>';
+        function mostrarLoader() { 
+            if (canalActualGlobal && canalActualGlobal.logo) {
+                loaderLogo.src = canalActualGlobal.logo;
+                loaderLogo.classList.remove('hidden');
+            } else {
+                loaderLogo.classList.add('hidden');
             }
+            loader.classList.remove('hidden'); 
         }
+        function ocultarLoader() { loader.classList.add('hidden'); }
+
+        function mostrarAlerta() {
+            alertBox.classList.remove('hidden');
+            setTimeout(() => { alertBox.classList.add('hidden'); }, 4000);
+        }
+
+        function mostrarControlesInteractivos() {
+            bottomControls.classList.remove('opacity-0', 'pointer-events-none');
+            topInfo.classList.remove('opacity-0');
+            clearTimeout(timeoutControles);
+            timeoutControles = setTimeout(() => {
+                if (document.activeElement.tagName !== 'BUTTON' && document.activeElement.tagName !== 'A') {
+                    bottomControls.classList.add('opacity-0', 'pointer-events-none');
+                    topInfo.classList.add('opacity-0');
+                }
+            }, 5000);
+        }
+
+        document.addEventListener('mousemove', mostrarControlesInteractivos);
+        document.addEventListener('keydown', mostrarControlesInteractivos);
+        videoElement.addEventListener('play', mostrarControlesInteractivos);
 
         function iniciarReloj() {
-            const relojEl = document.getElementById('relojLocal');
-            setInterval(() => {
-                relojEl.innerText = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            }, 1000);
+            const actualizar = () => {
+                const n = new Date();
+                document.getElementById('txtReloj').textContent = n.toLocaleTimeString('es-AR', { hour12: false });
+                document.getElementById('txtFecha').textContent = n.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
+            };
+            actualizar();
+            setInterval(actualizar, 1000);
+        }
+
+        function verificarFiltroDispositivo() {
+            const ua = navigator.userAgent.toLowerCase();
+            const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox');
+            if (esTV && pcMobileControls) {
+                pcMobileControls.remove(); 
+            }
         }
 
         async function iniciarClima() {
             try {
-                const resGeo = await fetch('https://get.geojs.io/v1/ip/geo.json');
-                const dataGeo = await resGeo.json();
-                document.getElementById('climaCiudad').innerText = dataGeo.city || "Local";
-                const resClima = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${dataGeo.latitude}&longitude=${dataGeo.longitude}&current_weather=true`);
-                const dataClima = await resClima.json();
-                document.getElementById('climaTemp').innerText = `${Math.round(dataClima.current_weather.temperature)}°C`;
-            } catch (error) {
-                document.getElementById('climaCiudad').innerText = "Offline";
-                document.getElementById('climaTemp').innerText = "--";
-            }
-        }
-
-        function mostrarLoader(esBot = false, mensaje = '') {
-            loader.classList.remove('hidden');
-            loader.classList.add('flex');
-            if (canalActualLogo) {
-                const logoFinal = canalActualLogo.startsWith('http') ? canalActualLogo : `${API_URL}/${canalActualLogo}`;
-                loadingLogo.src = logoFinal;
-                loadingLogo.classList.remove('hidden');
-            } else {
-                loadingLogo.classList.add('hidden');
-            }
-            loadingMsg.innerText = mensaje ? mensaje : (esBot ? "🤖 Buscando enlace del canal...\nEsto puede tardar hasta 60 segundos." : "Cargando transmisión...");
-        }
-
-        function ocultarLoader() {
-            loader.classList.add('hidden');
-            loader.classList.remove('flex');
-        }
-
-        function resetearInactividad() {
-            topNav.classList.remove('opacity-0', 'pointer-events-none');
-            if (!esTV) {
-                bottomControls.classList.remove('opacity-0', 'pointer-events-none');
-            }
-            clearTimeout(timeoutInactividad);
-
-            if (sidebar.classList.contains('-translate-x-[130%]')) {
-                timeoutInactividad = setTimeout(() => {
-                    topNav.classList.add('opacity-0', 'pointer-events-none');
-                    if (!esTV) {
-                        bottomControls.classList.add('opacity-0', 'pointer-events-none');
-                    }
-                    videoElement.focus();
-                }, 4500);
-            }
-        }
-
-        function abrirMenu() {
-            sidebar.classList.remove('-translate-x-[130%]');
-            sidebarOverlay.classList.remove('hidden');
-            setTimeout(() => {
-                sidebarOverlay.classList.remove('pointer-events-none');
-                sidebarOverlay.classList.add('opacity-100');
+                const res = await fetch('https://wttr.in/La+Plata?format=j1');
+                if (!res.ok) return;
+                const d = await res.json();
+                const cond = d.current_condition[0];
+                const temp = cond.temp_C;
                 
-                const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
-                if (botones.length > 0) botones[0].focus();
-            }, 50);
-
-            topNav.classList.remove('opacity-0', 'pointer-events-none');
-            if (!esTV) {
-                bottomControls.classList.add('opacity-0', 'pointer-events-none');
-            }
-            clearTimeout(timeoutInactividad);
-        }
-
-        function cerrarMenu() {
-            sidebar.classList.add('-translate-x-[130%]');
-            sidebarOverlay.classList.remove('opacity-100');
-            sidebarOverlay.classList.add('pointer-events-none');
-            setTimeout(() => { sidebarOverlay.classList.add('hidden'); }, 350);
-            resetearInactividad(); 
-            videoElement.focus();
-        }
-
-        btnMenu.addEventListener('click', abrirMenu);
-        btnCerrar.addEventListener('click', cerrarMenu);
-        sidebarOverlay.addEventListener('click', cerrarMenu); 
-        
-        document.addEventListener('mousemove', resetearInactividad);
-        document.addEventListener('touchstart', resetearInactividad);
-        
-        videoElement.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (topNav.classList.contains('opacity-0')) {
-                resetearInactividad();
-            } else {
-                topNav.classList.add('opacity-0', 'pointer-events-none');
-                if (!esTV) {
-                    bottomControls.classList.add('opacity-0', 'pointer-events-none');
-                }
-            }
-        });
-
-        function updatePlayIcons() {
-            if (videoElement.paused) {
-                iconMobilePlay.classList.remove('hidden');
-                iconMobilePause.classList.add('hidden');
-            } else {
-                iconMobilePlay.classList.add('hidden');
-                iconMobilePause.classList.remove('hidden');
-            }
-        }
-        videoElement.addEventListener('play', updatePlayIcons);
-        videoElement.addEventListener('pause', updatePlayIcons);
-
-        btnMobilePlay.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (videoElement.paused) videoElement.play(); else videoElement.pause();
-            resetearInactividad();
-        });
-
-        btnVolume.addEventListener('click', (e) => {
-            e.stopPropagation();
-            videoElement.muted = !videoElement.muted;
-            if (videoElement.muted) {
-                iconVolOn.classList.add('hidden');
-                iconVolOff.classList.remove('hidden');
-            } else {
-                iconVolOn.classList.remove('hidden');
-                iconVolOff.classList.add('hidden');
-            }
-            resetearInactividad();
-        });
-
-        btnFullscreen.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            resetearInactividad();
-            if (!document.fullscreenElement) {
-                try {
-                    await document.documentElement.requestFullscreen();
-                    iconFullEnter.classList.add('hidden');
-                    iconFullExit.classList.remove('hidden');
-                    if (screen.orientation && screen.orientation.lock) {
-                        await screen.orientation.lock('landscape');
-                    }
-                } catch (err) { console.warn("Fullscreen error", err); }
-            } else {
-                if (document.exitFullscreen) {
-                    await document.exitFullscreen();
-                    iconFullEnter.classList.remove('hidden');
-                    iconFullExit.classList.add('hidden');
-                    if (screen.orientation && screen.orientation.unlock) {
-                        screen.orientation.unlock();
-                    }
-                }
-            }
-        });
-
-        document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) {
-                iconFullEnter.classList.remove('hidden');
-                iconFullExit.classList.add('hidden');
-                if (screen.orientation && screen.orientation.unlock) {
-                    screen.orientation.unlock();
-                }
-            }
-        });
-
-        function renderizarCanales() {
-            listaCanalesDiv.innerHTML = '';
-            const todasLasSolapas = [];
-            const todosLosBotonesOpcion = [];
-
-            misCanales.forEach((canal) => {
-                const canalContainer = document.createElement('div');
-                canalContainer.className = "flex flex-col gap-1 mb-1";
-
-                const btnPrincipal = document.createElement('button');
-                btnPrincipal.className = "w-full text-left bg-[#131538] hover:bg-[#1a1d4f] focus:bg-[#282c75] focus:ring-2 focus:ring-blue-400 outline-none text-white font-semibold py-2 px-3 rounded-md transition border border-[#1e204a] flex items-center justify-between group";
+                const desc = cond.lang_es ? cond.lang_es[0].value : cond.weatherDesc[0].value;
                 
-                const logoFinal = canal.logo ? (canal.logo.startsWith('http') ? canal.logo : `${API_URL}/${canal.logo}`) : '';
-                const iniciales = canal.nombre.substring(0, 3).toUpperCase();
-                const logoHtml = logoFinal 
-                    ? `<img src="${logoFinal}" alt="${iniciales}" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\'text-xs font-black tracking-tighter text-gray-800\'>${iniciales}</span>';">`
-                    : `<span class="text-xs font-black tracking-tighter text-gray-800">${iniciales}</span>`;
-
-                btnPrincipal.innerHTML = `
-                    <div class="flex items-center gap-3 overflow-hidden w-full">
-                        <div class="w-14 h-10 bg-white rounded flex items-center justify-center shrink-0 shadow-inner group-hover:border-blue-400 border border-gray-300 transition overflow-hidden">
-                            ${logoHtml}
-                        </div>
-                        <span class="text-sm md:text-base truncate tracking-wide w-full">${canal.nombre}</span>
-                    </div>
-                    <span class="text-xs text-[#5c6bc0] ml-2 shrink-0">▼</span>
-                `;
-
-                const subOpcionesDiv = document.createElement('div');
-                subOpcionesDiv.className = "hidden flex-col gap-1 pl-14 mt-1 border-l-2 border-[#3949ab]";
-                todasLasSolapas.push(subOpcionesDiv);
-
-                canal.opciones.forEach(opcion => {
-                    const btnOpcion = document.createElement('button');
-                    btnOpcion.className = "w-full text-left bg-[#0c0e24] outline-none hover:bg-[#1a1d4f] focus:bg-[#3949ab] focus:text-white text-gray-400 hover:text-white py-2 px-3 rounded-md transition text-xs border border-transparent";
-                    btnOpcion.innerText = opcion.nombre;
-                    todosLosBotonesOpcion.push(btnOpcion);
-
-                    btnOpcion.onclick = () => {
-                        todosLosBotonesOpcion.forEach(b => {
-                            b.classList.remove('bg-[#3949ab]', 'text-white', 'font-bold', 'border-blue-400');
-                            b.classList.add('bg-[#0c0e24]', 'text-gray-400', 'border-transparent');
-                        });
-                        btnOpcion.classList.remove('bg-[#0c0e24]', 'text-gray-400', 'border-transparent');
-                        btnOpcion.classList.add('bg-[#3949ab]', 'text-white', 'font-bold', 'border-blue-400');
-
-                        canalActualId = opcion.id;
-                        canalActualLogo = canal.logo; 
-                        ultimoReintento = 0;
-                        obtenerEnlaceServidor(opcion.id);
-                        cerrarMenu();
-                        btnReportar.classList.remove('hidden');
-                    };
-                    subOpcionesDiv.appendChild(btnOpcion);
-                });
-
-                btnPrincipal.onclick = () => {
-                    const estabaOculta = subOpcionesDiv.classList.contains('hidden');
-                    todasLasSolapas.forEach(solapa => solapa.classList.add('hidden'));
-                    if (estabaOculta) subOpcionesDiv.classList.remove('hidden');
-                };
-
-                canalContainer.appendChild(btnPrincipal);
-                canalContainer.appendChild(subOpcionesDiv);
-                listaCanalesDiv.appendChild(canalContainer);
-            });
-
-            if (todosLosBotonesOpcion.length > 0) {
-                todasLasSolapas[0].classList.remove('hidden');
-                todosLosBotonesOpcion[0].click();
-            }
+                document.getElementById('txtTemp').textContent = `${temp}°C`;
+                document.getElementById('txtClimaDesc').textContent = desc.toUpperCase();
+                document.getElementById('txtCiudad').textContent = "LA PLATA";
+                document.getElementById('boxClima').classList.remove('hidden');
+                
+                const horaActual = new Date().getHours();
+                const esDia = horaActual >= 6 && horaActual < 19;
+                document.getElementById('lblDiaNoche').textContent = esDia ? "☀️" : "🌙";
+                
+                const code = cond.weatherCode;
+                document.getElementById('imgClima').src = `https://cdn.jsdelivr.net/gh/chubin/wttr.in@master/share/icons/png/${code}.png`;
+            } catch(e) { console.error("Error clima:", e); }
         }
 
-        async function obtenerEnlaceServidor(canalId) {
-            mensajeError.classList.add('hidden');
-            const esBot = canalesBot.includes(canalId);
-            mostrarLoader(esBot);
-
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), esBot ? 90000 : 15000);
-                const res = await fetch(`${API_URL}/api/get-stream/${canalId}`, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                const data = await res.json();
-
-                if (data.exito && data.url) {
-                    ejecutarVideo(data.url, canalId, data.clearkey);
+        if (btnVolMenos) {
+            btnVolMenos.onclick = () => { videoElement.volume = Math.max(0, videoElement.volume - 0.1); videoElement.muted = false; };
+        }
+        if (btnVolMas) {
+            btnVolMas.onclick = () => { videoElement.volume = Math.min(1, videoElement.volume + 0.1); videoElement.muted = false; };
+        }
+        if (btnSilenciar) {
+            btnSilenciar.onclick = () => {
+                videoElement.muted = !videoElement.muted;
+                btnSilenciar.textContent = videoElement.muted ? "🔊 Activar" : "🔇 Silenciar";
+            };
+        }
+        if (btnFullscreen) {
+            btnFullscreen.onclick = () => {
+                const contenedorRaiz = videoElement.parentElement;
+                if (!document.fullscreenElement) {
+                    if (contenedorRaiz.requestFullscreen) contenedorRaiz.requestFullscreen();
+                    else if (videoElement.webkitEnterFullscreen) videoElement.webkitEnterFullscreen();
                 } else {
-                    throw new Error("No enlace");
+                    if (document.exitFullscreen) document.exitFullscreen();
                 }
-            } catch (err) {
-                ocultarLoader();
-                mensajeError.classList.remove('hidden');
-                mensajeError.innerText = "Error: El servidor no responde o el canal no está disponible.";
-                abrirMenu();
+            };
+        }
+
+        async function descargarListaCanales() {
+            try {
+                const res = await fetch('/api/canales');
+                const data = await res.json();
+                cacheCanalesGlobal = data;
+                renderizarMenuCanales();
+                renderizarModalCategorias();
+            } catch (err) { console.error("Error cargando canales:", err); }
+        }
+
+        function renderizarMenuCanales() {
+            listaCanales.innerHTML = "";
+            let filtrados = cacheCanalesGlobal;
+            if (categoriaSeleccionada !== "TODOS") {
+                filtrados = cacheCanalesGlobal.filter(c => c.categoria.toUpperCase() === categoriaSeleccionada.toUpperCase());
             }
+
+            filtrados.forEach(canal => {
+                const btn = document.createElement('button');
+                btn.className = "w-full flex items-center bg-neutral-900 hover:bg-neutral-800 active:bg-blue-950 border border-gray-900 rounded-lg p-2 text-left transition-all focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm font-medium tracking-wide";
+                
+                const img = document.createElement('img');
+                img.className = "w-11 h-11 object-contain mr-3 rounded bg-white p-1 border border-gray-300 flex-shrink-0 shadow-sm";
+                img.src = canal.logo;
+                img.onerror = () => { 
+                    img.className = "w-11 h-11 object-contain mr-3 rounded bg-neutral-950 p-1 border border-gray-800 flex-shrink-0";
+                    img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='2' width='20' height='20' rx='2.18' ry='2.18'></rect><line x1='7' y1='2' x2='7' y2='22'></line><line x1='17' y1='2' x2='17' y2='22'></line><line x1='2' y1='12' x2='22' y2='12'></line></svg>"; 
+                };
+                
+                const span = document.createElement('span');
+                span.textContent = canal.nombre;
+                span.className = "truncate flex-1 font-semibold";
+
+                btn.appendChild(img);
+                btn.appendChild(span);
+                btn.onclick = () => seleccionarCanal(canal);
+                listaCanales.appendChild(btn);
+            });
         }
 
-        async function reintentarCanal(canalId) {
-            const ahora = Date.now();
-            if (ahora - ultimoReintento < 30000) return ocultarLoader();
-            ultimoReintento = ahora;
-            mostrarLoader(canalesBot.includes(canalId), "🔄 Enlace caído, buscando nuevo...");
-            try { await fetch(`${API_URL}/api/clear-cache/${canalId}`).catch(() => {}); } catch (e) {}
-            setTimeout(() => { obtenerEnlaceServidor(canalId); }, 1000);
+        function renderizarModalCategorias() {
+            listaCategorias.innerHTML = "";
+            const cats = ["TODOS", ...new Set(cacheCanalesGlobal.map(c => c.categoria))];
+            
+            cats.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = "w-full bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-900 rounded-lg p-2.5 text-left text-xs font-bold uppercase tracking-wider transition-colors focus:outline-none focus:border-blue-500";
+                if (cat === categoriaSeleccionada) btn.className += " border-blue-600 bg-blue-950/20 text-blue-400";
+                btn.textContent = cat;
+                btn.onclick = () => {
+                    categoriaSeleccionada = cat;
+                    renderizarMenuCanales();
+                    cerrarCategorias();
+                };
+                listaCategorias.appendChild(btn);
+            });
         }
 
-        function ejecutarVideo(url, canalId, clearkeyUrl) {
-            videoElement.setAttribute('poster', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
-            if (hls) { hls.destroy(); hls = null; }
-            if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
+        function seleccionarCanal(canal) {
+            canalActualGlobal = canal;
+            btnReportar.classList.remove('hidden');
+            containerOpciones.innerHTML = "";
+
+            if (canal.opciones && canal.opciones.length > 0) {
+                canal.opciones.forEach((opc, index) => {
+                    const b = document.createElement('button');
+                    b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 hover:border-blue-500 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:ring-2 focus:ring-blue-500";
+                    b.textContent = opc.nombre;
+                    b.onclick = () => consultarServidorYReproducir(opc.id);
+                    containerOpciones.appendChild(b);
+                    if (index === 0) b.click(); 
+                });
+                mostrarControlesInteractivos();
+            } else { mostrarAlerta(); }
+        }
+
+        async function consultarServidorYReproducir(opcionId) {
+            mostrarLoader();
+            try {
+                const res = await fetch(`/api/stream/${opcionId}`);
+                const data = await res.json();
+                if (data.exito && data.url) { reproducirCanal(data.url); } else { ocultarLoader(); mostrarAlerta(); }
+            } catch(e) { ocultarLoader(); mostrarAlerta(); }
+        }
+
+        function reproducirCanal(url) {
+            console.log("▶️ Intentando reproducir URL:", url);
+
+            if (typeof hls !== 'undefined' && hls) { hls.destroy(); hls = null; }
+            if (typeof dashPlayer !== 'undefined' && dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
+            
             videoElement.pause();
+            videoElement.src = "";
+
+            if (!url.includes('/proxy/stream') && (url.includes('canal.php') || url.includes('.php') || url.includes('latamvidz') || url.includes('la14hd') || url.includes('streamtpcloud') || url.includes('elcanaldeportivo'))) {
+                videoElement.classList.add('hidden');       
+                iframeElement.classList.remove('hidden');    
+                iframeElement.src = url;                    
+                ocultarLoader();                            
+                return;
+            }
+
+            iframeElement.classList.add('hidden');
+            iframeElement.src = "";
             videoElement.classList.remove('hidden');
-            videoElement.volume = 1.0;
-            videoElement.muted = false;
-            updatePlayIcons();
 
             if (url.includes('.mpd')) {
                 dashPlayer = dashjs.MediaPlayer().create();
                 dashPlayer.initialize(videoElement, url, true);
-                
-                if (clearkeyUrl) {
-                    if (clearkeyUrl.includes('http')) {
-                        dashPlayer.setProtectionData({
-                            "org.w3.clearkey": { "serverURL": clearkeyUrl }
-                        });
-                    } else if (clearkeyUrl.includes(':')) {
-                        const [keyIdHex, keyHex] = clearkeyUrl.split(':');
-                        const hexToBase64 = (hex) => btoa(String.fromCharCode.apply(null, hex.match(/\w{2}/g).map(a => parseInt(a, 16)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=*$/, '');
-                        const clearKeyData = {};
-                        clearKeyData[hexToBase64(keyIdHex)] = hexToBase64(keyHex);
-
-                        dashPlayer.setProtectionData({
-                            "org.w3.clearkey": { "clearkeys": clearKeyData }
-                        });
-                    }
-                }
-
-                dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_PLAYING, () => { ocultarLoader(); updatePlayIcons(); });
-                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => {
-                    ocultarLoader();
-                    if (canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
-                });
-           } else if (url.includes('.m3u8') || url.includes('/proxy/stream') || url.includes(':8000')) {
-        if (Hls.isSupported()) {
-            // --- NUEVA CONFIGURACIÓN CON MÁS TIEMPO DE ESPERA ---
-            hls = new Hls({ 
-                debug: false,
-                manifestLoadingTimeOut: 25000, // Espera hasta 25 segundos
-                manifestLoadingMaxRetry: 5,    // Intenta 5 veces si falla
-                levelLoadingTimeOut: 25000,
-                fragLoadingTimeOut: 30000,
-                enableWorker: true
-            });
-            // ----------------------------------------------------
-            
-            hls.loadSource(url);
-            hls.attachMedia(videoElement);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                ocultarLoader();
-                videoElement.play().catch(() => { videoElement.muted = true; videoElement.play(); });
-            });
-                    hls.on(Hls.Events.ERROR, function (event, data) {
-                        if (data.fatal && canalId && canalesBot.includes(canalId)) reintentarCanal(canalId);
+                dashPlayer.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => { ocultarLoader(); });
+            } else if (url.includes('.m3u8') || url.includes('/proxy/stream') || url.includes(':8000')) {
+                if (Hls.isSupported()) {
+                    hls = new Hls({ 
+                        debug: false,
+                        manifestLoadingTimeOut: 25000, 
+                        manifestLoadingMaxRetry: 5,     
+                        levelLoadingTimeOut: 25000,
+                        fragLoadingTimeOut: 30000,
+                        enableWorker: true             
                     });
-                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                    videoElement.src = url;
-                    videoElement.play();
-                    ocultarLoader();
+                    hls.loadSource(url);
+                    hls.attachMedia(videoElement);
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        ocultarLoader();
+                        videoElement.play().catch(() => { videoElement.muted = true; videoElement.play(); });
+                    });
+                    hls.on(Hls.Events.ERROR, (event, data) => { if (data.fatal) { console.error("Error Fatal:", data); ocultarLoader(); } });
                 }
             } else {
                 videoElement.src = url;
-                videoElement.play();
-                ocultarLoader();
+                videoElement.play().catch(() => { videoElement.muted = true; videoElement.play(); });
             }
         }
 
+        btnReportar.onclick = () => { console.log("Botón reportar presionado, acción bloqueada (NO funcional)"); };
+
+        function abrirCategorias() { modalCategorias.classList.remove('hidden'); document.getElementById('listaCategorias').querySelector('button')?.focus(); }
+        function cerrarCategorias() { modalCategorias.classList.add('hidden'); btnMenu.focus(); }
+        btnMenu.onclick = abrirCategorias;
+        btnCerrarModal.onclick = cerrarCategorias;
+
         document.addEventListener('keydown', (e) => {
-            const isMenuAbierto = !sidebar.classList.contains('-translate-x-[130%]');
-            resetearInactividad();
+            const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter', 27: 'Escape' };
+            const keyName = keys[e.keyCode];
+            if (!keyName) return;
 
-            const isUp = e.key === 'ArrowUp' || e.keyCode === 38;
-            const isDown = e.key === 'ArrowDown' || e.keyCode === 40;
-            const isLeft = e.key === 'ArrowLeft' || e.keyCode === 37;
-            const isRight = e.key === 'ArrowRight' || e.keyCode === 39;
-            const isEnter = e.key === 'Enter' || e.keyCode === 13;
-            const isBack = e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009;
+            if (keyName === 'Escape') { cerrarCategorias(); e.preventDefault(); return; }
 
-            if (isBack) {
-                if (isMenuAbierto) { cerrarMenu(); e.preventDefault(); }
+            const enModal = !modalCategorias.classList.contains('hidden');
+            const contenedorContexto = enModal ? listaCategorias : listaCanales;
+            const botones = Array.from(contenedorContexto.querySelectorAll('button'));
+            const currentIndex = botones.indexOf(document.activeElement);
+
+            const isUp = keyName === 'Up';
+            const isDown = keyName === 'Down';
+            const isLeft = keyName === 'Left';
+            const isRight = keyName === 'Right';
+            const isEnter = keyName === 'Enter';
+
+            if (enModal) {
+                if (isDown && currentIndex < botones.length - 1) { botones[currentIndex + 1].focus(); e.preventDefault(); }
+                if (isUp && currentIndex > 0) { botones[currentIndex - 1].focus(); e.preventDefault(); }
                 return;
             }
 
-            if (isMenuAbierto) {
-                if (isRight) { cerrarMenu(); e.preventDefault(); return; }
-                
-                const botones = Array.from(sidebar.querySelectorAll('button')).filter(b => b.offsetParent !== null);
-                const currentIndex = botones.indexOf(document.activeElement);
+            if (document.activeElement.closest('#containerOpciones')) {
+                const btnsOpc = Array.from(containerOpciones.querySelectorAll('button'));
+                const idxOpc = btnsOpc.indexOf(document.activeElement);
+                if (isLeft && idxOpc > 0) { btnsOpc[idxOpc - 1].focus(); e.preventDefault(); }
+                if (isRight && idxOpc < btnsOpc.length - 1) { btnsOpc[idxOpc + 1].focus(); e.preventDefault(); }
+                if (isUp) { const btnsMenuCanal = Array.from(listaCanales.querySelectorAll('button')); btnsMenuCanal[0]?.focus(); e.preventDefault(); }
+                return;
+            }
 
+            if (document.activeElement.tagName === 'BUTTON' && document.activeElement.closest('#sidebar')) {
+                if (isRight) {
+                    const primerBotonOpcion = containerOpciones.querySelector('button');
+                    if (primerBotonOpcion) primerBotonOpcion.focus();
+                    else btnMenu.focus();
+                    e.preventDefault();
+                    return;
+                }
                 if (isDown) {
                     e.preventDefault();
-                    if (currentIndex === -1 && botones.length > 0) {
-                        botones[0].focus();
-                    } else if (currentIndex < botones.length - 1) {
+                    if (currentIndex < botones.length - 1) {
                         botones[currentIndex + 1].focus();
                         botones[currentIndex + 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
                     }
                 }
-                
                 if (isUp) {
                     e.preventDefault();
                     if (currentIndex === -1 && botones.length > 0) {
@@ -558,27 +426,23 @@
                     }
                 }
             } else {
-                if (isLeft) { abrirMenu(); e.preventDefault(); return; }
-                if (isUp) {
-                    e.preventDefault();
-                    if (!btnReportar.classList.contains('hidden')) btnReportar.focus();
-                    else btnMenu.focus();
-                    return;
-                }
+                if (isLeft) { abrirCategorias(); e.preventDefault(); return; }
+                if (isUp) { e.preventDefault(); btnMenu.focus(); return; }
                 if (isEnter) {
                     if (document.activeElement.tagName === 'BUTTON' || document.activeElement.tagName === 'A') {
                         document.activeElement.click();
                     } else {
-                        if (videoElement.paused) videoElement.play();
-                        else videoElement.pause();
+                        if (!videoElement.classList.contains('hidden')) {
+                            if (videoElement.paused) videoElement.play(); else videoElement.pause();
+                        }
                     }
                 }
             }
         });
 
         window.onload = () => {
+            verificarFiltroDispositivo();
             descargarListaCanales();
-            abrirMenu();
             iniciarReloj();
             iniciarClima();
         };
