@@ -3,9 +3,9 @@
   "appName": "CASTA-APP",
   "webDir": "www",
   "server": {
+    "url": "https://casta-app.onrender.com", 
     "cleartext": true,
     "allowNavigation": [
-      "casta-app.onrender.com",
       "*.onrender.com",
       "45.5.151.147:8000",
       "*.bestleague.top",
