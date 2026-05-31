@@ -19,8 +19,8 @@
     </style>
 </head>
 <body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen flex flex-col md:flex-row font-sans">
-
-    <div class="flex-1 relative flex items-center md:items-start justify-center bg-black overflow-hidden select-none md:pt-14">
+ 
+<div class="flex-1 relative flex items-center justify-center bg-black overflow-hidden select-none" id="playerArea">
         
         <div id="loader" class="absolute z-50 hidden flex flex-col items-center justify-center bg-black bg-opacity-90 backdrop-blur-sm p-6 rounded-2xl pointer-events-none text-center border border-gray-800 shadow-2xl">
             <div class="relative flex items-center justify-center mb-5 w-24 h-24">
@@ -32,7 +32,7 @@
             <p class="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse mt-2">cargando transmisión, gracias por esperar</p>
         </div>
         
-        <video id="videoElement" class="w-full h-full object-contain bg-black" playsinline></video>
+        <video id="videoElement" class="w-full h-full object-fill bg-black" playsinline></video>
 
         <iframe id="iframeElement" allow="encrypted-media" allowfullscreen frameborder="0" scrolling="no" class="w-full h-full bg-black hidden"></iframe>
 
@@ -41,16 +41,17 @@
                 <span id="txtReloj" class="text-2xl font-bold font-mono text-white tracking-widest drop-shadow">00:00:00</span>
                 <span id="txtFecha" class="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-0.5">--- -- ---</span>
             </div>
-            <div id="boxClima" class="hidden flex items-center bg-black bg-opacity-40 backdrop-blur-sm px-3 py-2 rounded-lg border border-gray-800 text-right">
-                <div class="mr-2 flex flex-col justify-center">
-                    <div class="flex items-center justify-end gap-1">
-                        <span id="lblDiaNoche" class="text-xs">☀️</span>
-                        <div id="txtTemp" class="text-lg font-bold text-white leading-none">0°C</div>
-                    </div>
-                    <div id="txtClimaDesc" class="text-[9px] text-blue-400 font-bold uppercase tracking-wider mt-0.5">Cargando...</div>
-                    <div id="txtCiudad" class="text-[8px] text-gray-500 font-medium uppercase tracking-wider">LA PLATA</div>
+            
+            <div id="boxClima" class="hidden flex flex-col justify-center bg-black bg-opacity-40 backdrop-blur-sm px-4 py-2 rounded-lg border border-gray-800 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                    <span id="lblDiaNoche" class="text-lg drop-shadow-md">☀️</span>
+                    <div id="txtTemp" class="text-xl font-bold text-white leading-none">0°C</div>
                 </div>
-                <img id="imgClima" class="w-8 h-8 object-contain bg-neutral-900/60 rounded p-0.5 border border-gray-800" src="" alt="clima">
+                <div id="txtClimaDesc" class="text-[9px] text-blue-400 font-bold uppercase tracking-wider mt-1">Cargando...</div>
+                <div class="flex items-center justify-end gap-1 mt-0.5">
+                    <span class="text-[9px]">📍</span>
+                    <div id="txtCiudad" class="text-[8px] text-gray-500 font-medium uppercase tracking-wider">LA PLATA, BA</div>
+                </div>
             </div>
         </div>
 
@@ -58,15 +59,20 @@
             ¡ERROR AL CARGAR EL CANAL!
         </div>
 
-        <div id="bottomControls" class="absolute bottom-4 left-4 right-4 flex flex-col items-center bg-black bg-opacity-60 backdrop-blur-md p-3 rounded-xl border border-gray-800 shadow-2xl z-10 opacity-0 pointer-events-none transition-opacity duration-300">
-            <div class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2" id="lblOpcionesCanal">OPCIONES DISPONIBLES</div>
-            <div id="containerOpciones" class="flex flex-wrap gap-2 justify-center w-full"></div>
+        <div id="bottomControls" class="absolute bottom-4 left-4 right-4 flex flex-col bg-black bg-opacity-70 backdrop-blur-md p-3 rounded-xl border border-gray-800 shadow-2xl z-10 opacity-0 pointer-events-none transition-opacity duration-300">
             
-            <div id="pcMobileControls" class="flex flex-wrap items-center gap-2 mt-3 border-t border-gray-800/80 pt-2.5 w-full justify-center pointer-events-auto">
-                <button id="btnVolMenos" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-2.5 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔉 Vol -</button>
-                <button id="btnSilenciar" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-2.5 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔇 Silenciar</button>
-                <button id="btnVolMas" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-2.5 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔊 Vol +</button>
-                <button id="btnFullscreen" class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-3 py-1.5 rounded font-black transition-colors uppercase tracking-wider ml-1 shadow-md focus:outline-none">Expandir 🖥️</button>
+            <div id="pcMobileControls" class="flex flex-wrap justify-center items-center gap-2 mb-3">
+                <button id="btnVolMenos" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔉 Vol -</button>
+                <button id="btnSilenciar" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔇 Silenciar</button>
+                <button id="btnVolMas" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔊 Vol +</button>
+                <button id="btnFullscreen" class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-4 py-1.5 rounded font-black transition-colors uppercase tracking-wider ml-1 shadow-md focus:outline-none">Expandir 🖥️</button>
+            </div>
+
+            <div class="w-full h-px bg-gray-800/60 mb-2" id="separadorControles"></div>
+
+            <div class="flex flex-col items-center w-full">
+                <div class="text-[10px] font-bold tracking-widest text-blue-400 uppercase mb-2" id="lblOpcionesCanal">OPCIONES DISPONIBLES</div>
+                <div id="containerOpciones" class="flex flex-wrap gap-2 justify-center w-full"></div>
             </div>
         </div>
     </div>
@@ -75,55 +81,45 @@
         <div class="flex flex-col mb-4 border-b border-gray-900 pb-3 gap-1">
             <div class="flex items-center justify-between w-full">
                 <div class="flex items-center">
-                    <h1 class="text-lg font-black tracking-wider bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">📺CASTA-APP⚽</h1>
+                    <h1 class="text-lg font-black tracking-wider flex items-center gap-1">
+                        <span>📺</span>
+                        <span class="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">CASTA-APP</span>
+                        <span>⚽</span>
+                    </h1>
                 </div>
                 <div class="flex gap-1.5 items-center">
                     <button id="btnReportar" class="bg-neutral-900/60 text-gray-500 border border-gray-800/60 text-[9px] px-2 py-1 rounded font-medium transition-colors hidden uppercase tracking-wider text-center leading-tight cursor-not-allowed flex-shrink-0">
                         Reportar<br><span class="text-[8px] text-red-500/70 block font-bold mt-0.5">NO funcional</span>
                     </button>
-                    <button id="btnMenu" class="bg-neutral-900 hover:bg-neutral-800 text-white border border-gray-800 text-xs px-2.5 py-2 rounded font-medium transition-colors uppercase tracking-wider flex-shrink-0">Categorías</button>
                 </div>
             </div>
             <span class="text-xs text-gray-500 font-semibold tracking-wide uppercase mt-0.5">Seleccione un canal</span>
         </div>
 
-        <div id="listaCanales" class="flex flex-col gap-1.5 flex-1"></div>
-    </div>
-
-    <div id="modalCategorias" class="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-neutral-950 border border-gray-800 rounded-xl max-w-md w-full max-h-[80vh] flex flex-col p-4 shadow-2xl">
-            <div class="flex justify-between items-center mb-4 border-b border-gray-900 pb-2">
-                <h2 class="text-base font-bold tracking-wider text-gray-300 uppercase">Seleccionar Categoría</h2>
-                <button id="btnCerrarModal" class="text-gray-500 hover:text-white text-sm font-bold bg-neutral-900 px-2 py-1 rounded border border-gray-800 transition-colors">ESC</button>
-            </div>
-            <div id="listaCategorias" class="flex flex-col gap-1.5 overflow-y-auto pr-1"></div>
-        </div>
+        <div id="listaCanales" class="flex flex-col gap-1.5 flex-1 pb-10"></div>
     </div>
 
     <script>
         const videoElement = document.getElementById('videoElement');
         const iframeElement = document.getElementById('iframeElement'); 
+        const playerArea = document.getElementById('playerArea');
         const loader = document.getElementById('loader');
         const loaderLogo = document.getElementById('loaderLogo');
         const alertBox = document.getElementById('alertBox');
         const listaCanales = document.getElementById('listaCanales');
-        const btnMenu = document.getElementById('btnMenu');
         const btnReportar = document.getElementById('btnReportar');
-        const modalCategorias = document.getElementById('modalCategorias');
-        const btnCerrarModal = document.getElementById('btnCerrarModal');
-        const listaCategorias = document.getElementById('listaCategorias');
         const bottomControls = document.getElementById('bottomControls');
         const containerOpciones = document.getElementById('containerOpciones');
         const topInfo = document.getElementById('topInfo');
         
         const pcMobileControls = document.getElementById('pcMobileControls');
+        const separadorControles = document.getElementById('separadorControles');
         const btnVolMenos = document.getElementById('btnVolMenos');
         const btnSilenciar = document.getElementById('btnSilenciar');
         const btnVolMas = document.getElementById('btnVolMas');
         const btnFullscreen = document.getElementById('btnFullscreen');
 
         let cacheCanalesGlobal = [];
-        let categoriaSeleccionada = "TODOS";
         let canalActualGlobal = null;
         let hls = null;
         let dashPlayer = null;
@@ -145,16 +141,23 @@
             setTimeout(() => { alertBox.classList.add('hidden'); }, 4000);
         }
 
+        // LÓGICA DE OCULTAMIENTO CORREGIDA (Desvanece TODO siempre al estar inactivo)
         function mostrarControlesInteractivos() {
             bottomControls.classList.remove('opacity-0', 'pointer-events-none');
             topInfo.classList.remove('opacity-0');
+            document.body.style.cursor = 'default';
+
             clearTimeout(timeoutControles);
             timeoutControles = setTimeout(() => {
-                if (document.activeElement.tagName !== 'BUTTON' && document.activeElement.tagName !== 'A') {
-                    bottomControls.classList.add('opacity-0', 'pointer-events-none');
-                    topInfo.classList.add('opacity-0');
+                // Removemos la traba de foco para asegurar que se oculte
+                bottomControls.classList.add('opacity-0', 'pointer-events-none');
+                topInfo.classList.add('opacity-0');
+                
+                // Si la pantalla completa está activa, ocultamos el cursor para una vista limpia
+                if (document.fullscreenElement) {
+                    document.body.style.cursor = 'none';
                 }
-            }, 5000);
+            }, 3500); // 3.5 segundos de inactividad
         }
 
         document.addEventListener('mousemove', mostrarControlesInteractivos);
@@ -165,7 +168,7 @@
             const actualizar = () => {
                 const n = new Date();
                 document.getElementById('txtReloj').textContent = n.toLocaleTimeString('es-AR', { hour12: false });
-                document.getElementById('txtFecha').textContent = n.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
+                document.getElementById('txtFecha').textContent = n.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
             };
             actualizar();
             setInterval(actualizar, 1000);
@@ -176,6 +179,7 @@
             const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox');
             if (esTV && pcMobileControls) {
                 pcMobileControls.remove(); 
+                if(separadorControles) separadorControles.remove();
             }
         }
 
@@ -186,38 +190,47 @@
                 const d = await res.json();
                 const cond = d.current_condition[0];
                 const temp = cond.temp_C;
+                const code = cond.weatherCode;
                 
                 const desc = cond.lang_es ? cond.lang_es[0].value : cond.weatherDesc[0].value;
                 
                 document.getElementById('txtTemp').textContent = `${temp}°C`;
                 document.getElementById('txtClimaDesc').textContent = desc.toUpperCase();
-                document.getElementById('txtCiudad').textContent = "LA PLATA";
+                document.getElementById('txtCiudad').textContent = "LA PLATA, BA";
                 document.getElementById('boxClima').classList.remove('hidden');
                 
                 const horaActual = new Date().getHours();
                 const esDia = horaActual >= 6 && horaActual < 19;
-                document.getElementById('lblDiaNoche').textContent = esDia ? "☀️" : "🌙";
                 
-                const code = cond.weatherCode;
-                document.getElementById('imgClima').src = `https://cdn.jsdelivr.net/gh/chubin/wttr.in@master/share/icons/png/${code}.png`;
+                let emoji = esDia ? "☀️" : "🌙";
+                if (["116", "119", "122"].includes(code)) emoji = esDia ? "⛅" : "☁️"; 
+                else if (["143", "248", "260"].includes(code)) emoji = "🌫️"; 
+                else if (["176", "263", "266", "293", "296", "299", "302", "305", "308", "353", "356", "359"].includes(code)) emoji = "🌧️"; 
+                else if (["200", "386", "389"].includes(code)) emoji = "⛈️"; 
+                else if (["227", "320", "323", "326", "329", "332", "335", "338", "368", "371", "392", "395"].includes(code)) emoji = "❄️"; 
+
+                document.getElementById('lblDiaNoche').textContent = emoji;
             } catch(e) { console.error("Error clima:", e); }
         }
 
+        // Acciones de botones con blur() para no atrapar el foco
         if (btnVolMenos) {
-            btnVolMenos.onclick = () => { videoElement.volume = Math.max(0, videoElement.volume - 0.1); videoElement.muted = false; };
+            btnVolMenos.onclick = function() { videoElement.volume = Math.max(0, videoElement.volume - 0.1); videoElement.muted = false; this.blur(); };
         }
         if (btnVolMas) {
-            btnVolMas.onclick = () => { videoElement.volume = Math.min(1, videoElement.volume + 0.1); videoElement.muted = false; };
+            btnVolMas.onclick = function() { videoElement.volume = Math.min(1, videoElement.volume + 0.1); videoElement.muted = false; this.blur(); };
         }
         if (btnSilenciar) {
-            btnSilenciar.onclick = () => {
+            btnSilenciar.onclick = function() {
                 videoElement.muted = !videoElement.muted;
                 btnSilenciar.textContent = videoElement.muted ? "🔊 Activar" : "🔇 Silenciar";
+                this.blur();
             };
         }
         if (btnFullscreen) {
-            btnFullscreen.onclick = () => {
-                const contenedorRaiz = videoElement.parentElement;
+            btnFullscreen.onclick = function() {
+                this.blur(); // Vital para que no bloquee el desvanecimiento
+                const contenedorRaiz = playerArea;
                 if (!document.fullscreenElement) {
                     if (contenedorRaiz.requestFullscreen) contenedorRaiz.requestFullscreen();
                     else if (videoElement.webkitEnterFullscreen) videoElement.webkitEnterFullscreen();
@@ -233,56 +246,47 @@
                 const data = await res.json();
                 cacheCanalesGlobal = data;
                 renderizarMenuCanales();
-                renderizarModalCategorias();
             } catch (err) { console.error("Error cargando canales:", err); }
         }
 
         function renderizarMenuCanales() {
             listaCanales.innerHTML = "";
-            let filtrados = cacheCanalesGlobal;
-            if (categoriaSeleccionada !== "TODOS") {
-                filtrados = cacheCanalesGlobal.filter(c => c.categoria.toUpperCase() === categoriaSeleccionada.toUpperCase());
-            }
-
-            filtrados.forEach(canal => {
-                const btn = document.createElement('button');
-                btn.className = "w-full flex items-center bg-neutral-900 hover:bg-neutral-800 active:bg-blue-950 border border-gray-900 rounded-lg p-2 text-left transition-all focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm font-medium tracking-wide";
-                
-                const img = document.createElement('img');
-                img.className = "w-11 h-11 object-contain mr-3 rounded bg-white p-1 border border-gray-300 flex-shrink-0 shadow-sm";
-                img.src = canal.logo;
-                img.onerror = () => { 
-                    img.className = "w-11 h-11 object-contain mr-3 rounded bg-neutral-950 p-1 border border-gray-800 flex-shrink-0";
-                    img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='2' width='20' height='20' rx='2.18' ry='2.18'></rect><line x1='7' y1='2' x2='7' y2='22'></line><line x1='17' y1='2' x2='17' y2='22'></line><line x1='2' y1='12' x2='22' y2='12'></line></svg>"; 
-                };
-                
-                const span = document.createElement('span');
-                span.textContent = canal.nombre;
-                span.className = "truncate flex-1 font-semibold";
-
-                btn.appendChild(img);
-                btn.appendChild(span);
-                btn.onclick = () => seleccionarCanal(canal);
-                listaCanales.appendChild(btn);
-            });
-        }
-
-        function renderizarModalCategorias() {
-            listaCategorias.innerHTML = "";
-            const cats = ["TODOS", ...new Set(cacheCanalesGlobal.map(c => c.categoria))];
+            const canalesAgrupados = {};
             
-            cats.forEach(cat => {
-                const btn = document.createElement('button');
-                btn.className = "w-full bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-900 rounded-lg p-2.5 text-left text-xs font-bold uppercase tracking-wider transition-colors focus:outline-none focus:border-blue-500";
-                if (cat === categoriaSeleccionada) btn.className += " border-blue-600 bg-blue-950/20 text-blue-400";
-                btn.textContent = cat;
-                btn.onclick = () => {
-                    categoriaSeleccionada = cat;
-                    renderizarMenuCanales();
-                    cerrarCategorias();
-                };
-                listaCategorias.appendChild(btn);
+            cacheCanalesGlobal.forEach(canal => {
+                const cat = (canal.categoria || "OTROS").toUpperCase();
+                if (!canalesAgrupados[cat]) canalesAgrupados[cat] = [];
+                canalesAgrupados[cat].push(canal);
             });
+
+            for (const [categoria, canales] of Object.entries(canalesAgrupados)) {
+                const franja = document.createElement('div');
+                franja.className = "w-full bg-blue-900/20 border-l-4 border-blue-500 text-blue-400 text-[10px] font-black uppercase tracking-widest px-3 py-2 mt-3 mb-1.5 rounded-r shadow-sm pointer-events-none select-none";
+                franja.textContent = categoria;
+                listaCanales.appendChild(franja);
+
+                canales.forEach(canal => {
+                    const btn = document.createElement('button');
+                    btn.className = "w-full flex items-center bg-neutral-900 hover:bg-neutral-800 active:bg-blue-950 border border-gray-900 rounded-lg p-2 text-left transition-all focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm font-medium tracking-wide";
+                    
+                    const img = document.createElement('img');
+                    img.className = "w-11 h-11 object-contain mr-3 rounded bg-white p-1 border border-gray-300 flex-shrink-0 shadow-sm";
+                    img.src = canal.logo;
+                    img.onerror = () => { 
+                        img.className = "w-11 h-11 object-contain mr-3 rounded bg-neutral-950 p-1 border border-gray-800 flex-shrink-0";
+                        img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='2' width='20' height='20' rx='2.18' ry='2.18'></rect><line x1='7' y1='2' x2='7' y2='22'></line><line x1='17' y1='2' x2='17' y2='22'></line><line x1='2' y1='12' x2='22' y2='12'></line></svg>"; 
+                    };
+                    
+                    const span = document.createElement('span');
+                    span.textContent = canal.nombre;
+                    span.className = "truncate flex-1 font-semibold";
+
+                    btn.appendChild(img);
+                    btn.appendChild(span);
+                    btn.onclick = () => seleccionarCanal(canal);
+                    listaCanales.appendChild(btn);
+                });
+            }
         }
 
         function seleccionarCanal(canal) {
@@ -295,7 +299,10 @@
                     const b = document.createElement('button');
                     b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 hover:border-blue-500 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:ring-2 focus:ring-blue-500";
                     b.textContent = opc.nombre;
-                    b.onclick = () => consultarServidorYReproducir(opc.id);
+                    b.onclick = function() { 
+                        this.blur(); // Vital para que desvanezca en TV
+                        consultarServidorYReproducir(opc.id); 
+                    };
                     containerOpciones.appendChild(b);
                     if (index === 0) b.click(); 
                 });
@@ -361,23 +368,14 @@
             }
         }
 
-        btnReportar.onclick = () => { console.log("Botón reportar presionado, acción bloqueada (NO funcional)"); };
-
-        function abrirCategorias() { modalCategorias.classList.remove('hidden'); document.getElementById('listaCategorias').querySelector('button')?.focus(); }
-        function cerrarCategorias() { modalCategorias.classList.add('hidden'); btnMenu.focus(); }
-        btnMenu.onclick = abrirCategorias;
-        btnCerrarModal.onclick = cerrarCategorias;
+        btnReportar.onclick = () => { console.log("Reporte simulado"); };
 
         document.addEventListener('keydown', (e) => {
-            const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter', 27: 'Escape' };
+            const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter' };
             const keyName = keys[e.keyCode];
             if (!keyName) return;
 
-            if (keyName === 'Escape') { cerrarCategorias(); e.preventDefault(); return; }
-
-            const enModal = !modalCategorias.classList.contains('hidden');
-            const contenedorContexto = enModal ? listaCategorias : listaCanales;
-            const botones = Array.from(contenedorContexto.querySelectorAll('button'));
+            const botones = Array.from(listaCanales.querySelectorAll('button'));
             const currentIndex = botones.indexOf(document.activeElement);
 
             const isUp = keyName === 'Up';
@@ -386,18 +384,12 @@
             const isRight = keyName === 'Right';
             const isEnter = keyName === 'Enter';
 
-            if (enModal) {
-                if (isDown && currentIndex < botones.length - 1) { botones[currentIndex + 1].focus(); e.preventDefault(); }
-                if (isUp && currentIndex > 0) { botones[currentIndex - 1].focus(); e.preventDefault(); }
-                return;
-            }
-
             if (document.activeElement.closest('#containerOpciones')) {
                 const btnsOpc = Array.from(containerOpciones.querySelectorAll('button'));
                 const idxOpc = btnsOpc.indexOf(document.activeElement);
                 if (isLeft && idxOpc > 0) { btnsOpc[idxOpc - 1].focus(); e.preventDefault(); }
                 if (isRight && idxOpc < btnsOpc.length - 1) { btnsOpc[idxOpc + 1].focus(); e.preventDefault(); }
-                if (isUp) { const btnsMenuCanal = Array.from(listaCanales.querySelectorAll('button')); btnsMenuCanal[0]?.focus(); e.preventDefault(); }
+                if (isUp) { botones[0]?.focus(); e.preventDefault(); } 
                 return;
             }
 
@@ -405,7 +397,6 @@
                 if (isRight) {
                     const primerBotonOpcion = containerOpciones.querySelector('button');
                     if (primerBotonOpcion) primerBotonOpcion.focus();
-                    else btnMenu.focus();
                     e.preventDefault();
                     return;
                 }
@@ -426,8 +417,11 @@
                     }
                 }
             } else {
-                if (isLeft) { abrirCategorias(); e.preventDefault(); return; }
-                if (isUp) { e.preventDefault(); btnMenu.focus(); return; }
+                if (isLeft || isUp) { 
+                    e.preventDefault(); 
+                    if(botones.length > 0) botones[0].focus(); 
+                    return; 
+                }
                 if (isEnter) {
                     if (document.activeElement.tagName === 'BUTTON' || document.activeElement.tagName === 'A') {
                         document.activeElement.click();
