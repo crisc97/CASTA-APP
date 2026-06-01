@@ -5,6 +5,9 @@
   "backgroundColor": "#000000",
   "server": {
     "url": "https://casta-app.onrender.com", 
-    "cleartext": true
+    "cleartext": true,
+    "allowNavigation": [
+      "*"
+    ]
   }
 }
