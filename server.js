@@ -514,7 +514,7 @@ async function correrBot(datosCanal, canalId) {
     }
     return linkVideoPuro;
 }
-// ============================================================
+/ ============================================================
 // RUTA PARA LA APP (COMPATIBILIDAD INDEX.HTML)
 // ============================================================
 app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
@@ -548,7 +548,10 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
             
-            if (datosCanal.usarProxy) {
+            // 🔥 SOLUCIÓN AL "SÍNDROME DE VLC": Forzar Proxy para enlaces HTTP, IPs directas o .m3u8
+            const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('.m3u8') || urlCompleta.includes('45.5.151.147');
+
+            if (datosCanal.usarProxy || requiereProxySeguro) {
                 return res.json({ exito: true, url: `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}` });
             }
             return res.json({ exito: true, url: urlCompleta });
@@ -557,7 +560,6 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
         return res.status(500).json({ exito: false, error: error.message });
     }
 });
-
 // ============================================================
 // RUTA DE REPRODUCCIÓN DIRECTA M3U (REDIRECT 302)
 // ============================================================
@@ -591,7 +593,10 @@ app.get('/play/:canal', async (req, res) => {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
             
-            if (datosCanal.usarProxy) {
+            // 🔥 SOLUCIÓN AL "SÍNDROME DE VLC": Forzar Proxy para enlaces HTTP, IPs directas o .m3u8
+            const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('.m3u8') || urlCompleta.includes('45.5.151.147');
+
+            if (datosCanal.usarProxy || requiereProxySeguro) {
                 return res.redirect(302, `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`);
             }
             return res.redirect(302, urlCompleta);
