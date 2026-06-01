@@ -5,24 +5,6 @@
   "backgroundColor": "#000000",
   "server": {
     "url": "https://casta-app.onrender.com", 
-    "cleartext": true,
-    "allowNavigation": [
-      "*.onrender.com",
-      "45.5.151.147:8000",
-      "*.bestleague.top",
-      "*.nebunexa.life",
-      "cdn.tailwindcss.com",
-      "*.jsdelivr.net",
-      "*.cloudflare.com"
-    ]
-  },
-  "plugins": {
-    "SplashScreen": {
-      "launchShowDuration": 3000,
-      "launchAutoHide": true,
-      "backgroundColor": "#000000",
-      "androidSplashResourceName": "splash",
-      "androidScaleType": "CENTER_CROP"
-    }
+    "cleartext": true
   }
 }
