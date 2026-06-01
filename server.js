@@ -264,20 +264,18 @@ function armarHeaders(targetUrl) {
     };
 }
 // ============================================================
-// SÚPER PROXY INTELIGENTE (VERSIÓN ANTI-TRABAS)
+// SÚPER PROXY INTELIGENTE (VERSIÓN DEFINITIVA ANTI-TRAMPAS)
 // ============================================================
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
 
-    // Radar para la consola
     if (!targetUrl.includes('.ts')) {
-        console.log(`[PROXY] Leyendo lista: ${targetUrl}`);
+        console.log(`[PROXY] Solicitando: ${targetUrl}`);
     }
 
     const headers = armarHeaders(targetUrl);
-    // Fundamental: Exigimos el video puro sin compresiones raras
-    headers['Accept-Encoding'] = 'identity'; 
+    headers['Accept-Encoding'] = 'identity'; // Evitar que el IPTV comprima el video
 
     try {
         const response = await axios({
@@ -285,24 +283,29 @@ app.get('/proxy/stream', async (req, res) => {
             url: targetUrl,
             responseType: 'stream', 
             headers,
-            timeout: 20000, // Le damos 20 segundos de paciencia
-            validateStatus: (status) => true // Aceptamos cualquier respuesta para poder auditarla
+            timeout: 20000,
+            validateStatus: (status) => true
         });
 
-        // 🔥 RADAR DE BLOQUEO: Si el IPTV nos rechaza, nos avisa en la consola
         if (response.status !== 200 && response.status !== 206) {
-            console.log(`[ALERTA IPTV] 🛑 El servidor bloqueó la carga. Error ${response.status} -> ${targetUrl}`);
+            console.log(`[ALERTA IPTV] 🛑 Error ${response.status} en: ${targetUrl}`);
         }
 
         const finalUrl = response.request?.res?.responseUrl || response.request?.responseURL || targetUrl;
-        const contentType = response.headers['content-type'] || '';
+        const contentType = (response.headers['content-type'] || '').toLowerCase();
 
-        // Si es la lista (m3u8)
-        if (targetUrl.includes('.m3u8') || targetUrl.includes('.mpd') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL')) {
-            let data = '';
-            response.data.on('data', chunk => data += chunk);
+        // 🔥 EL RADAR MÁGICO: Detecta si es video real, sin importar que se llame .m3u8
+        const esVideo = contentType.includes('video') || contentType.includes('mp2t') || contentType.includes('octet-stream');
+        const esPlaylist = !esVideo && (contentType.includes('mpegurl') || contentType.includes('dash+xml') || targetUrl.includes('.m3u8') || targetUrl.includes('.mpd'));
+
+        if (esPlaylist) {
+            // Es una lista de texto real, la procesamos
+            let data = [];
+            response.data.on('data', chunk => data.push(chunk));
             response.data.on('end', () => {
-                let contenido = data.split('\n').map(linea => {
+                let texto = Buffer.concat(data).toString('utf8'); // Forma ultra segura de leer sin corromper
+                
+                let contenido = texto.split('\n').map(linea => {
                     const l = linea.trim();
                     if (!l) return linea;
 
@@ -332,7 +335,7 @@ app.get('/proxy/stream', async (req, res) => {
             return;
         }
 
-        // 🔥 LIMPIEZA DE HEADERS TÓXICOS (Esto evita que el video se trabe o llegue corrupto)
+        // 🔥 SI ES VIDEO PURO, PASA DIRECTO POR EL TÚNEL A LA PANTALLA
         const headersAQuitar = ['transfer-encoding', 'connection', 'keep-alive', 'content-encoding', 'strict-transport-security'];
         headersAQuitar.forEach(h => delete response.headers[h]);
 
@@ -343,7 +346,7 @@ app.get('/proxy/stream', async (req, res) => {
         response.data.pipe(res);
 
     } catch (err) {
-        console.error(`[ERROR PROXY] Tiempo de espera agotado para: ${targetUrl}`);
+        console.error(`[ERROR PROXY] Falló la conexión con: ${targetUrl}`);
         if (!res.headersSent) res.status(502).send('Error');
     }
 });
