@@ -97,10 +97,6 @@
                 </div>
             <span class="text-xs text-gray-500 font-semibold tracking-wide uppercase mt-0.5">Seleccione un canal</span>
         </div>
-
-        <div id="listaCanales" class="flex flex-col gap-1.5 flex-1 pb-10"></div>
-    </div>
-
         <div id="listaCanales" class="flex flex-col gap-1.5 flex-1 pb-10"></div>
     </div>
 
@@ -134,6 +130,23 @@
         let hls = null;
         let dashPlayer = null;
         let timeoutControles = null;
+
+        // --- AGREGAR ESTO AQUÍ ---
+        const sidebar = document.getElementById('sidebar'); // Para llamarlo más fácil
+        
+        function ocultarSidebarCompleto() {
+            sidebar.classList.add('hidden');
+            playerArea.style.width = '100%';
+            playerArea.style.height = '100%';
+        }
+
+        function mostrarSidebarCompleto() {
+            if (esTV) return; // Las TV lo manejan con el control remoto
+            sidebar.classList.remove('hidden');
+            playerArea.style.width = '';
+            playerArea.style.height = '';
+        }
+        // -------------------------
 
         function mostrarLoader() { 
             if (canalActualGlobal && canalActualGlobal.logo) {
@@ -251,48 +264,50 @@
             };
         }
 
-      // NUEVA FUNCIÓN PARA EXPANDIR AUTOMÁTICAMENTE
-        function expandirPantallaCelular() {
-            if (esTV) return; // Las Smart TV ya son pantalla completa
-            
-            const contenedorRaiz = playerArea;
-            const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-            
-            if (!document.fullscreenElement) {
-                if (contenedorRaiz.requestFullscreen) {
-                    contenedorRaiz.requestFullscreen().then(() => {
-                        if (esCelular && window.screen && window.screen.orientation && window.screen.orientation.lock) {
-                            window.screen.orientation.lock('landscape').catch(err => console.log("Error al rotar:", err));
-                        }
-                    }).catch(err => console.log("Error al expandir:", err));
-                } else if (videoElement.webkitEnterFullscreen) {
-                    videoElement.webkitEnterFullscreen();
-                }
-            }
-        }
-
-        // LOGICA DEL BOTÓN EXPANDIR (Por si el usuario sale y quiere volver a entrar)
+   // LOGICA DE PANTALLA COMPLETA UNIVERSAL (Repara bloques en PC y Celular)
         if (btnFullscreen) {
             btnFullscreen.onclick = function() {
                 this.blur(); 
-                if (!document.fullscreenElement) {
-                    expandirPantallaCelular();
+                const docElm = document.documentElement; // <-- LA CLAVE: Pantalla completa a TODA la web
+                const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+                
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    const req = docElm.requestFullscreen || docElm.webkitRequestFullscreen;
+                    if (req) {
+                        req.call(docElm).then(() => {
+                            if (esCelular && window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                                window.screen.orientation.lock('landscape').catch(e => console.log("Bloqueo horizontal:", e));
+                            }
+                        }).catch(err => console.log("Error Fullscreen:", err));
+                    } else if (videoElement.webkitEnterFullscreen) {
+                        videoElement.webkitEnterFullscreen(); 
+                    }
                 } else {
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
+                    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                    if (exit) {
+                        exit.call(document);
                     }
                 }
             };
         }
 
-        // Escucha de seguridad por si salen del modo expandido deslizando en el celular
-        document.addEventListener('fullscreenchange', () => {
+        // CONTROLADOR NATIVO: Oculta el menú si entran a pantalla completa y lo muestra si salen (con la tecla ESC)
+        function manejarCambioFullscreen() {
+            const esFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
             const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-            if (!document.fullscreenElement && esCelular && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
-                window.screen.orientation.unlock();
-            }
-        });
 
+            if (esFullscreen) {
+                ocultarSidebarCompleto(); // Borra el menú y estira el video al 100%
+            } else {
+                mostrarSidebarCompleto(); // Devuelve el menú a su lugar
+                if (esCelular && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                    window.screen.orientation.unlock().catch(() => {});
+                }
+            }
+        }
+        document.addEventListener('fullscreenchange', manejarCambioFullscreen);
+        document.addEventListener('webkitfullscreenchange', manejarCambioFullscreen);
+   
         async function descargarListaCanales() {
             try {
                 const res = await fetch('/api/canales');
@@ -379,8 +394,8 @@
 
             // ACCIÓN AUTOMÁTICA EN SMART TV: Oculta la lista al arrancar la reproducción
             if (esTV) {
-                document.getElementById('sidebar').classList.add('hidden');
-            }
+       ocultarSidebarCompleto();
+   }
 
             if (typeof hls !== 'undefined' && hls) { hls.destroy(); hls = null; }
             if (typeof dashPlayer !== 'undefined' && dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
@@ -443,18 +458,18 @@
             const isRight = keyName === 'Right';
             const isEnter = keyName === 'Enter';
 
-            // --- LÓGICA EXCLUSIVA DE CONTROL REMOTO SMART TV ---
+           // --- LÓGICA EXCLUSIVA DE CONTROL REMOTO SMART TV ---
             if (esTV) {
                 const sidebarOculto = document.getElementById('sidebar').classList.contains('hidden');
                 if (sidebarOculto) {
-                    // Si el menú está cerrado y tocan DERECHA, aparece la lista de canales
                     if (isRight) {
                         e.preventDefault();
-                        document.getElementById('sidebar').classList.remove('hidden');
+                        sidebar.classList.remove('hidden');
+                        playerArea.style.width = ''; // Limpiamos el forzado para ver el menú
+                        playerArea.style.height = '';
                         if (botones.length > 0) botones[0].focus();
                         return;
                     }
-                    // Cualquier otra flecha despierta los controles efímeros inferiores
                     mostrarControlesInteractivos();
                     if (isEnter) {
                         if (!videoElement.classList.contains('hidden')) {
@@ -463,10 +478,9 @@
                     }
                     return;
                 } else {
-                    // Si el menú está abierto y tocan IZQUIERDA en la lista, se oculta para ver full video
                     if (isLeft && document.activeElement.closest('#sidebar')) {
                         e.preventDefault();
-                        document.getElementById('sidebar').classList.add('hidden');
+                        ocultarSidebarCompleto(); // Oculta y estira al 100%
                         mostrarControlesInteractivos();
                         return;
                     }
