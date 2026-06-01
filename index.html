@@ -203,14 +203,8 @@
         }
 
       function verificarFiltroDispositivo() {
-            // 1. Lógica exclusiva para Smart TV: Quitar botón de pantalla completa
-            if (esTV && btnFullscreen) {
-                btnFullscreen.remove(); 
-            }
-
-            // 2. Lógica para Smart TV y Celulares: Volumen al 100% y ocultar controles de sonido
+            // Lógica para Smart TV y Celulares: Volumen al 100% y ocultar SÓLO controles de sonido (Dejamos el botón Fullscreen vivo)
             if (esTV || esCelular) {
-                // Ocultamos los 4 elementos relacionados al volumen
                 if (btnVolMenos) btnVolMenos.classList.add('hidden');
                 if (btnVolMas) btnVolMas.classList.add('hidden');
                 if (btnSilenciar) btnSilenciar.classList.add('hidden');
@@ -384,8 +378,10 @@
                     b.onclick = function() { 
                         this.blur(); 
                         consultarServidorYReproducir(opc.id); 
-                        // ✅ En celular/PC ya NO se hace pantalla completa solo.
-                        // ✅ En Smart TV se hará solo porque la función consultarServidorYReproducir oculta el menú.
+                        // 🔥 Si es TV, tras elegir servidor, pasamos el foco a Pantalla Completa automáticamente
+                        if (esTV && btnFullscreen) {
+                            setTimeout(() => { btnFullscreen.focus(); }, 150);
+                        }
                     };
                     containerOpciones.appendChild(b);
                     if (index === 0) b.click(); 
@@ -406,16 +402,12 @@
         function reproducirCanal(url) {
             console.log("▶️ Intentando reproducir URL:", url);
 
-            // ACCIÓN AUTOMÁTICA EN SMART TV: Oculta la lista al arrancar la reproducción
-            if (esTV) {
-       ocultarSidebarCompleto();
-   }
-
             if (typeof hls !== 'undefined' && hls) { hls.destroy(); hls = null; }
             if (typeof dashPlayer !== 'undefined' && dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
             
             videoElement.pause();
             videoElement.src = "";
+            videoElement.muted = false; // 🔥 Intentar con audio primero SIEMPRE
 
             if (!url.includes('/proxy/stream') && (url.includes('canal.php') || url.includes('.php') || url.includes('latamvidz') || url.includes('la14hd') || url.includes('streamtpcloud') || url.includes('elcanaldeportivo'))) {
                 videoElement.classList.add('hidden');       
@@ -475,15 +467,23 @@
            // --- LÓGICA EXCLUSIVA DE CONTROL REMOTO SMART TV ---
             if (esTV) {
                 const sidebarOculto = document.getElementById('sidebar').classList.contains('hidden');
+                
+                // 1. Si estamos en Pantalla Completa (Menú oculto)
                 if (sidebarOculto) {
                     if (isRight) {
                         e.preventDefault();
-                        sidebar.classList.remove('hidden');
-                        playerArea.style.width = ''; // Limpiamos el forzado para ver el menú
-                        playerArea.style.height = '';
-                        if (botones.length > 0) botones[0].focus();
+                        // Salir de pantalla completa (hará que reaparezca el menú)
+                        if (document.fullscreenElement || document.webkitFullscreenElement) {
+                            const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                            if (exit) exit.call(document);
+                        } else {
+                            mostrarSidebarCompleto(); // Por las dudas
+                        }
+                        
+                        setTimeout(() => { if (botones.length > 0) botones[0].focus(); }, 150);
                         return;
                     }
+                    
                     mostrarControlesInteractivos();
                     if (isEnter) {
                         if (!videoElement.classList.contains('hidden') && videoElement.paused) {
@@ -491,30 +491,59 @@
                         }
                     }
                     return;
-                } else {
-                    if (isLeft && document.activeElement.closest('#sidebar')) {
-                        e.preventDefault();
-                        ocultarSidebarCompleto(); // Oculta y estira al 100%
-                        mostrarControlesInteractivos();
-                        return;
-                    }
                 }
             }
             // --- FIN LOGICA SMART TV ---
 
-            if (document.activeElement.closest('#containerOpciones')) {
-                const btnsOpc = Array.from(containerOpciones.querySelectorAll('button'));
-                const idxOpc = btnsOpc.indexOf(document.activeElement);
-                if (isLeft && idxOpc > 0) { btnsOpc[idxOpc - 1].focus(); e.preventDefault(); }
-                if (isRight && idxOpc < btnsOpc.length - 1) { btnsOpc[idxOpc + 1].focus(); e.preventDefault(); }
-                if (isUp) { botones[0]?.focus(); e.preventDefault(); } 
+            // 2. Si estamos parados en el botón PANTALLA COMPLETA
+            if (document.activeElement === btnFullscreen) {
+                if (isRight) {
+                    if (botones.length > 0) botones[0].focus();
+                    e.preventDefault();
+                }
+                if (isDown) {
+                    const primerBotonOpcion = containerOpciones.querySelector('button');
+                    if (primerBotonOpcion) primerBotonOpcion.focus();
+                    e.preventDefault();
+                }
                 return;
             }
 
-            if (document.activeElement.tagName === 'BUTTON' && document.activeElement.closest('#sidebar')) {
+            // 3. Si estamos parados en las OPCIONES (Servidores)
+            if (document.activeElement.closest('#containerOpciones')) {
+                const btnsOpc = Array.from(containerOpciones.querySelectorAll('button'));
+                const idxOpc = btnsOpc.indexOf(document.activeElement);
+                
+                if (isLeft && idxOpc > 0) { 
+                    btnsOpc[idxOpc - 1].focus(); e.preventDefault(); 
+                }
                 if (isRight) {
+                    if (idxOpc < btnsOpc.length - 1) { 
+                        btnsOpc[idxOpc + 1].focus(); 
+                    } else {
+                        if (botones.length > 0) botones[0].focus();
+                    }
+                    e.preventDefault(); 
+                }
+                if (isUp) { 
+                    if (btnFullscreen && !btnFullscreen.classList.contains('hidden')) {
+                        btnFullscreen.focus();
+                    }
+                    e.preventDefault(); 
+                } 
+                return;
+            }
+
+            // 4. Si estamos parados en la LISTA DE CANALES LATERAL
+            if (document.activeElement.tagName === 'BUTTON' && document.activeElement.closest('#sidebar')) {
+                if (isLeft) {
+                    // Mover hacia la izquierda manda al Servidor, y si no hay, al botón de pantalla completa
                     const primerBotonOpcion = containerOpciones.querySelector('button');
-                    if (primerBotonOpcion) primerBotonOpcion.focus();
+                    if (primerBotonOpcion) {
+                        primerBotonOpcion.focus();
+                    } else if (btnFullscreen) {
+                        btnFullscreen.focus();
+                    }
                     e.preventDefault();
                     return;
                 }
