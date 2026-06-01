@@ -43,7 +43,7 @@
         <div id="topInfo" class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none z-10 transition-opacity duration-300">
             <div class="flex flex-col bg-black bg-opacity-40 backdrop-blur-sm p-2 rounded-lg border border-gray-800">
                 <span id="txtReloj" class="text-2xl font-bold font-mono text-white tracking-widest drop-shadow">00:00:00</span>
-                <span id="txtFecha" class="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-0.5">--- -- ---</span>
+                <span id="txtFecha" class="text-[10px] text-white font-bold uppercase tracking-wider mt-0.5 drop-shadow-md">--- -- ---</span>
             </div>
             
             <div id="boxClima" class="hidden flex flex-col justify-center bg-black bg-opacity-40 backdrop-blur-sm px-4 py-2 rounded-lg border border-gray-800 text-right">
@@ -53,8 +53,8 @@
                 </div>
                 <div id="txtClimaDesc" class="text-[9px] text-blue-400 font-bold uppercase tracking-wider mt-1">Cargando...</div>
                 <div class="flex items-center justify-end gap-1 mt-0.5">
-                    <span class="text-[9px]">📍</span>
-                    <div id="txtCiudad" class="text-[8px] text-gray-500 font-medium uppercase tracking-wider">LA PLATA, BA</div>
+                    <span class="text-[9px] drop-shadow-md">📍</span>
+                    <div id="txtCiudad" class="text-[9px] text-white font-bold uppercase tracking-wider drop-shadow-md">LA PLATA, BA</div>
                 </div>
             </div>
         </div>
@@ -72,7 +72,7 @@
                 
                 <button id="btnSilenciar" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔇 Silenciar</button>
                 <button id="btnVolMas" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔊 Vol +</button>
-                <button id="btnFullscreen" class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-4 py-1.5 rounded font-black transition-colors uppercase tracking-wider ml-1 shadow-md focus:outline-none">Expandir 🖥️</button>
+                <button id="btnFullscreen" class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-4 py-1.5 rounded font-black transition-colors uppercase tracking-wider ml-1 shadow-md focus:outline-none">Pantalla completa 🖥️</button>
             </div>
 
             <div class="w-full h-px bg-gray-800/60 mb-2" id="separadorControles"></div>
@@ -94,14 +94,12 @@
                         <span>⚽</span>
                     </h1>
                 </div>
-                <div class="flex gap-1.5 items-center">
-                    <button id="btnReportar" class="bg-neutral-900/60 text-gray-500 border border-gray-800/60 text-[9px] px-2 py-1 rounded font-medium transition-colors hidden uppercase tracking-wider text-center leading-tight cursor-not-allowed flex-shrink-0">
-                        Reportar<br><span class="text-[8px] text-red-500/70 block font-bold mt-0.5">NO funcional</span>
-                    </button>
                 </div>
-            </div>
             <span class="text-xs text-gray-500 font-semibold tracking-wide uppercase mt-0.5">Seleccione un canal</span>
         </div>
+
+        <div id="listaCanales" class="flex flex-col gap-1.5 flex-1 pb-10"></div>
+    </div>
 
         <div id="listaCanales" class="flex flex-col gap-1.5 flex-1 pb-10"></div>
     </div>
@@ -118,7 +116,7 @@
         const loaderLogo = document.getElementById('loaderLogo');
         const alertBox = document.getElementById('alertBox');
         const listaCanales = document.getElementById('listaCanales');
-        const btnReportar = document.getElementById('btnReportar');
+        
         const bottomControls = document.getElementById('bottomControls');
         const containerOpciones = document.getElementById('containerOpciones');
         const topInfo = document.getElementById('topInfo');
@@ -325,10 +323,11 @@
                     btn.className = "w-full flex items-center bg-neutral-900 hover:bg-neutral-800 active:bg-blue-950 border border-gray-900 rounded-lg p-2 text-left transition-all focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm font-medium tracking-wide";
                     
                     const img = document.createElement('img');
-                    img.className = "w-11 h-11 object-contain mr-3 rounded bg-white p-1 border border-gray-300 flex-shrink-0 shadow-sm";
+                    // ✅ Agrandado (w-14 h-14) y margen interno mínimo (p-0.5) para que ocupe el 95% del cuadro
+                    img.className = "w-14 h-14 object-contain mr-3 rounded-lg bg-white p-0.5 border border-gray-300 flex-shrink-0 shadow-sm";
                     img.src = canal.logo;
                     img.onerror = () => { 
-                        img.className = "w-11 h-11 object-contain mr-3 rounded bg-neutral-950 p-1 border border-gray-800 flex-shrink-0";
+                        img.className = "w-14 h-14 object-contain mr-3 rounded-lg bg-neutral-950 p-1.5 border border-gray-800 flex-shrink-0";
                         img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='2' width='20' height='20' rx='2.18' ry='2.18'></rect><line x1='7' y1='2' x2='7' y2='22'></line><line x1='17' y1='2' x2='17' y2='22'></line><line x1='2' y1='12' x2='22' y2='12'></line></svg>"; 
                     };
                     
@@ -344,9 +343,8 @@
             }
         }
 
-        function seleccionarCanal(canal) {
+       function seleccionarCanal(canal) {
             canalActualGlobal = canal;
-            btnReportar.classList.remove('hidden');
             containerOpciones.innerHTML = "";
 
             if (canal.opciones && canal.opciones.length > 0) {
@@ -357,8 +355,8 @@
                     b.onclick = function() { 
                         this.blur(); 
                         consultarServidorYReproducir(opc.id); 
-                        // 🔥 LA MAGIA OCURRE ACÁ: Expandir automático
-                        expandirPantallaCelular(); 
+                        // ✅ En celular/PC ya NO se hace pantalla completa solo.
+                        // ✅ En Smart TV se hará solo porque la función consultarServidorYReproducir oculta el menú.
                     };
                     containerOpciones.appendChild(b);
                     if (index === 0) b.click(); 
@@ -430,7 +428,6 @@
             }
         }
 
-        btnReportar.onclick = () => { console.log("Reporte simulado"); };
 
         document.addEventListener('keydown', (e) => {
             const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter' };
