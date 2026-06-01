@@ -104,6 +104,7 @@
         // DETECCIÓN GLOBAL DE SMART TV
         const ua = navigator.userAgent.toLowerCase();
         const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox');
+        const esCelular = /android|iphone|ipad|ipod/i.test(ua);
 
         const videoElement = document.getElementById('videoElement');
         const iframeElement = document.getElementById('iframeElement'); 
@@ -201,10 +202,23 @@
             }
         }
 
-        function verificarFiltroDispositivo() {
+      function verificarFiltroDispositivo() {
+            // 1. Lógica exclusiva para Smart TV: Quitar botón de pantalla completa
             if (esTV && btnFullscreen) {
-                // En Smart TV removemos el botón Expandir porque el video se auto-maximiza solo
                 btnFullscreen.remove(); 
+            }
+
+            // 2. Lógica para Smart TV y Celulares: Volumen al 100% y ocultar controles de sonido
+            if (esTV || esCelular) {
+                // Ocultamos los 4 elementos relacionados al volumen
+                if (btnVolMenos) btnVolMenos.classList.add('hidden');
+                if (btnVolMas) btnVolMas.classList.add('hidden');
+                if (btnSilenciar) btnSilenciar.classList.add('hidden');
+                if (txtVolValue) txtVolValue.classList.add('hidden');
+
+                // Forzamos el reproductor al 100% de volumen y le quitamos el silencio
+                videoElement.volume = 1.0;
+                videoElement.muted = false;
             }
         }
 
