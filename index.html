@@ -66,13 +66,13 @@
         <div id="bottomControls" class="absolute bottom-4 left-4 right-4 flex flex-col bg-black bg-opacity-70 backdrop-blur-md p-3 rounded-xl border border-gray-800 shadow-2xl z-10 opacity-0 pointer-events-none transition-opacity duration-300">
             
             <div id="pcMobileControls" class="flex flex-wrap justify-center items-center gap-2 mb-3">
-                <button id="btnVolMenos" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔉 Vol -</button>
+                <button id="btnVolMenos" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-all uppercase tracking-wider focus:outline-none focus:bg-blue-700 focus:ring-4 focus:ring-blue-500 focus:scale-110">🔉 Vol -</button>
                 
                 <span id="txtVolValue" class="bg-neutral-950 text-blue-400 border border-gray-800 text-[11px] px-3 py-1.5 rounded font-black uppercase tracking-wider select-none">VOL: 100%</span>
                 
-                <button id="btnSilenciar" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔇 Silenciar</button>
-                <button id="btnVolMas" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔊 Vol +</button>
-                <button id="btnFullscreen" class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-4 py-1.5 rounded font-black transition-colors uppercase tracking-wider ml-1 shadow-md focus:outline-none">Pantalla completa 🖥️</button>
+                <button id="btnSilenciar" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-all uppercase tracking-wider focus:outline-none focus:bg-blue-700 focus:ring-4 focus:ring-blue-500 focus:scale-110">🔇 Silenciar</button>
+                <button id="btnVolMas" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-all uppercase tracking-wider focus:outline-none focus:bg-blue-700 focus:ring-4 focus:ring-blue-500 focus:scale-110">🔊 Vol +</button>
+                <button id="btnFullscreen" class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-4 py-1.5 rounded font-black transition-all uppercase tracking-wider ml-1 shadow-md focus:outline-none focus:bg-blue-500 focus:ring-4 focus:ring-blue-300 focus:scale-105">Pantalla completa 🖥️</button>
             </div>
 
             <div class="w-full h-px bg-gray-800/60 mb-2" id="separadorControles"></div>
@@ -349,8 +349,8 @@
 
                 canales.forEach(canal => {
                     const btn = document.createElement('button');
-                    btn.className = "w-full flex items-center bg-neutral-900 hover:bg-neutral-800 active:bg-blue-950 border border-gray-900 rounded-lg p-2 text-left transition-all focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm font-medium tracking-wide";
-                    
+                    btn.className = "w-full flex items-center bg-neutral-900 hover:bg-neutral-800 active:bg-blue-950 border border-gray-900 rounded-lg p-2 text-left transition-all focus:outline-none focus:bg-blue-800 focus:border-blue-400 focus:ring-4 focus:ring-blue-500 focus:scale-[1.02] text-sm font-medium tracking-wide";
+
                     const img = document.createElement('img');
                     // ✅ Agrandado (w-14 h-14) y margen interno mínimo (p-0.5) para que ocupe el 95% del cuadro
                     img.className = "w-14 h-14 object-contain mr-3 rounded-lg bg-white p-0.5 border border-gray-300 flex-shrink-0 shadow-sm";
@@ -379,7 +379,7 @@
             if (canal.opciones && canal.opciones.length > 0) {
                 canal.opciones.forEach((opc, index) => {
                     const b = document.createElement('button');
-                    b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 hover:border-blue-500 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:ring-2 focus:ring-blue-500";
+                    b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:bg-blue-600 focus:ring-4 focus:ring-blue-400 focus:scale-110 shadow-lg";
                     b.textContent = opc.nombre;
                     b.onclick = function() { 
                         this.blur(); 
@@ -486,8 +486,8 @@
                     }
                     mostrarControlesInteractivos();
                     if (isEnter) {
-                        if (!videoElement.classList.contains('hidden')) {
-                            if (videoElement.paused) videoElement.play(); else videoElement.pause();
+                        if (!videoElement.classList.contains('hidden') && videoElement.paused) {
+                            videoElement.play();
                         }
                     }
                     return;
@@ -544,8 +544,8 @@
                     if (document.activeElement.tagName === 'BUTTON' || document.activeElement.tagName === 'A') {
                         document.activeElement.click();
                     } else {
-                        if (!videoElement.classList.contains('hidden')) {
-                            if (videoElement.paused) videoElement.play(); else videoElement.pause();
+                        if (!videoElement.classList.contains('hidden') && videoElement.paused) {
+                            videoElement.play();
                         }
                     }
                 }
