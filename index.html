@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';">
     <meta name="referrer" content="no-referrer">
     <title>📺CASTA-APP⚽</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,7 +20,7 @@
 </head>
 <body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen flex flex-col md:flex-row font-sans">
  
-<div class="flex-1 relative flex items-center justify-center bg-black overflow-hidden select-none" id="playerArea">
+    <div class="flex-1 relative flex items-center justify-center bg-black overflow-hidden select-none" id="playerArea">
         
         <div id="loader" class="absolute z-50 hidden flex flex-col items-center justify-center bg-black bg-opacity-90 backdrop-blur-sm p-6 rounded-2xl pointer-events-none text-center border border-gray-800 shadow-2xl">
             <div class="relative flex items-center justify-center mb-5 w-24 h-24">
@@ -33,7 +32,7 @@
             <p class="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse mt-2">cargando transmisión, gracias por esperar</p>
         </div>
         
-        <video id="videoElement" class="w-full h-full object-fill bg-black" playsinline></video>
+        <video id="videoElement" class="w-full h-full object-contain bg-black" playsinline></video>
 
         <iframe id="iframeElement" allow="encrypted-media" allowfullscreen frameborder="0" scrolling="no" class="w-full h-full bg-black hidden"></iframe>
 
@@ -64,6 +63,9 @@
             
             <div id="pcMobileControls" class="flex flex-wrap justify-center items-center gap-2 mb-3">
                 <button id="btnVolMenos" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔉 Vol -</button>
+                
+                <span id="txtVolValue" class="bg-neutral-950 text-blue-400 border border-gray-800 text-[11px] px-3 py-1.5 rounded font-black uppercase tracking-wider select-none">VOL: 100%</span>
+                
                 <button id="btnSilenciar" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔇 Silenciar</button>
                 <button id="btnVolMas" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-colors uppercase tracking-wider focus:outline-none">🔊 Vol +</button>
                 <button id="btnFullscreen" class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-4 py-1.5 rounded font-black transition-colors uppercase tracking-wider ml-1 shadow-md focus:outline-none">Expandir 🖥️</button>
@@ -101,6 +103,10 @@
     </div>
 
     <script>
+        // DETECCIÓN GLOBAL DE SMART TV
+        const ua = navigator.userAgent.toLowerCase();
+        const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox');
+
         const videoElement = document.getElementById('videoElement');
         const iframeElement = document.getElementById('iframeElement'); 
         const playerArea = document.getElementById('playerArea');
@@ -119,6 +125,7 @@
         const btnSilenciar = document.getElementById('btnSilenciar');
         const btnVolMas = document.getElementById('btnVolMas');
         const btnFullscreen = document.getElementById('btnFullscreen');
+        const txtVolValue = document.getElementById('txtVolValue');
 
         let cacheCanalesGlobal = [];
         let canalActualGlobal = null;
@@ -142,7 +149,6 @@
             setTimeout(() => { alertBox.classList.add('hidden'); }, 4000);
         }
 
-        // LÓGICA DE OCULTAMIENTO CORREGIDA (Desvanece TODO siempre al estar inactivo)
         function mostrarControlesInteractivos() {
             bottomControls.classList.remove('opacity-0', 'pointer-events-none');
             topInfo.classList.remove('opacity-0');
@@ -150,15 +156,12 @@
 
             clearTimeout(timeoutControles);
             timeoutControles = setTimeout(() => {
-                // Removemos la traba de foco para asegurar que se oculte
                 bottomControls.classList.add('opacity-0', 'pointer-events-none');
                 topInfo.classList.add('opacity-0');
-                
-                // Si la pantalla completa está activa, ocultamos el cursor para una vista limpia
                 if (document.fullscreenElement) {
                     document.body.style.cursor = 'none';
                 }
-            }, 3500); // 3.5 segundos de inactividad
+            }, 3500); 
         }
 
         document.addEventListener('mousemove', mostrarControlesInteractivos);
@@ -175,12 +178,18 @@
             setInterval(actualizar, 1000);
         }
 
+        // CONTROLADOR DE TEXTO DE VOLUMEN MULTIPLATAFORMA
+        function actualizarIndicadorVolumen() {
+            if (txtVolValue) {
+                const porcentaje = Math.round(videoElement.volume * 100);
+                txtVolValue.textContent = videoElement.muted ? "MUTED" : `VOL: ${porcentaje}%`;
+            }
+        }
+
         function verificarFiltroDispositivo() {
-            const ua = navigator.userAgent.toLowerCase();
-            const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox');
-            if (esTV && pcMobileControls) {
-                pcMobileControls.remove(); 
-                if(separadorControles) separadorControles.remove();
+            if (esTV && btnFullscreen) {
+                // En Smart TV removemos el botón Expandir porque el video se auto-maximiza solo
+                btnFullscreen.remove(); 
             }
         }
 
@@ -192,7 +201,6 @@
                 const cond = d.current_condition[0];
                 const temp = cond.temp_C;
                 const code = cond.weatherCode;
-                
                 const desc = cond.lang_es ? cond.lang_es[0].value : cond.weatherDesc[0].value;
                 
                 document.getElementById('txtTemp').textContent = `${temp}°C`;
@@ -214,32 +222,65 @@
             } catch(e) { console.error("Error clima:", e); }
         }
 
-        // Acciones de botones con blur() para no atrapar el foco
         if (btnVolMenos) {
-            btnVolMenos.onclick = function() { videoElement.volume = Math.max(0, videoElement.volume - 0.1); videoElement.muted = false; this.blur(); };
+            btnVolMenos.onclick = function() { 
+                videoElement.volume = Math.max(0, videoElement.volume - 0.1); 
+                videoElement.muted = false; 
+                actualizarIndicadorVolumen();
+                if (btnSilenciar) btnSilenciar.textContent = "🔇 Silenciar";
+                this.blur(); 
+            };
         }
         if (btnVolMas) {
-            btnVolMas.onclick = function() { videoElement.volume = Math.min(1, videoElement.volume + 0.1); videoElement.muted = false; this.blur(); };
+            btnVolMas.onclick = function() { 
+                videoElement.volume = Math.min(1, videoElement.volume + 0.1); 
+                videoElement.muted = false; 
+                actualizarIndicadorVolumen();
+                if (btnSilenciar) btnSilenciar.textContent = "🔇 Silenciar";
+                this.blur(); 
+            };
         }
         if (btnSilenciar) {
             btnSilenciar.onclick = function() {
                 videoElement.muted = !videoElement.muted;
                 btnSilenciar.textContent = videoElement.muted ? "🔊 Activar" : "🔇 Silenciar";
+                actualizarIndicadorVolumen();
                 this.blur();
             };
         }
+
+        // LOGICA DE EXPANDIR CON ROTACIÓN HORIZONTAL EN CELULARES
         if (btnFullscreen) {
             btnFullscreen.onclick = function() {
-                this.blur(); // Vital para que no bloquee el desvanecimiento
+                this.blur(); 
                 const contenedorRaiz = playerArea;
+                const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+                
                 if (!document.fullscreenElement) {
-                    if (contenedorRaiz.requestFullscreen) contenedorRaiz.requestFullscreen();
-                    else if (videoElement.webkitEnterFullscreen) videoElement.webkitEnterFullscreen();
+                    if (contenedorRaiz.requestFullscreen) {
+                        contenedorRaiz.requestFullscreen().then(() => {
+                            if (esCelular && window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                                window.screen.orientation.lock('landscape').catch(err => console.log(err));
+                            }
+                        });
+                    } else if (videoElement.webkitEnterFullscreen) {
+                        videoElement.webkitEnterFullscreen();
+                    }
                 } else {
-                    if (document.exitFullscreen) document.exitFullscreen();
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
                 }
             };
         }
+
+        // Escucha de seguridad por si salen del modo expandido deslizando en el celular
+        document.addEventListener('fullscreenchange', () => {
+            const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+            if (!document.fullscreenElement && esCelular && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                window.screen.orientation.unlock();
+            }
+        });
 
         async function descargarListaCanales() {
             try {
@@ -301,7 +342,7 @@
                     b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 hover:border-blue-500 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:ring-2 focus:ring-blue-500";
                     b.textContent = opc.nombre;
                     b.onclick = function() { 
-                        this.blur(); // Vital para que desvanezca en TV
+                        this.blur(); 
                         consultarServidorYReproducir(opc.id); 
                     };
                     containerOpciones.appendChild(b);
@@ -322,6 +363,11 @@
 
         function reproducirCanal(url) {
             console.log("▶️ Intentando reproducir URL:", url);
+
+            // ACCIÓN AUTOMÁTICA EN SMART TV: Oculta la lista al arrancar la reproducción
+            if (esTV) {
+                document.getElementById('sidebar').classList.add('hidden');
+            }
 
             if (typeof hls !== 'undefined' && hls) { hls.destroy(); hls = null; }
             if (typeof dashPlayer !== 'undefined' && dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
@@ -385,6 +431,37 @@
             const isRight = keyName === 'Right';
             const isEnter = keyName === 'Enter';
 
+            // --- LÓGICA EXCLUSIVA DE CONTROL REMOTO SMART TV ---
+            if (esTV) {
+                const sidebarOculto = document.getElementById('sidebar').classList.contains('hidden');
+                if (sidebarOculto) {
+                    // Si el menú está cerrado y tocan DERECHA, aparece la lista de canales
+                    if (isRight) {
+                        e.preventDefault();
+                        document.getElementById('sidebar').classList.remove('hidden');
+                        if (botones.length > 0) botones[0].focus();
+                        return;
+                    }
+                    // Cualquier otra flecha despierta los controles efímeros inferiores
+                    mostrarControlesInteractivos();
+                    if (isEnter) {
+                        if (!videoElement.classList.contains('hidden')) {
+                            if (videoElement.paused) videoElement.play(); else videoElement.pause();
+                        }
+                    }
+                    return;
+                } else {
+                    // Si el menú está abierto y tocan IZQUIERDA en la lista, se oculta para ver full video
+                    if (isLeft && document.activeElement.closest('#sidebar')) {
+                        e.preventDefault();
+                        document.getElementById('sidebar').classList.add('hidden');
+                        mostrarControlesInteractivos();
+                        return;
+                    }
+                }
+            }
+            // --- FIN LOGICA SMART TV ---
+
             if (document.activeElement.closest('#containerOpciones')) {
                 const btnsOpc = Array.from(containerOpciones.querySelectorAll('button'));
                 const idxOpc = btnsOpc.indexOf(document.activeElement);
@@ -440,6 +517,7 @@
             descargarListaCanales();
             iniciarReloj();
             iniciarClima();
+            actualizarIndicadorVolumen(); // Carga el valor inicial del volumen
         };
     </script>
 </body>
