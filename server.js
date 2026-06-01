@@ -514,7 +514,7 @@ async function correrBot(datosCanal, canalId) {
     }
     return linkVideoPuro;
 }
-/ ============================================================
+// ============================================================
 // RUTA PARA LA APP (COMPATIBILIDAD INDEX.HTML)
 // ============================================================
 app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
