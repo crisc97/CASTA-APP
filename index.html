@@ -253,23 +253,32 @@
             };
         }
 
-        // LOGICA DE EXPANDIR CON ROTACIÓN HORIZONTAL EN CELULARES
+      // NUEVA FUNCIÓN PARA EXPANDIR AUTOMÁTICAMENTE
+        function expandirPantallaCelular() {
+            if (esTV) return; // Las Smart TV ya son pantalla completa
+            
+            const contenedorRaiz = playerArea;
+            const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+            
+            if (!document.fullscreenElement) {
+                if (contenedorRaiz.requestFullscreen) {
+                    contenedorRaiz.requestFullscreen().then(() => {
+                        if (esCelular && window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                            window.screen.orientation.lock('landscape').catch(err => console.log("Error al rotar:", err));
+                        }
+                    }).catch(err => console.log("Error al expandir:", err));
+                } else if (videoElement.webkitEnterFullscreen) {
+                    videoElement.webkitEnterFullscreen();
+                }
+            }
+        }
+
+        // LOGICA DEL BOTÓN EXPANDIR (Por si el usuario sale y quiere volver a entrar)
         if (btnFullscreen) {
             btnFullscreen.onclick = function() {
                 this.blur(); 
-                const contenedorRaiz = playerArea;
-                const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-                
                 if (!document.fullscreenElement) {
-                    if (contenedorRaiz.requestFullscreen) {
-                        contenedorRaiz.requestFullscreen().then(() => {
-                            if (esCelular && window.screen && window.screen.orientation && window.screen.orientation.lock) {
-                                window.screen.orientation.lock('landscape').catch(err => console.log(err));
-                            }
-                        });
-                    } else if (videoElement.webkitEnterFullscreen) {
-                        videoElement.webkitEnterFullscreen();
-                    }
+                    expandirPantallaCelular();
                 } else {
                     if (document.exitFullscreen) {
                         document.exitFullscreen();
@@ -348,6 +357,8 @@
                     b.onclick = function() { 
                         this.blur(); 
                         consultarServidorYReproducir(opc.id); 
+                        // 🔥 LA MAGIA OCURRE ACÁ: Expandir automático
+                        expandirPantallaCelular(); 
                     };
                     containerOpciones.appendChild(b);
                     if (index === 0) b.click(); 
