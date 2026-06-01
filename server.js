@@ -285,6 +285,9 @@ app.get('/proxy/stream', async (req, res) => {
             validateStatus: (status) => status >= 200 && status < 400
         });
 
+        // 🔥 MAGIA PURA: Capturar la URL final en caso de que el IPTV haya hecho una redirección 302
+        const finalUrl = response.request?.res?.responseUrl || response.request?.responseURL || targetUrl;
+
         const contentType = response.headers['content-type'] || '';
 
         if (targetUrl.includes('.m3u8') || targetUrl.includes('.mpd') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL') || contentType.includes('dash+xml')) {
@@ -300,7 +303,8 @@ app.get('/proxy/stream', async (req, res) => {
                             const match = l.match(/URI="([^"]+)"/);
                             if (match) {
                                 try {
-                                    const keyUrl = new URL(match[1], targetUrl).href;
+                                    // Usamos finalUrl para que busque las llaves en la carpeta correcta
+                                    const keyUrl = new URL(match[1], finalUrl).href;
                                     const proxyKeyUrl = `${API_URL}/proxy/stream?url=${encodeURIComponent(keyUrl)}`;
                                     return l.replace(`URI="${match[1]}"`, `URI="${proxyKeyUrl}"`);
                                 } catch(e) {}
@@ -311,7 +315,8 @@ app.get('/proxy/stream', async (req, res) => {
                         if (l.startsWith('#')) return l;
 
                         try {
-                            const urlSegmento = new URL(l, targetUrl).href;
+                            // Usamos finalUrl para que busque los pedacitos de video (.ts) en la carpeta correcta
+                            const urlSegmento = new URL(l, finalUrl).href;
                             return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
                         } catch (e) { return l; }
                     }).join('\n');
@@ -348,7 +353,6 @@ app.get('/proxy/stream', async (req, res) => {
         if (!res.headersSent) res.status(502).send('Error al obtener el stream');
     }
 });
-
 // ============================================================
 // FUNCIONES BOT Y SCRAPING
 // ============================================================
