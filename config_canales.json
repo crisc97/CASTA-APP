@@ -19,7 +19,8 @@
     { "nombre": "Discovery ID", "categoria": "Cultura", "logo": "logos_canales/discoveryid.png", "opciones": [{ "nombre": "Opción 1", "id": "discoveryid_arg" }] }
   ],
   "backend": {
-    "telefe_directo":     { "urlScraping": "http://45.5.151.147:8000/play/a00g/index.m3u8", "opcionesBotones": [] },
+    "telefe_directo":     { "nombre": "Telefe","base": "http://45.5.151.147:8000/play/a00g/index.m3u8", "parametros": "","usarProxy": true}
+
     "eltrece_directo":    { "urlScraping": "http://45.5.151.147:8000/play/a00f/68001639.m3u8", "opcionesBotones": [] },
     "elnueve_directo":    { "urlScraping": "http://45.5.151.147:8000/play/a00e/98978784.m3u8", "opcionesBotones": [] },
     "america_directo":    { "urlScraping": "http://45.5.151.147:8000/play/a00c/87584539.m3u8", "opcionesBotones": [] },
