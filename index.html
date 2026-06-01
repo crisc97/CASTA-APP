@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
+<<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src * 'unsafe-inline'; img-src * data: blob:;">
+    
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob: gap:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; style-src * 'unsafe-inline' data: blob:; img-src * data: blob:; media-src * blob: data:; worker-src * blob: data:;">
+    
     <meta name="referrer" content="no-referrer">
     <title>📺CASTA-APP⚽</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,6 +13,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
     <style>
         body { background-color: black !important; }
+        
+        /* 🚨 SALVAVIDAS NATIVO: Si Tailwind tarda un milisegundo en iniciar, esto evita que se mezclen los elementos en el celu */
+        .hidden { display: none !important; }
+        
         video::-webkit-media-controls { display: none !important; }
         video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none !important; }
         #sidebar::-webkit-scrollbar { width: 6px; }
