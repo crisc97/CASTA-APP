@@ -264,16 +264,20 @@ function armarHeaders(targetUrl) {
     };
 }
 // ============================================================
-// SÚPER PROXY INTELIGENTE
+// SÚPER PROXY INTELIGENTE (VERSIÓN ANTI-TRABAS)
 // ============================================================
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
 
-    const headers = armarHeaders(targetUrl);
-    headers['Accept-Encoding'] = 'identity';
+    // Radar para la consola
+    if (!targetUrl.includes('.ts')) {
+        console.log(`[PROXY] Leyendo lista: ${targetUrl}`);
+    }
 
-    if (req.headers.range) headers['Range'] = req.headers.range;
+    const headers = armarHeaders(targetUrl);
+    // Fundamental: Exigimos el video puro sin compresiones raras
+    headers['Accept-Encoding'] = 'identity'; 
 
     try {
         const response = await axios({
@@ -281,76 +285,66 @@ app.get('/proxy/stream', async (req, res) => {
             url: targetUrl,
             responseType: 'stream', 
             headers,
-            timeout: 15000,
-            validateStatus: (status) => status >= 200 && status < 400
+            timeout: 20000, // Le damos 20 segundos de paciencia
+            validateStatus: (status) => true // Aceptamos cualquier respuesta para poder auditarla
         });
 
-        // 🔥 MAGIA PURA: Capturar la URL final en caso de que el IPTV haya hecho una redirección 302
-        const finalUrl = response.request?.res?.responseUrl || response.request?.responseURL || targetUrl;
+        // 🔥 RADAR DE BLOQUEO: Si el IPTV nos rechaza, nos avisa en la consola
+        if (response.status !== 200 && response.status !== 206) {
+            console.log(`[ALERTA IPTV] 🛑 El servidor bloqueó la carga. Error ${response.status} -> ${targetUrl}`);
+        }
 
+        const finalUrl = response.request?.res?.responseUrl || response.request?.responseURL || targetUrl;
         const contentType = response.headers['content-type'] || '';
 
-        if (targetUrl.includes('.m3u8') || targetUrl.includes('.mpd') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL') || contentType.includes('dash+xml')) {
+        // Si es la lista (m3u8)
+        if (targetUrl.includes('.m3u8') || targetUrl.includes('.mpd') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL')) {
             let data = '';
             response.data.on('data', chunk => data += chunk);
             response.data.on('end', () => {
-                if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('x-mpegURL')) {
-                    let contenido = data.split('\n').map(linea => {
-                        const l = linea.trim();
-                        if (!l) return linea;
+                let contenido = data.split('\n').map(linea => {
+                    const l = linea.trim();
+                    if (!l) return linea;
 
-                        if (l.startsWith('#EXT-X-KEY')) {
-                            const match = l.match(/URI="([^"]+)"/);
-                            if (match) {
-                                try {
-                                    // Usamos finalUrl para que busque las llaves en la carpeta correcta
-                                    const keyUrl = new URL(match[1], finalUrl).href;
-                                    const proxyKeyUrl = `${API_URL}/proxy/stream?url=${encodeURIComponent(keyUrl)}`;
-                                    return l.replace(`URI="${match[1]}"`, `URI="${proxyKeyUrl}"`);
-                                } catch(e) {}
-                            }
-                            return l;
+                    if (l.startsWith('#EXT-X-KEY')) {
+                        const match = l.match(/URI="([^"]+)"/);
+                        if (match) {
+                            try {
+                                const keyUrl = new URL(match[1], finalUrl).href;
+                                return l.replace(`URI="${match[1]}"`, `URI="${API_URL}/proxy/stream?url=${encodeURIComponent(keyUrl)}"`);
+                            } catch(e) {}
                         }
+                        return l;
+                    }
 
-                        if (l.startsWith('#')) return l;
+                    if (l.startsWith('#')) return l;
 
-                        try {
-                            // Usamos finalUrl para que busque los pedacitos de video (.ts) en la carpeta correcta
-                            const urlSegmento = new URL(l, finalUrl).href;
-                            return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
-                        } catch (e) { return l; }
-                    }).join('\n');
+                    try {
+                        const urlSegmento = new URL(l, finalUrl).href;
+                        return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
+                    } catch (e) { return l; }
+                }).join('\n');
 
-                    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-                    res.setHeader('Access-Control-Allow-Origin', '*');
-                    res.setHeader('Cache-Control', 'no-cache');
-                    res.send(contenido);
-                } else {
-                    res.setHeader('Content-Type', 'application/dash+xml');
-                    res.setHeader('Access-Control-Allow-Origin', '*');
-                    res.setHeader('Cache-Control', 'no-cache');
-                    res.send(data);
-                }
+                res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.send(contenido);
             });
             return;
         }
 
+        // 🔥 LIMPIEZA DE HEADERS TÓXICOS (Esto evita que el video se trabe o llegue corrupto)
+        const headersAQuitar = ['transfer-encoding', 'connection', 'keep-alive', 'content-encoding', 'strict-transport-security'];
+        headersAQuitar.forEach(h => delete response.headers[h]);
+
         res.setHeader('Content-Type', contentType || 'video/mp2t');
         res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Accept-Ranges', 'bytes');
-        
-        if (response.headers['content-range']) res.setHeader('Content-Range', response.headers['content-range']);
-        if (response.status === 206) res.status(206);
-
-        req.on('close', () => {
-            if (!response.data.destroyed) response.data.destroy();
-        });
+        res.status(response.status);
 
         response.data.pipe(res);
 
     } catch (err) {
-        if (!res.headersSent) res.status(502).send('Error al obtener el stream');
+        console.error(`[ERROR PROXY] Tiempo de espera agotado para: ${targetUrl}`);
+        if (!res.headersSent) res.status(502).send('Error');
     }
 });
 // ============================================================
