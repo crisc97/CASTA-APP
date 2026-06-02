@@ -273,7 +273,7 @@ function armarHeaders(targetUrl) {
     };
 }
 // ============================================================
-// SÚPER PROXY INTELIGENTE (VERSIÓN BOMBEO DIRECTO - ANTI PÉRDIDAS)
+// SÚPER PROXY INTELIGENTE (VERSIÓN CORREGIDA - ANTI BLOQUEOS CORS)
 // ============================================================
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
@@ -332,7 +332,9 @@ app.get('/proxy/stream', async (req, res) => {
                     headersRemover.forEach(h => delete response.headers[h]);
 
                     res.setHeader('Content-Type', 'video/mp2t');
-                    res.setHeader('Access-Control-Allow-Origin', '*');
+                    
+                    // ✨ SOLUCIÓN AL BLOQUEO: Exponemos las cabeceras para que el reproductor pueda medir el video
+                    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range');
                     
                     // Pasamos el tamaño exacto del video si el servidor lo dice
                     if (response.headers['content-range']) res.setHeader('Content-Range', response.headers['content-range']);
@@ -378,7 +380,6 @@ app.get('/proxy/stream', async (req, res) => {
                 }).join('\n');
 
                 res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-                res.setHeader('Access-Control-Allow-Origin', '*');
                 res.send(conteudo);
             } else {
                 res.end(); // Termina el video limpio
