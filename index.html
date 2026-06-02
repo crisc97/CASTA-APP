@@ -427,14 +427,20 @@
                 dashPlayer.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => { ocultarLoader(); });
             } else if (url.includes('.m3u8') || url.includes('/proxy/stream') || url.includes(':8000')) {
                 if (Hls.isSupported()) {
-                    hls = new Hls({ 
-                        debug: false,
-                        manifestLoadingTimeOut: 25000, 
-                        manifestLoadingMaxRetry: 5,     
-                        levelLoadingTimeOut: 25000,
-                        fragLoadingTimeOut: 30000,
-                        enableWorker: true             
-                    });
+    hls = new Hls({ 
+        debug: false,
+        // Tus tiempos de paciencia (¡Están perfectos para la distancia!)
+        manifestLoadingTimeOut: 25000, 
+        manifestLoadingMaxRetry: 5,     
+        levelLoadingTimeOut: 25000,
+        fragLoadingTimeOut: 30000,
+        enableWorker: true,
+        // 🔥 NUEVO: El "tanque de reserva" para absorber los micro-cortes
+        maxBufferLength: 30,       // Guarda hasta 30 seg de video por adelantado
+        maxMaxBufferLength: 60,    // Límite máximo absoluto de reserva en memoria
+        liveSyncDurationCount: 5,  // Se aleja un poquito del "vivo" real (da margen de error)
+        liveMaxLatencyDurationCount: 10
+    });
                     hls.loadSource(url);
                     hls.attachMedia(videoElement);
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
