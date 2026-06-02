@@ -449,18 +449,20 @@
         
     } else if (url.includes('.m3u8') || url.includes('/proxy/stream') || url.includes(':8000')) {
         // ... (Tu código actual de HLS se mantiene exactamente igual) ...
-        if (Hls.isSupported()) {
+       if (Hls.isSupported()) {
             hls = new Hls({ 
                 debug: false,
-                manifestLoadingTimeOut: 25000, 
-                manifestLoadingMaxRetry: 5,     
-                levelLoadingTimeOut: 25000,
-                fragLoadingTimeOut: 30000,
-                enableWorker: true,
-                maxBufferLength: 60,       
-                maxMaxBufferLength: 120,    
-                liveSyncDurationCount: 7,  
-                liveMaxLatencyDurationCount: 15
+                manifestLoadingTimeOut: 20000, 
+                manifestLoadingMaxRetry: 3,     
+                
+                // 🚀 EL TRUCO PARA ARRANCAR RÁPIDO:
+                liveSyncDurationCount: 3,    // Antes estaba en 7. Al bajarlo, arranca apenas consigue 3 pedacitos.
+                liveMaxLatencyDurationCount: 10,
+                
+                // 🫁 EL TRUCO PARA NO TRABARSE:
+                maxBufferLength: 60,         // Sigue llenando el tanque hasta 60 segundos MIENTRAS mirás el video.
+                maxMaxBufferLength: 120,
+                enableWorker: true
             });
             hls.loadSource(url);
             hls.attachMedia(videoElement);

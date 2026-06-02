@@ -619,7 +619,7 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
             }
             
             // Forzar Proxy para enlaces HTTP, IPs directas o .m3u8
-            const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('.m3u8') || urlCompleta.includes('45.5.151.147');
+           const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('45.5.151.147');
 
             if (datosCanal.usarProxy || requiereProxySeguro) {
                 respuesta.url = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
@@ -666,7 +666,7 @@ app.get('/play/:canal', async (req, res) => {
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
             
             // 🔥 SOLUCIÓN AL "SÍNDROME DE VLC": Forzar Proxy para enlaces HTTP, IPs directas o .m3u8
-            const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('.m3u8') || urlCompleta.includes('45.5.151.147');
+            const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('45.5.151.147');
 
             if (datosCanal.usarProxy || requiereProxySeguro) {
                 return res.redirect(302, `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`);
