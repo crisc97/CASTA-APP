@@ -93,7 +93,7 @@
     "canalrural_directo": { "nombre": "Canal Rural","base": "http://45.5.151.147:8000/play/a01r/index.m3u8", "parametros": "","usarProxy": true},
 
     "universal_comedy":   {"base": "https://flow-cdn-gcp.app.flow.com.ar/tok_eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNzgwMTQxMDEzIiwic2lwIjoiODQuMjUyLjExNC44IiwicGF0aCI6Ii9saXZlL2M2ZWRzL1ROVF9TcG9ydHNfSEQvU0FfTGl2ZV9kYXNoX2VuY18yMi8iLCJzZXNzaW9uX2Nkbl9pZCI6IjhkNjcxMGMxZGYwMTA4YWMiLCJzZXNzaW9uX2lkIjoiIiwiY2xpZW50X2lkIjoiIiwiZGV2aWNlX2lkIjoiIiwibWF4X3Nlc3Npb25zIjowLCJzZXNzaW9uX2R1cmF0aW9uIjowLCJ1cmwiOiJodHRwczovLzIwMS4yMzUuNjYuMTIyIiwiYXVkIjoiMzM5Iiwic291cmNlcyI6WzIwOSw4NSwxNDQsODYsODhdfQ==.S8P7hHNwTwy2zv1N8aflrtf_jJlkytqX5UBK6njp4nT6bUIkbfpZtbquqD4NLU5B_bEQYKJTUd587f5fNdTDKQ==/live/c6eds/Universal_Comedy/SA_Live_dash_enc/Universal_Comedy.mpd",
-      "parametros": "","usarProxy": false,"keyId": "062c5d25105a3a935b67e36923c73f28","key": "88c2d4cec420f18d2477152c66c7870d"},
+      "parametros": "","usarProxy": true,"keyId": "062c5d25105a3a935b67e36923c73f28","key": "88c2d4cec420f18d2477152c66c7870d"},
  
     "espn_op1":           { "urlScraping": "https://pelotalibretv.su/espn-premium/", "opcionesBotones": [["Opción 1"]] },
     "espn_op2":           { "urlScraping": "https://tvlibre-online.com/en-vivo/espn-premium/", "opcionesBotones": [["Opción 3"],["Opción 1 (FL)"]] },
