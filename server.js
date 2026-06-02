@@ -141,7 +141,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.get('/ping', (req, res) => res.send('ok'));
+// 🤖 ACÁ CAMBIAMOS PARA VER LOS LOGS EN RENDER
+app.get('/ping', (req, res) => {
+    console.log('🤖 UptimeRobot pasó a saludar (Ping OK)');
+    res.send('ok');
+});
 
 app.get('/api/canales', (req, res) => {
     res.json(frontendCanales);
@@ -242,7 +246,12 @@ function armarHeaders(targetUrl) {
     let referer = 'https://tvlibr3.com/';
     let origin = 'https://tvlibr3.com';
 
-    if (targetUrl.includes('streameasthd') || targetUrl.includes('streamtpnew')) {
+    // 📺 NUEVA REGLA: Camuflaje para El Trece (vodgc.net)
+    if (targetUrl.includes('vodgc.net')) {
+        referer = 'https://www.m3u8player.online/';
+        origin = 'https://www.m3u8player.online';
+    } 
+    else if (targetUrl.includes('streameasthd') || targetUrl.includes('streamtpnew')) {
         referer = 'https://streamtpnew.com/';
         origin = 'https://streamtpnew.com';
     } else if (targetUrl.includes('nebunexa') || targetUrl.includes('cvattv')) {
@@ -550,6 +559,18 @@ async function correrBot(datosCanal, canalId) {
     }
     return linkVideoPuro;
 }
+
+// ============================================================
+// TRADUCTOR DE LLAVES DRM (HEXADECIMAL A BASE64URL)
+// ============================================================
+function hexToBase64Url(hexString) {
+    return Buffer.from(hexString, 'hex')
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+}
+
 // ============================================================
 // RUTA PARA LA APP (COMPATIBILIDAD INDEX.HTML)
 // ============================================================
@@ -569,7 +590,6 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
             const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
 
             if (linkVideoPuro) {
-                // BYPASS DINÁMICO EN BOT: Si el bot extrajo un .mpd, se lo mandamos directo al celu
                 const esMpdDescubierto = linkVideoPuro.toLowerCase().includes('.mpd');
                 const urlFinal = esMpdDescubierto 
                     ? linkVideoPuro 
@@ -584,13 +604,29 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
             
-            // 🔥 SOLUCIÓN AL "SÍNDROME DE VLC": Forzar Proxy para enlaces HTTP, IPs directas o .m3u8
+            // 📦 PREPARAMOS LA RESPUESTA BASE
+            let respuesta = { exito: true, url: urlCompleta };
+
+            // 🔒 SI EL CANAL TIENE LLAVES DRM EN SU CONFIGURACIÓN, SE LAS AGREGAMOS TRADUCIDAS
+            if (datosCanal.keyId && datosCanal.key) {
+                respuesta.drm = {
+                    "org.w3.clearkey": {
+                        "clearkeys": {
+                            [hexToBase64Url(datosCanal.keyId)]: hexToBase64Url(datosCanal.key)
+                        }
+                    }
+                };
+            }
+            
+            // Forzar Proxy para enlaces HTTP, IPs directas o .m3u8
             const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('.m3u8') || urlCompleta.includes('45.5.151.147');
 
             if (datosCanal.usarProxy || requiereProxySeguro) {
-                return res.json({ exito: true, url: `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}` });
+                respuesta.url = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
             }
-            return res.json({ exito: true, url: urlCompleta });
+            
+            // Enviamos la respuesta final con la URL y el objeto DRM (si existía)
+            return res.json(respuesta);
         }
     } catch (error) {
         return res.status(500).json({ exito: false, error: error.message });
