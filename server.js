@@ -264,18 +264,17 @@ function armarHeaders(targetUrl) {
     };
 }
 // ============================================================
-// SÚPER PROXY INTELIGENTE (VERSIÓN DEFINITIVA DE INTERCEPTAÇÃO)
+// SÚPER PROXY INTELIGENTE (VERSIÓN BOMBEO DIRECTO - ANTI PÉRDIDAS)
 // ============================================================
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
 
-    if (!targetUrl.includes('.ts')) {
-        console.log(`[PROXY] Solicitando: ${targetUrl}`);
-    }
-
     const headers = armarHeaders(targetUrl);
-    headers['Accept-Encoding'] = 'identity'; // Evita que o IPTV comprima o vídeo e quebre
+    headers['Accept-Encoding'] = 'identity'; // Vital
+    
+    // 🔥 FORWARD DEL RANGE (Crucial para que el IPTV mande el pedacito correcto)
+    if (req.headers.range) headers['Range'] = req.headers.range;
 
     try {
         const response = await axios({
@@ -288,76 +287,101 @@ app.get('/proxy/stream', async (req, res) => {
         });
 
         if (response.status !== 200 && response.status !== 206) {
-            console.log(`[ALERTA IPTV] 🛑 Erro ${response.status} em: ${targetUrl}`);
+            console.log(`[ALERTA IPTV] 🛑 Error ${response.status} en: ${targetUrl}`);
         }
 
         const finalUrl = response.request?.res?.responseUrl || response.request?.responseURL || targetUrl;
 
-        // 🔥 A MÁGICA VERDADEIRA: Lemos os primeiros bytes para ver o verdadeiro "DNA" do arquivo
-        response.data.once('data', (primeiroChunk) => {
-            const cabecalhoTexto = primeiroChunk.toString('utf8', 0, Math.min(primeiroChunk.length, 50));
+        let isFirstChunk = true;
+        let isPlaylist = false;
+        let chunks = [];
 
-            // 👇 ACÁ ESTÁ EL RADAR NUEVO QUE AGREGAMOS 👇
-            console.log(`[🕵️‍♂️ DNA DEL ARCHIVO] -> ${cabecalhoTexto.replace(/\n/g, ' ')}`);
+        // 🔥 CORTE DE EMERGENCIA: Si cerrás el video en la app, apagamos la descarga para no saturar Render
+        req.on('close', () => {
+            if (response.data && !response.data.destroyed) {
+                response.data.destroy();
+            }
+        });
 
-            // Se começa com #EXTM3U, é 100% uma lista de texto, não importa o disfarce!
-            if (cabecalhoTexto.includes('#EXTM3U')) {
-                let chunks = [primeiroChunk];
+        // 🔥 BOMBEO DIRECTO: Analiza el DNA sin perder ni un solo byte de video
+        response.data.on('data', (chunk) => {
+            if (isFirstChunk) {
+                isFirstChunk = false;
+                const cabecalhoTexto = chunk.toString('utf8', 0, Math.min(chunk.length, 50));
+                
+                if (!targetUrl.includes('.ts')) {
+                    console.log(`[🕵️‍♂️ DNA] -> ${cabecalhoTexto.replace(/\n/g, ' ')}`);
+                }
 
-                response.data.on('data', chunk => chunks.push(chunk));
-                response.data.on('end', () => {
-                    let texto = Buffer.concat(chunks).toString('utf8');
+                if (cabecalhoTexto.includes('#EXTM3U')) {
+                    isPlaylist = true;
+                    chunks.push(chunk); 
+                } else {
+                    isPlaylist = false;
                     
-                    let conteudo = texto.split('\n').map(linea => {
-                        const l = linea.trim();
-                        if (!l) return linea;
+                    const headersRemover = ['transfer-encoding', 'connection', 'keep-alive', 'content-encoding', 'strict-transport-security'];
+                    headersRemover.forEach(h => delete response.headers[h]);
 
-                        // Troca a URL das chaves de criptografia
-                        if (l.startsWith('#EXT-X-KEY')) {
-                            const match = l.match(/URI="([^"]+)"/);
-                            if (match) {
-                                try {
-                                    const keyUrl = new URL(match[1], finalUrl).href;
-                                    return l.replace(`URI="${match[1]}"`, `URI="${API_URL}/proxy/stream?url=${encodeURIComponent(keyUrl)}"`);
-                                } catch(e) {}
-                            }
-                            return l;
-                        }
-
-                        if (l.startsWith('#')) return l;
-
-                        // Troca a URL dos pedaços de vídeo ou sub-listas
-                        try {
-                            const urlSegmento = new URL(l, finalUrl).href;
-                            return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
-                        } catch (e) { return l; }
-                    }).join('\n');
-
-                    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+                    res.setHeader('Content-Type', 'video/mp2t');
                     res.setHeader('Access-Control-Allow-Origin', '*');
-                    res.send(conteudo);
-                });
+                    
+                    // Pasamos el tamaño exacto del video si el servidor lo dice
+                    if (response.headers['content-range']) res.setHeader('Content-Range', response.headers['content-range']);
+                    if (response.headers['content-length']) res.setHeader('Content-Length', response.headers['content-length']);
+                    
+                    res.status(response.status);
+                    res.write(chunk); // Manda el primer pedazo al instante
+                }
             } else {
-                // 🔥 Se NÃO tem #EXTM3U, é um vídeo ou dado bruto. Passa direto pelo túnel!
-                const headersRemover = ['transfer-encoding', 'connection', 'keep-alive', 'content-encoding', 'strict-transport-security'];
-                headersRemover.forEach(h => delete response.headers[h]);
+                if (isPlaylist) {
+                    chunks.push(chunk); // Sigue juntando el texto
+                } else {
+                    res.write(chunk); // Sigue bombeando el video a la TV/Celular sin cortes
+                }
+            }
+        });
 
-                res.setHeader('Content-Type', 'video/mp2t');
+        response.data.on('end', () => {
+            if (isPlaylist) {
+                let texto = Buffer.concat(chunks).toString('utf8');
+                
+                let conteudo = texto.split('\n').map(linea => {
+                    const l = linea.trim();
+                    if (!l) return linea;
+
+                    if (l.startsWith('#EXT-X-KEY')) {
+                        const match = l.match(/URI="([^"]+)"/);
+                        if (match) {
+                            try {
+                                const keyUrl = new URL(match[1], finalUrl).href;
+                                return l.replace(`URI="${match[1]}"`, `URI="${API_URL}/proxy/stream?url=${encodeURIComponent(keyUrl)}"`);
+                            } catch(e) {}
+                        }
+                        return l;
+                    }
+
+                    if (l.startsWith('#')) return l;
+
+                    try {
+                        const urlSegmento = new URL(l, finalUrl).href;
+                        return `${API_URL}/proxy/stream?url=${encodeURIComponent(urlSegmento)}`;
+                    } catch (e) { return l; }
+                }).join('\n');
+
+                res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
                 res.setHeader('Access-Control-Allow-Origin', '*');
-                res.status(response.status);
-
-                // Enviamos o primeiro pedaço que interceptamos e logo abrimos a torneira para o resto
-                res.write(primeiroChunk);
-                response.data.pipe(res);
+                res.send(conteudo);
+            } else {
+                res.end(); // Termina el video limpio
             }
         });
 
         response.data.on('error', (err) => {
-            console.error(`[ERROR STREAM] O servidor IPTV cortou a conexão em: ${targetUrl}`);
+            if (!isPlaylist && !res.writableEnded) res.end();
         });
 
     } catch (err) {
-        console.error(`[ERROR PROXY] Falha na conexão com: ${targetUrl}`);
+        console.error(`[ERROR PROXY] Falló la conexión con: ${targetUrl}`);
         if (!res.headersSent) res.status(502).send('Error');
     }
 });
