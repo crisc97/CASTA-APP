@@ -455,12 +455,12 @@
                 manifestLoadingTimeOut: 20000, 
                 manifestLoadingMaxRetry: 3,     
                 
-                // 🚀 EL TRUCO PARA ARRANCAR RÁPIDO:
-                liveSyncDurationCount: 3,    // Antes estaba en 7. Al bajarlo, arranca apenas consigue 3 pedacitos.
-                liveMaxLatencyDurationCount: 10,
+               // ⚖️ EL PUNTO DULCE PARA EL PROXY:
+                liveSyncDurationCount: 5,       // Le damos 2 pedacitos más de margen a Render
+                liveMaxLatencyDurationCount: 12, // Le damos respiro si tu internet parpadea
                 
-                // 🫁 EL TRUCO PARA NO TRABARSE:
-                maxBufferLength: 60,         // Sigue llenando el tanque hasta 60 segundos MIENTRAS mirás el video.
+                // 🫁 EL PULMÓN (se mantiene igual)
+                maxBufferLength: 60,         
                 maxMaxBufferLength: 120,
                 enableWorker: true
             });
