@@ -297,6 +297,9 @@ app.get('/proxy/stream', async (req, res) => {
         response.data.once('data', (primeiroChunk) => {
             const cabecalhoTexto = primeiroChunk.toString('utf8', 0, Math.min(primeiroChunk.length, 50));
 
+            // 👇 ACÁ ESTÁ EL RADAR NUEVO QUE AGREGAMOS 👇
+            console.log(`[🕵️‍♂️ DNA DEL ARCHIVO] -> ${cabecalhoTexto.replace(/\n/g, ' ')}`);
+
             // Se começa com #EXTM3U, é 100% uma lista de texto, não importa o disfarce!
             if (cabecalhoTexto.includes('#EXTM3U')) {
                 let chunks = [primeiroChunk];
