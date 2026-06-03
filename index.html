@@ -36,7 +36,7 @@
             <p class="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse mt-2">cargando transmisión, gracias por esperar</p>
         </div>
         
-        <video id="videoElement" class="w-full h-full object-contain bg-black" playsinline></video>
+        <video id="video-player" class="w-full h-full object-contain" controls autoplay playsinline></video>
 
         <iframe id="iframeElement" allow="encrypted-media" allowfullscreen frameborder="0" scrolling="no" class="w-full h-full bg-black hidden"></iframe>
 
@@ -464,17 +464,38 @@
                 maxMaxBufferLength: 120,
                 enableWorker: true
             });
-            hls.loadSource(url);
+           hls.loadSource(url);
             hls.attachMedia(videoElement);
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 ocultarLoader();
-                videoElement.play().catch(() => { videoElement.muted = true; videoElement.play(); });
+                
+                // --- CAMBIO 1: Arranque seguro para HLS ---
+                let playPromiseHls = videoElement.play();
+                if (playPromiseHls !== undefined) {
+                    playPromiseHls.catch(error => {
+                        console.warn("⚠️ Autoplay bloqueado por el navegador. Forzando Mute...");
+                        videoElement.muted = true; 
+                        videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
+                    });
+                }
+                // ------------------------------------------
+                
             });
             hls.on(Hls.Events.ERROR, (event, data) => { if (data.fatal) { console.error("Error Fatal:", data); ocultarLoader(); } });
         }
     } else {
         videoElement.src = url;
-        videoElement.play().catch(() => { videoElement.muted = true; videoElement.play(); });
+        
+        // --- CAMBIO 2: Arranque seguro para video directo ---
+        let playPromiseDirecto = videoElement.play();
+        if (playPromiseDirecto !== undefined) {
+            playPromiseDirecto.catch(error => {
+                console.warn("⚠️ Autoplay bloqueado por el navegador. Forzando Mute...");
+                videoElement.muted = true; 
+                videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
+            });
+        }
+        // ----------------------------------------------------
     }
 }
 
