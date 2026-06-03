@@ -27,7 +27,7 @@ const URLS_EXTERNAS = [];
 const CANALES_BANEADOS = [
     "Canal de Prueba",
     "🔞 Adultos",         
-    "Telefe Interior", \
+    "Telefe Interior",
     "Premium 18+",
     "Venus",
     "Sextreme",
