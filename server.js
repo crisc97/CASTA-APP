@@ -27,7 +27,7 @@ const URLS_EXTERNAS = [];
 const CANALES_BANEADOS = [
     "Canal de Prueba",
     "🔞 Adultos",         
-    "Telefe Interior", 
+    "Telefe Interior", \
     "Premium 18+",
     "Venus",
     "Sextreme",
@@ -103,14 +103,11 @@ async function cargarListasExternas() {
                 const requiereScraping = lista.id === 'futbol_libre' || lista.id === 'bola_loca' || lista.id === 'ddeports' || urlVideo.toLowerCase().includes('html');
 
                 if (requiereScraping) {
-                    // Los eventos deportivos dinámicos siguen usando tu sistema de Bots
                     dbCanales[idUnico] = {
                         urlScraping: urlVideo,
                         opcionesBotones: [["Opción 1"], ["Opción 2"], ["Reproducir"], ["VIVO"]]
                     };
                 } else {
-                    // ⚡ CONEXIÓN DIRECTA ABSOLUTA (SIN PROXY)
-                    // Forzamos a que TODOS los canales de las listas JSON vayan directo de la IP del usuario a la fuente
                     dbCanales[idUnico] = {
                         base: urlVideo,
                         parametros: "",
@@ -141,7 +138,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 🤖 ACÁ CAMBIAMOS PARA VER LOS LOGS EN RENDER
 app.get('/ping', (req, res) => {
     console.log('🤖 UptimeRobot pasó a saludar (Ping OK)');
     res.send('ok');
@@ -217,16 +213,13 @@ function encolarBot(fn) {
 function esStream(url) {
     if (!url || url === 'about:blank' || url === 'about:srcdoc') return false;
     
-    // Filtro de basura publicitaria
     const basura = ['ad', 'tracker', 'dummy', 'blank', 'pixel', 'doubleclick', 'popunder'];
     if (basura.some(palabra => url.toLowerCase().includes(palabra))) return false;
     
     const urlLower = url.toLowerCase();
     
-    // 📡 RADAR DE PRECISIÓN: Si es un fragmento de video (.ts), lo ignoramos para no apurarnos
     if (urlLower.includes('.ts?') || urlLower.endsWith('.ts')) return false;
 
-    // Solo atrapamos las Listas Maestras
     return urlLower.includes('.m3u8') || 
            urlLower.includes('.mpd') || 
            urlLower.includes('playlist') || 
@@ -234,6 +227,7 @@ function esStream(url) {
            urlLower.includes('get_m3u8') ||
            urlLower.includes('stream.php');
 }
+
 function armarHeaders(targetUrl) {
     if (targetUrl.includes('latinapro.net') || targetUrl.includes('45.5.151.147')) {
         return {
@@ -246,7 +240,6 @@ function armarHeaders(targetUrl) {
     let referer = 'https://tvlibr3.com/';
     let origin = 'https://tvlibr3.com';
 
-    // 📺 NUEVA REGLA: Camuflaje para El Trece (vodgc.net)
     if (targetUrl.includes('vodgc.net')) {
         referer = 'https://www.m3u8player.online/';
         origin = 'https://www.m3u8player.online';
@@ -258,7 +251,6 @@ function armarHeaders(targetUrl) {
         referer = 'https://pcn.nebunexa.life/';
         origin = 'https://pcn.nebunexa.life';
     } else if (targetUrl.includes('pelotalibretv') || targetUrl.includes('envivoslatam.org') || targetUrl.includes('token=')) {
-        // 👇 ACÁ ESTÁ LA MAGIA PARA FÚTBOL LIBRE
         referer = 'https://pelotalibretv.su/';
         origin = 'https://pelotalibretv.su';
     }
@@ -272,17 +264,17 @@ function armarHeaders(targetUrl) {
         'Connection': 'keep-alive',
     };
 }
+
 // ============================================================
-// SÚPER PROXY INTELIGENTE (VERSIÓN CORREGIDA - ANTI BLOQUEOS CORS)
+// SÚPER PROXY INTELIGENTE (VERSIÓN ULTRA PERFORMANCE - ANTI CONGELAMIENTO)
 // ============================================================
 app.get('/proxy/stream', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Falta el parámetro url');
 
     const headers = armarHeaders(targetUrl);
-    headers['Accept-Encoding'] = 'identity'; // Vital
+    headers['Accept-Encoding'] = 'identity'; // Vital para streaming multimedia
     
-    // 🔥 FORWARD DEL RANGE (Crucial para que el IPTV mande el pedacito correcto)
     if (req.headers.range) headers['Range'] = req.headers.range;
 
     try {
@@ -300,62 +292,59 @@ app.get('/proxy/stream', async (req, res) => {
         }
 
         const finalUrl = response.request?.res?.responseUrl || response.request?.responseURL || targetUrl;
+        const contentType = (response.headers['content-type'] || '').toLowerCase();
 
-        let isFirstChunk = true;
-        let isPlaylist = false;
-        let chunks = [];
+        // 🧠 DETECCIÓN INTELIGENTE PREVIA: Evita parsear video binario como si fuera texto
+        const esPlaylist = targetUrl.includes('.m3u8') || 
+                           targetUrl.includes('.mpd') || 
+                           contentType.includes('mpegurl') || 
+                           contentType.includes('dash+xml');
 
-        // 🔥 CORTE DE EMERGENCIA: Si cerrás el video en la app, apagamos la descarga para no saturar Render
+        // Configuración limpia de CORS universales
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+
+        // 🔥 CORTE DE EMERGENCIA AUTOMÁTICO (Si el cliente cierra el player, destruimos el puente en Render)
         req.on('close', () => {
             if (response.data && !response.data.destroyed) {
                 response.data.destroy();
             }
         });
 
-        // 🔥 BOMBEO DIRECTO: Analiza el DNA sin perder ni un solo byte de video
-        response.data.on('data', (chunk) => {
-            if (isFirstChunk) {
-                isFirstChunk = false;
-                const cabecalhoTexto = chunk.toString('utf8', 0, Math.min(chunk.length, 50));
-                
-                if (!targetUrl.includes('.ts')) {
-                    console.log(`[🕵️‍♂️ DNA] -> ${cabecalhoTexto.replace(/\n/g, ' ')}`);
-                }
+        if (!esPlaylist) {
+            // ⚡ MODO ULTRA TRANSMISIÓN (Para los fragmentos binarios de video .ts)
+            const headersRemover = ['transfer-encoding', 'connection', 'keep-alive', 'content-encoding', 'strict-transport-security', 'access-control-allow-origin'];
+            headersRemover.forEach(h => delete response.headers[h]);
 
-                if (cabecalhoTexto.includes('#EXTM3U')) {
-                    isPlaylist = true;
-                    chunks.push(chunk); 
-                } else {
-                    isPlaylist = false;
-                    
-                    const headersRemover = ['transfer-encoding', 'connection', 'keep-alive', 'content-encoding', 'strict-transport-security'];
-                    headersRemover.forEach(h => delete response.headers[h]);
+            res.setHeader('Content-Type', response.headers['content-type'] || 'video/mp2t');
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range');
+            
+            if (response.headers['content-range']) res.setHeader('Content-Range', response.headers['content-range']);
+            if (response.headers['content-length']) res.setHeader('Content-Length', response.headers['content-length']);
+            
+            res.status(response.status);
 
-                    res.setHeader('Content-Type', 'video/mp2t');
-                    
-                    // ✨ SOLUCIÓN AL BLOQUEO: Exponemos las cabeceras para que el reproductor pueda medir el video
-                    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range');
-                    
-                    // Pasamos el tamaño exacto del video si el servidor lo dice
-                    if (response.headers['content-range']) res.setHeader('Content-Range', response.headers['content-range']);
-                    if (response.headers['content-length']) res.setHeader('Content-Length', response.headers['content-length']);
-                    
-                    res.status(response.status);
-                    res.write(chunk); // Manda el primer pedazo al instante
-                }
-            } else {
-                if (isPlaylist) {
-                    chunks.push(chunk); // Sigue juntando el texto
-                } else {
-                    res.write(chunk); // Sigue bombeando el video a la TV/Celular sin cortes
-                }
-            }
-        });
+            // 🔥 .pipe() maneja la contrapresión a nivel del núcleo de Node.js. Adiós congelamientos.
+            response.data.pipe(res);
 
-        response.data.on('end', () => {
-            if (isPlaylist) {
+        } else {
+            // 📝 MODO REESCRITURA DE TEXTO (Solo para archivos de configuración .m3u8)
+            let chunks = [];
+            
+            response.data.on('data', (chunk) => {
+                chunks.push(chunk);
+            });
+
+            response.data.on('end', () => {
                 let texto = Buffer.concat(chunks).toString('utf8');
                 
+                // Muestra un log sutil para confirmar actividad sin inundar la consola
+                if (texto.includes('#EXTM3U')) {
+                    const previewLog = texto.split('\n').slice(0, 1).join('');
+                    console.log(`[🕵️‍♂️ Proxy Playlist] -> Sincronizando fragmentos de: ${targetUrl.substring(0, 45)}...`);
+                }
+
                 let conteudo = texto.split('\n').map(linea => {
                     const l = linea.trim();
                     if (!l) return linea;
@@ -379,22 +368,21 @@ app.get('/proxy/stream', async (req, res) => {
                     } catch (e) { return l; }
                 }).join('\n');
 
-                res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+                res.setHeader('Content-Type', contentType || 'application/vnd.apple.mpegurl');
                 res.send(conteudo);
-            } else {
-                res.end(); // Termina el video limpio
-            }
-        });
+            });
 
-        response.data.on('error', (err) => {
-            if (!isPlaylist && !res.writableEnded) res.end();
-        });
+            response.data.on('error', (err) => {
+                if (!res.writableEnded) res.end();
+            });
+        }
 
     } catch (err) {
-        console.error(`[ERROR PROXY] Falló la conexión con: ${targetUrl}`);
-        if (!res.headersSent) res.status(502).send('Error');
+        console.error(`[ERROR PROXY] Falló la conexión con: ${targetUrl}`, err.message);
+        if (!res.headersSent) res.status(502).send('Error en la retransmisión');
     }
 });
+
 // ============================================================
 // FUNCIONES BOT Y SCRAPING
 // ============================================================
@@ -420,7 +408,7 @@ async function clickBotonPorVariantes(page, variantes) {
 async function correrBot(datosCanal, canalId) {
     console.log(`🕵️‍♂️ Bot iniciando para: ${canalId}...`);
     const browser = await puppeteer.launch({
-        headless: true, // ⚠️ Dejalo en false en tu PC
+        headless: true,
         args: [
             '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
             '--disable-gpu', '--single-process', '--disable-web-security',
@@ -429,12 +417,12 @@ async function correrBot(datosCanal, canalId) {
     });
 
     let linkVideoPuro = null;
-    let historialUrls = []; // 🧠 NUEVO: Memoria fotográfica del bot
+    let historialUrls = []; 
 
     try {
         const page = await browser.newPage();
         await page.setViewport({ width: 800, height: 600 });
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/114.0.0.0 Safari/537.36');
 
         await page.setRequestInterception(true);
         
@@ -454,7 +442,6 @@ async function correrBot(datosCanal, canalId) {
                 const urlRespuesta = response.url();
                 const urlLower = urlRespuesta.toLowerCase();
                 
-                // Guardamos TODO el tráfico útil en la memoria fotográfica
                 if (!urlLower.includes('ad') && !urlLower.includes('tracker') && !urlLower.includes('google')) {
                     historialUrls.push(urlRespuesta);
                 }
@@ -512,25 +499,17 @@ async function correrBot(datosCanal, canalId) {
             }
         }
 
-        // ==========================================================
-        // 🚨 NUEVO: ANÁLISIS FORENSE POST-MORTEM 🚨
-        // ==========================================================
         if (!linkVideoPuro) {
             console.log(`[BOT] 🧠 Analizando memoria fotográfica en busca del archivo camuflado...`);
-            
-            // Buscamos si detectó al menos un fragmento de video (.ts)
             const archivosTs = historialUrls.filter(u => u.toLowerCase().includes('.ts?') || u.toLowerCase().endsWith('.ts'));
 
             if (archivosTs.length > 0) {
                 const muestraTs = archivosTs[0];
                 console.log(`[BOT] 🎯 ¡Tráfico de video detectado! Extrayendo Token de seguridad...`);
 
-                // Cortamos la URL para sacar solo el Token
                 const partesToken = muestraTs.split('?');
                 if (partesToken.length > 1) {
-                    const token = partesToken[1]; // ej: token=6bcc357bc521fdc74...
-
-                    // Revisamos el historial DE ATRÁS PARA ADELANTE buscando el archivo que usó el Token pero NO es .ts
+                    const token = partesToken[1]; 
                     const listaOculta = historialUrls.reverse().find(u => u.includes(token) && !u.toLowerCase().includes('.ts'));
 
                     if (listaOculta) {
@@ -538,14 +517,12 @@ async function correrBot(datosCanal, canalId) {
                         console.log(`[BOT] 🕵️‍♂️ ¡BINGO! Lista maestra desenmascarada usando el Token.`);
                     } else {
                         console.log(`[BOT] ⚠️ No se encontró la lista original, intentando adivinar ruta...`);
-                        // Adivina la ruta subiendo un par de carpetas
                         const urlBase = partesToken[0].split('/').slice(0, 5).join('/'); 
                         linkVideoPuro = `${urlBase}/playlist.m3u8?${token}`;
                     }
                 }
             }
         }
-        // ==========================================================
 
         if (linkVideoPuro) {
             console.log(`[BOT] ✅ ¡Link FINAL ENCONTRADO!: ${linkVideoPuro}`);
@@ -561,9 +538,6 @@ async function correrBot(datosCanal, canalId) {
     return linkVideoPuro;
 }
 
-// ============================================================
-// TRADUCTOR DE LLAVES DRM (HEXADECIMAL A BASE64URL)
-// ============================================================
 function hexToBase64Url(hexString) {
     return Buffer.from(hexString, 'hex')
         .toString('base64')
@@ -605,10 +579,8 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
             
-            // 📦 PREPARAMOS LA RESPUESTA BASE
             let respuesta = { exito: true, url: urlCompleta };
 
-            // 🔒 SI EL CANAL TIENE LLAVES DRM EN SU CONFIGURACIÓN, SE LAS AGREGAMOS TRADUCIDAS
             if (datosCanal.keyId && datosCanal.key) {
                 respuesta.drm = {
                     "org.w3.clearkey": {
@@ -619,20 +591,19 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
                 };
             }
             
-            // Forzar Proxy para enlaces HTTP, IPs directas o .m3u8
-           const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('45.5.151.147');
+            const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('45.5.151.147');
 
             if (datosCanal.usarProxy || requiereProxySeguro) {
                 respuesta.url = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
             }
             
-            // Enviamos la respuesta final con la URL y el objeto DRM (si existía)
             return res.json(respuesta);
         }
     } catch (error) {
         return res.status(500).json({ exito: false, error: error.message });
     }
 });
+
 // ============================================================
 // RUTA DE REPRODUCCIÓN DIRECTA M3U (REDIRECT 302)
 // ============================================================
@@ -666,7 +637,6 @@ app.get('/play/:canal', async (req, res) => {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
             
-            // 🔥 SOLUCIÓN AL "SÍNDROME DE VLC": Forzar Proxy para enlaces HTTP, IPs directas o .m3u8
             const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('45.5.151.147');
 
             if (datosCanal.usarProxy || requiereProxySeguro) {
