@@ -94,7 +94,7 @@
                         <span>⚽</span>
                     </h1>
                 </div>
-                </div>
+            </div>
             <span class="text-xs text-gray-500 font-semibold tracking-wide uppercase mt-0.5">Seleccione un canal</span>
         </div>
         <div id="listaCanales" class="flex flex-col gap-1.5 flex-1 pb-10"></div>
@@ -106,7 +106,7 @@
         const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox');
         const esCelular = /android|iphone|ipad|ipod/i.test(ua);
 
-        const videoElement = document.getElementById('videoElement');
+        const videoElement = document.getElementById('video-player');
         const iframeElement = document.getElementById('iframeElement'); 
         const playerArea = document.getElementById('playerArea');
         const loader = document.getElementById('loader');
@@ -132,8 +132,7 @@
         let dashPlayer = null;
         let timeoutControles = null;
 
-        // --- AGREGAR ESTO AQUÍ ---
-        const sidebar = document.getElementById('sidebar'); // Para llamarlo más fácil
+        const sidebar = document.getElementById('sidebar'); 
         
         function ocultarSidebarCompleto() {
             sidebar.classList.add('hidden');
@@ -142,12 +141,11 @@
         }
 
         function mostrarSidebarCompleto() {
-            if (esTV) return; // Las TV lo manejan con el control remoto
+            if (esTV) return; 
             sidebar.classList.remove('hidden');
             playerArea.style.width = '';
             playerArea.style.height = '';
         }
-        // -------------------------
 
         function mostrarLoader() { 
             if (canalActualGlobal && canalActualGlobal.logo) {
@@ -194,7 +192,6 @@
             setInterval(actualizar, 1000);
         }
 
-        // CONTROLADOR DE TEXTO DE VOLUMEN MULTIPLATAFORMA
         function actualizarIndicadorVolumen() {
             if (txtVolValue) {
                 const porcentaje = Math.round(videoElement.volume * 100);
@@ -202,15 +199,13 @@
             }
         }
 
-      function verificarFiltroDispositivo() {
-            // Lógica para Smart TV y Celulares: Volumen al 100% y ocultar SÓLO controles de sonido (Dejamos el botón Fullscreen vivo)
+        function verificarFiltroDispositivo() {
             if (esTV || esCelular) {
                 if (btnVolMenos) btnVolMenos.classList.add('hidden');
                 if (btnVolMas) btnVolMas.classList.add('hidden');
                 if (btnSilenciar) btnSilenciar.classList.add('hidden');
                 if (txtVolValue) txtVolValue.classList.add('hidden');
 
-                // Forzamos el reproductor al 100% de volumen y le quitamos el silencio
                 videoElement.volume = 1.0;
                 videoElement.muted = false;
             }
@@ -272,11 +267,10 @@
             };
         }
 
-   // LOGICA DE PANTALLA COMPLETA UNIVERSAL (Repara bloques en PC y Celular)
         if (btnFullscreen) {
             btnFullscreen.onclick = function() {
                 this.blur(); 
-                const docElm = document.documentElement; // <-- LA CLAVE: Pantalla completa a TODA la web
+                const docElm = document.documentElement; 
                 const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
                 
                 if (!document.fullscreenElement && !document.webkitFullscreenElement) {
@@ -299,15 +293,14 @@
             };
         }
 
-        // CONTROLADOR NATIVO: Oculta el menú si entran a pantalla completa y lo muestra si salen (con la tecla ESC)
         function manejarCambioFullscreen() {
             const esFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
             const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
 
             if (esFullscreen) {
-                ocultarSidebarCompleto(); // Borra el menú y estira el video al 100%
+                ocultarSidebarCompleto(); 
             } else {
-                mostrarSidebarCompleto(); // Devuelve el menú a su lugar
+                mostrarSidebarCompleto(); 
                 if (esCelular && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
                     window.screen.orientation.unlock().catch(() => {});
                 }
@@ -346,7 +339,6 @@
                     btn.className = "w-full flex items-center bg-neutral-900 hover:bg-neutral-800 active:bg-blue-950 border border-gray-900 rounded-lg p-2 text-left transition-all focus:outline-none focus:bg-blue-800 focus:border-blue-400 focus:ring-4 focus:ring-blue-500 focus:scale-[1.02] text-sm font-medium tracking-wide";
 
                     const img = document.createElement('img');
-                    // ✅ Agrandado (w-14 h-14) y margen interno mínimo (p-0.5) para que ocupe el 95% del cuadro
                     img.className = "w-14 h-14 object-contain mr-3 rounded-lg bg-white p-0.5 border border-gray-300 flex-shrink-0 shadow-sm";
                     img.src = canal.logo;
                     img.onerror = () => { 
@@ -366,7 +358,7 @@
             }
         }
 
-       function seleccionarCanal(canal) {
+        function seleccionarCanal(canal) {
             canalActualGlobal = canal;
             containerOpciones.innerHTML = "";
 
@@ -378,7 +370,6 @@
                     b.onclick = function() { 
                         this.blur(); 
                         consultarServidorYReproducir(opc.id); 
-                        // 🔥 Si es TV, tras elegir servidor, pasamos el foco a Pantalla Completa automáticamente
                         if (esTV && btnFullscreen) {
                             setTimeout(() => { btnFullscreen.focus(); }, 150);
                         }
@@ -391,110 +382,89 @@
         }
 
         async function consultarServidorYReproducir(opcionId) {
-    mostrarLoader();
-    try {
-        const res = await fetch(`/api/stream/${opcionId}`);
-        const data = await res.json();
-        
-        if (data.exito && data.url) { 
-            // Enviamos la URL y también los datos de DRM si existen en la respuesta de tu API
-            reproducirCanal(data.url, data.drm || null); 
-        } else { 
-            ocultarLoader(); 
-            mostrarAlerta(); 
+            mostrarLoader();
+            try {
+                const res = await fetch(`/api/stream/${opcionId}`);
+                const data = await res.json();
+                
+                if (data.exito && data.url) { 
+                    reproducirCanal(data.url, data.drm || null); 
+                } else { 
+                    ocultarLoader(); 
+                    mostrarAlerta(); 
+                }
+            } catch(e) { 
+                ocultarLoader(); 
+                mostrarAlerta(); 
+            }
         }
-    } catch(e) { 
-        ocultarLoader(); 
-        mostrarAlerta(); 
-    }
-}
 
         function reproducirCanal(url) {
-    console.log("▶️ Intentando reproducir URL:", url);
-    mostrarLoader();
+            console.log("▶️ Intentando reproducir URL:", url);
+            mostrarLoader();
 
-    if (hls) {
-        hls.destroy();
-        hls = null;
-    }
-    if (dashPlayer) {
-        dashPlayer.reset();
-        dashPlayer = null;
-    }
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            if (dashPlayer) {
+                dashPlayer.reset();
+                dashPlayer = null;
+            }
 
-    videoElement.classList.remove('hidden');
-    document.getElementById('placeholder-player').classList.add('hidden');
+            videoElement.classList.remove('hidden');
+            if (document.getElementById('placeholder-player')) {
+                document.getElementById('placeholder-player').classList.add('hidden');
+            }
 
-    if (url.includes('.mpd')) {
-        dashPlayer = dashjs.MediaPlayer().create();
-        dashPlayer.initialize(videoElement, url, true);
-        dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
-            ocultarLoader();
-        });
-    } else if (url.includes('.m3u8')) {
-        if (Hls.isSupported()) {
-            hls = new Hls({
-                maxBufferLength: 10,
-                maxMaxBufferLength: 20,
-                enableWorker: true,
-                lowLatencyMode: true
-            });
-            hls.loadSource(url);
-            hls.attachMedia(videoElement);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                ocultarLoader();
+            if (url.includes('.mpd')) {
+                dashPlayer = dashjs.MediaPlayer().create();
+                dashPlayer.initialize(videoElement, url, true);
+                dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
+                    ocultarLoader();
+                });
+            } else if (url.includes('.m3u8')) {
+                if (Hls.isSupported()) {
+                    hls = new Hls({
+                        maxBufferLength: 10,
+                        maxMaxBufferLength: 20,
+                        enableWorker: true,
+                        lowLatencyMode: true
+                    });
+                    hls.loadSource(url);
+                    hls.attachMedia(videoElement);
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        ocultarLoader();
+                        
+                        let playPromiseHls = videoElement.play();
+                        if (playPromiseHls !== undefined) {
+                            playPromiseHls.catch(error => {
+                                console.warn("⚠️ Autoplay bloqueado por el navegador. Forzando Mute...");
+                                videoElement.muted = true; 
+                                videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
+                            });
+                        }
+                    });
+                    hls.on(Hls.Events.ERROR, (event, data) => { 
+                        if (data.fatal) { 
+                            console.error("Error Fatal HLS:", data); 
+                            ocultarLoader(); 
+                        } 
+                    });
+                }
+            } else {
+                videoElement.src = url;
                 
-                // --- CAMBIO 1: Arranque seguro para HLS ---
-                let playPromiseHls = videoElement.play();
-                if (playPromiseHls !== undefined) {
-                    playPromiseHls.catch(error => {
+                let playPromiseDirecto = videoElement.play();
+                if (playPromiseDirecto !== undefined) {
+                    playPromiseDirecto.catch(error => {
                         console.warn("⚠️ Autoplay bloqueado por el navegador. Forzando Mute...");
                         videoElement.muted = true; 
                         videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
                     });
                 }
-                // ------------------------------------------
-            });
-            hls.on(Hls.Events.ERROR, (event, data) => { 
-                if (data.fatal) { 
-                    console.error("Error Fatal HLS:", data); 
-                    ocultarLoader(); 
-                } 
-            });
+            }
         }
-    } else {
-        videoElement.src = url;
-        
-        // --- CAMBIO 2: Arranque seguro para video directo ---
-        let playPromiseDirecto = videoElement.play();
-        if (playPromiseDirecto !== undefined) {
-            playPromiseDirecto.catch(error => {
-                console.warn("⚠️ Autoplay bloqueado por el navegador. Forzando Mute...");
-                videoElement.muted = true; 
-                videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
-            });
-        }
-        // ----------------------------------------------------
-    }
-}
-            hls.on(Hls.Events.ERROR, (event, data) => { if (data.fatal) { console.error("Error Fatal:", data); ocultarLoader(); } });
-        }
-    } else {
-        videoElement.src = url;
-        
-        // --- CAMBIO 2: Arranque seguro para video directo ---
-        let playPromiseDirecto = videoElement.play();
-        if (playPromiseDirecto !== undefined) {
-            playPromiseDirecto.catch(error => {
-                console.warn("⚠️ Autoplay bloqueado por el navegador. Forzando Mute...");
-                videoElement.muted = true; 
-                videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
-            });
-        }
-        // ----------------------------------------------------
-    }
-}
-
 
         document.addEventListener('keydown', (e) => {
             const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter' };
@@ -510,20 +480,17 @@
             const isRight = keyName === 'Right';
             const isEnter = keyName === 'Enter';
 
-           // --- LÓGICA EXCLUSIVA DE CONTROL REMOTO SMART TV ---
             if (esTV) {
                 const sidebarOculto = document.getElementById('sidebar').classList.contains('hidden');
                 
-                // 1. Si estamos en Pantalla Completa (Menú oculto)
                 if (sidebarOculto) {
                     if (isRight) {
                         e.preventDefault();
-                        // Salir de pantalla completa (hará que reaparezca el menú)
                         if (document.fullscreenElement || document.webkitFullscreenElement) {
                             const exit = document.exitFullscreen || document.webkitExitFullscreen;
                             if (exit) exit.call(document);
                         } else {
-                            mostrarSidebarCompleto(); // Por las dudas
+                            mostrarSidebarCompleto(); 
                         }
                         
                         setTimeout(() => { if (botones.length > 0) botones[0].focus(); }, 150);
@@ -539,9 +506,7 @@
                     return;
                 }
             }
-            // --- FIN LOGICA SMART TV ---
 
-            // 2. Si estamos parados en el botón PANTALLA COMPLETA
             if (document.activeElement === btnFullscreen) {
                 if (isRight) {
                     if (botones.length > 0) botones[0].focus();
@@ -555,7 +520,6 @@
                 return;
             }
 
-            // 3. Si estamos parados en las OPCIONES (Servidores)
             if (document.activeElement.closest('#containerOpciones')) {
                 const btnsOpc = Array.from(containerOpciones.querySelectorAll('button'));
                 const idxOpc = btnsOpc.indexOf(document.activeElement);
@@ -580,10 +544,8 @@
                 return;
             }
 
-            // 4. Si estamos parados en la LISTA DE CANALES LATERAL
             if (document.activeElement.tagName === 'BUTTON' && document.activeElement.closest('#sidebar')) {
                 if (isLeft) {
-                    // Mover hacia la izquierda manda al Servidor, y si no hay, al botón de pantalla completa
                     const primerBotonOpcion = containerOpciones.querySelector('button');
                     if (primerBotonOpcion) {
                         primerBotonOpcion.focus();
@@ -632,7 +594,7 @@
             descargarListaCanales();
             iniciarReloj();
             iniciarClima();
-            actualizarIndicadorVolumen(); // Carga el valor inicial del volumen
+            actualizarIndicadorVolumen(); 
         };
     </script>
 </body>
