@@ -602,9 +602,9 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
                 };
             }
             
-            const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('45.5.151.147');
-
-            if (datosCanal.usarProxy || requiereProxySeguro) {
+            // 🔥 APAGAMOS EL FORZADO: Ya no obligamos a los HTTP a usar el proxy.
+            // Si el canal tiene "usarProxy": true en el JSON, lo usa. Si no, va directo.
+            if (datosCanal.usarProxy) {
                 respuesta.url = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
             }
             
@@ -648,12 +648,11 @@ app.get('/play/:canal', async (req, res) => {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
             
-            const requiereProxySeguro = urlCompleta.startsWith('http://') || urlCompleta.includes('45.5.151.147');
-
-            if (datosCanal.usarProxy || requiereProxySeguro) {
+           // 🔥 APAGAMOS EL FORZADO PARA REPRODUCTORES EXTERNOS Y SMART TV
+            if (datosCanal.usarProxy) {
                 return res.redirect(302, `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`);
             }
-            return res.redirect(302, urlCompleta);
+            return res.redirect(302, urlCompleta); // <-- Va directo usando la IP de tu casa
         }
     } catch (error) {
         return res.status(500).send(`Error: ${error.message}`);
