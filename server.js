@@ -229,17 +229,25 @@ function esStream(url) {
 }
 
 function armarHeaders(targetUrl) {
+    // 🎭 TRUCO: Inventamos una IP falsa dinámica (ej: 181.x.x.x que parece de Argentina)
+    const ipFalsa = `181.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+
     if (targetUrl.includes('latinapro.net') || targetUrl.includes('45.5.151.147')) {
         return {
             'User-Agent': 'bocatvplay.beta/9.8 (Linux;Android 11) AndroidXMedia3/1.1.1',
             'Referer': '', 
-            'Connection': 'keep-alive'
+            'Connection': 'keep-alive',
+            // 🔥 Inyectamos la IP falsa para saltar el baneo de Telefe y otros
+            'X-Forwarded-For': ipFalsa,
+            'X-Real-IP': ipFalsa,
+            'Client-IP': ipFalsa
         };
     }
     
     let referer = 'https://tvlibr3.com/';
     let origin = 'https://tvlibr3.com';
 
+    // 👇 ACÁ ESTÁN TODOS TUS CANALES Y DEPORTES INTACTOS 👇
     if (targetUrl.includes('vodgc.net')) {
         referer = 'https://www.m3u8player.online/';
         origin = 'https://www.m3u8player.online';
@@ -262,9 +270,12 @@ function armarHeaders(targetUrl) {
         'Accept': '*/*',
         'Accept-Language': 'es-AR,es;q=0.9',
         'Connection': 'keep-alive',
+        // 🔥 Inyectamos la IP falsa acá también por si bloquean otros canales
+        'X-Forwarded-For': ipFalsa,
+        'X-Real-IP': ipFalsa,
+        'Client-IP': ipFalsa
     };
 }
-
 // ============================================================
 // SÚPER PROXY INTELIGENTE (VERSIÓN ULTRA PERFORMANCE - ANTI CONGELAMIENTO)
 // ============================================================
