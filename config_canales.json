@@ -112,7 +112,7 @@
   "key": "4186a7c2a15f590a9399886feaec4257",
   "parametros": "",
   "usarProxy": false
-}
+},
 
     "tnt_1":              { "base": "https://anden26.ddns.net/live/stream.m3u8", "parametros": "v=1777146764944" },
     "tnt_scraper1":       { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 3"],["Opción 1 (FL)"]] },
