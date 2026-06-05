@@ -390,33 +390,14 @@
             } else { mostrarAlerta(); }
         }
 
-        async function consultarServidorYReproducir(opcionId) {
+       async function consultarServidorYReproducir(opcionId) {
             mostrarLoader();
             try {
                 const res = await fetch(`/api/stream/${opcionId}`);
                 const data = await res.json();
                 
                 if (data.exito && data.url) { 
-    // Le pasamos todo el objeto "data" para que viajen el keyId y el key
-    reproducirCanal(data.url, data); 
-                } else { 
-                    ocultarLoader(); 
-                    mostrarAlerta(); 
-                }
-            } catch(e) { 
-                ocultarLoader(); 
-                mostrarAlerta(); 
-            }
-        }
-
-        async function consultarServidorYReproducir(opcionId) {
-            mostrarLoader();
-            try {
-                const res = await fetch(`/api/stream/${opcionId}`);
-                const data = await res.json();
-                
-                if (data.exito && data.url) { 
-                    // 🚨 CAMBIO CLAVE: Le pasamos "data" completo para que viajen keyId y key estén donde estén
+                    // 🚨 Le pasamos "data" completo para que viajen el token y las llaves codificadas
                     reproducirCanal(data.url, data); 
                 } else { 
                     ocultarLoader(); 
@@ -428,10 +409,11 @@
             }
         }
 
-        function reproducirCanal(url, infoStream) { // 🔐 Ahora recibe la información DRM
+        function reproducirCanal(url, infoStream) {
             console.log("▶️ Intentando reproducir URL:", url);
             mostrarLoader();
 
+            // Limpiamos los reproductores anteriores
             if (hls) {
                 hls.destroy();
                 hls = null;
@@ -446,41 +428,62 @@
                 document.getElementById('placeholder-player').classList.add('hidden');
             }
 
+            // ==========================================
+            // CANALES PREMIUM Y FLUJOS MPD (FLOW / DRM)
+            // ==========================================
             if (url.includes('.mpd')) {
                 dashPlayer = dashjs.MediaPlayer().create();
 
-                // 🔐 DETECTOR Y CONFIGURADOR DRM CLEARKEY
-                if (infoStream) {
-                    // Buscamos las llaves en la raíz del objeto o dentro de 'drm' por si acaso
-                    const kid = infoStream.keyId || (infoStream.drm && infoStream.drm.keyId);
-                    const k = infoStream.key || (infoStream.drm && infoStream.drm.key);
+                // 🔐 TRADUCTOR Y CONFIGURADOR DRM CLEARKEY
+                if (infoStream && infoStream.drm) {
+                    let protectionData = {};
 
-                    if (kid && k) {
-                        const protectionData = {
-                            "org.w3.clearkey": {
-                                "clearkeys": {}
-                            }
-                        };
-                        // Vinculamos la Llave ID con su Llave Secreta correspondientemente
-                        protectionData["org.w3.clearkey"].clearkeys[kid] = k;
+                    // Caso 1: Llaves directas estándar (org.w3.clearkey)
+                    if (infoStream.drm["org.w3.clearkey"]) {
+                        protectionData = infoStream.drm;
+                        console.log("🔐 DRM Inyectado (Modo Estándar)");
+                    } 
+                    // Caso 2: Llaves codificadas del nuevo Bot Premium (Base64)
+                    else if (infoStream.drm.type === "clearkey" && infoStream.drm.key) {
+                        try {
+                            const decodedKey = JSON.parse(atob(infoStream.drm.key));
+                            const keyObj = decodedKey.keys[0];
+                            protectionData = {
+                                "org.w3.clearkey": {
+                                    "clearkeys": {
+                                        [keyObj.kid]: keyObj.k
+                                    }
+                                }
+                            };
+                            console.log("🔐 DRM Inyectado (Decodificado desde el Bot Premium)");
+                        } catch (e) {
+                            console.error("❌ Error decodificando el DRM del bot:", e);
+                        }
+                    }
+
+                    if (Object.keys(protectionData).length > 0) {
                         dashPlayer.setProtectionData(protectionData);
-                        console.log("🔐 DRM ClearKey inyectado correctamente.");
                     }
                 }
 
                 dashPlayer.initialize(videoElement, url, true);
+                
                 dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
                     ocultarLoader();
                 });
 
-                // Capturador de errores por si el token del MPD se vence o las llaves no son correctas
+                // Capturador de errores por si el bot trajo un token malo
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                    console.error("🛑 Error crítico en dash.js (Posible token vencido o DRM incorrecto):", e);
+                    console.error("🛑 Error en dash.js (Posible token vencido o DRM incorrecto):", e);
                     ocultarLoader();
                     mostrarAlerta();
                 });
 
-            } else if (url.includes('.m3u8')) {
+            } 
+            // ==========================================
+            // CANALES ESTÁNDAR HLS (.M3U8)
+            // ==========================================
+            else if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
                     hls = new Hls({
                         maxBufferLength: 10,
@@ -490,9 +493,9 @@
                     });
                     hls.loadSource(url);
                     hls.attachMedia(videoElement);
+                    
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
                         ocultarLoader();
-                        
                         let playPromiseHls = videoElement.play();
                         if (playPromiseHls !== undefined) {
                             playPromiseHls.catch(error => {
@@ -502,11 +505,28 @@
                             });
                         }
                     });
+                    
                     hls.on(Hls.Events.ERROR, (event, data) => { 
                         if (data.fatal) { 
                             console.error("Error Fatal HLS:", data); 
                             ocultarLoader(); 
                         } 
+                    });
+                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Para navegadores Safari (iOS)
+                    videoElement.src = url;
+                    videoElement.play();
+                    ocultarLoader();
+                }
+            }
+            // ==========================================
+            // OTROS FORMATOS (MP4 DIRECTO, ETC)
+            // ==========================================
+            else {
+                videoElement.src = url;
+                videoElement.play();
+                ocultarLoader();
+            }
                     });
                 }
             } else {
