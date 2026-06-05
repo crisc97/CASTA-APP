@@ -14,8 +14,17 @@
         /* 🚨 SALVAVIDAS NATIVO: Si Tailwind tarda un milisegundo en iniciar, esto evita que se mezclen los elementos en el celu */
         .hidden { display: none !important; }
         
+        /* 🔪 MATAMOS TODOS LOS CONTROLES NATIVOS INCLUYENDO EL PLAY GIGANTE */
         video::-webkit-media-controls { display: none !important; }
         video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none !important; }
+        video::-webkit-media-controls-overlay-play-button { display: none !important; -webkit-appearance: none !important; }
+        
+        /* Fondo negro por defecto para que no se vea el pixelado mientras carga */
+        video {
+            background-color: black !important;
+            outline: none !important;
+        }
+
         #sidebar::-webkit-scrollbar { width: 6px; }
         #sidebar::-webkit-scrollbar-track { background: transparent; }
         #sidebar::-webkit-scrollbar-thumb { background-color: #1e3a8a; border-radius: 10px; }
@@ -311,7 +320,7 @@
    
         async function descargarListaCanales() {
             try {
-                const res = await fetch('https://casta-app.onrender.com/api/canales');
+                const res = await fetch('/api/canales');
                 const data = await res.json();
                 cacheCanalesGlobal = data;
                 renderizarMenuCanales();
@@ -384,7 +393,7 @@
         async function consultarServidorYReproducir(opcionId) {
             mostrarLoader();
             try {
-                const res = await fetch(`https://casta-app.onrender.com/api/stream/${opcionId}`);
+                const res = await fetch(`/api/stream/${opcionId}`);
                 const data = await res.json();
                 
                 if (data.exito && data.url) { 
