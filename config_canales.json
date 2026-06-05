@@ -105,14 +105,13 @@
     "espn_2":             { "nombre": "ESPN 2", "base": "http://45.5.151.147:8000/play/a00j/index.m3u8", "parametros": "", "usarProxy": false },
     "espn_3":             { "nombre": "ESPN 3", "base": "http://45.5.151.147:8000/play/a00k/index.m3u8", "parametros": "", "usarProxy": false },
     "espn_4":             { "nombre": "ESPN 4", "base": "http://45.5.151.147:8000/play/a00l/index.m3u8", "parametros": "", "usarProxy": false },
-"fox_premium_bot": {
+    "fox_premium_bot": {
   "usarBot": true,
   "codigoBase64": "Rm94X1Nwb3J0c19QcmVtaXVuX0hE",
   "keyId": "4c230dbc7f6a4bfa6ad0aa73ff792374",
   "key": "4186a7c2a15f590a9399886feaec4257",
   "parametros": "",
-  "usarProxy": false
-},
+  "usarProxy": false},
 
     "tnt_1":              { "base": "https://anden26.ddns.net/live/stream.m3u8", "parametros": "v=1777146764944" },
     "tnt_scraper1":       { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 3"],["Opción 1 (FL)"]] },
