@@ -6,13 +6,13 @@
     { "nombre": "América", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Logotipo_de_America_TV.svg/960px-Logotipo_de_America_TV.svg.png", "opciones": [{ "nombre": "Directo", "id": "america_oficial"},{ "nombre": "Directo", "id": "america_directo" }] },
     { "nombre": "TV Pública", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/TVP_-_Televisi%C3%B3n_P%C3%BAblica_%282021%29.svg/1280px-TVP_-_Televisi%C3%B3n_P%C3%BAblica_%282021%29.svg.png", "opciones": [{ "nombre": "HD Directo", "id": "tvpublica_oficial"}, { "nombre": "Directo", "id": "tvpublica_directo" }, { "nombre": "Web 1", "id": "tvpublica_scraper0" }, { "nombre": "Web 2", "id": "tvpublica_scraper1" }] },
     { "nombre": "Ciudad Magazine", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Ciudad_magazine_logo.png", "opciones": [{ "nombre": "Directo", "id": "ciudadmagazine_arg" }] },
-    { "nombre": "Argentinisima", "categoria": "Nacionales", "logo": "https://image.roku.com/developer_channels/prod/ff4d9d408680e266c5a2fc72124e83107f5fc4b0cf31bd37fd81d224606661fe.png", "opciones": [{ "nombre": "Directo", "id": "argentinisima_arg" }] },
-    { "nombre": "Volver", "categoria": "Nacionales", "logo": "https://volver.com.ar/img/logo.png", "opciones": [{ "nombre": "Directo", "id": "volver_arg" }] },
+    { "nombre": "Argentinisima", "categoria": "Nacionales", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/buenos-aires/CHargentinisimasatelital.png", "opciones": [{ "nombre": "Directo", "id": "argentinisima_arg" }] },
+    { "nombre": "Volver", "categoria": "Nacionales", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/cine/CHvolver.png", "opciones": [{ "nombre": "Directo", "id": "volver_arg" }] },
     { "nombre": "Net TV", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Net_TV_logo.png/960px-Net_TV_logo.png", "opciones": [{ "nombre": "HD Directo", "id": "nettv_directo" }] },
     { "nombre": "Canal de la Ciudad", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/9/91/Logo_Canal_de_la_Ciudad.png", "opciones": [{ "nombre": "HD Directo", "id": "canaldelaciudad_directo" }] },
     { "nombre": "Telemax", "categoria": "Noticias", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Telemax_Argentina_%282018%29.png/960px-Telemax_Argentina_%282018%29.png", "opciones": [{ "nombre": "HD Directo", "id": "telemax_directo" }] },
 
-    { "nombre": "ESPN Premium", "categoria": "Deportes", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/ESPN_Premium_logo.svg/960px-ESPN_Premium_logo.svg.png", "opciones": [{ "nombre": "Directo IPTV", "id": "espn_op3" }, { "nombre": "Web 1", "id": "espn_op1" }, { "nombre": "Web 2", "id": "espn_op2" }] },
+    { "nombre": "ESPN Premium", "categoria": "Deportes", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/ESPN_Premium_logo.svg/960px-ESPN_Premium_logo.svg.png", "opciones": [{ "nombre": "Directo IPTV", "id": "espn_op3" }, { "nombre": "Web 1", "id": "espn_op1" }, { "nombre": "Web 2", "id": "espn_op2" },{ "nombre": "directo26", "id":"espn_pre"} ]},
     { "nombre": "TNT Sports Premium", "categoria": "Deportes", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/TNT_Sports_Premium_%28Argentina%29.png/960px-TNT_Sports_Premium_%28Argentina%29.png", "opciones": [{ "nombre": "Directo IPTV", "id": "tnt_scraper3" }, { "nombre": "Reserva", "id": "tnt_1" }, { "nombre": "Web 1", "id": "tnt_scraper1" }, { "nombre": "Web 2", "id": "tnt_scraper2" }] },
     { "nombre": "DirecTv Sports", "categoria": "Deportes", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/DirecTV_Sports_Latin_America_%282018%29.png/960px-DirecTV_Sports_Latin_America_%282018%29.png", "opciones": [{ "nombre": "Web 1", "id": "dsports_scraper1" },{ "nombre": "Web 2", "id": "dsports_scraper2" }] },
     { "nombre": "TyC Sports", "categoria": "Deportes", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/TyC_Sports_logo.svg/960px-TyC_Sports_logo.svg.png", "opciones": [{ "nombre": "Directo IPTV", "id": "tyc_arg" }, { "nombre": "Web 1", "id": "tyc_scraper0" }, { "nombre": "Web 2", "id": "tyc_scraper1" }, { "nombre": "Web 3", "id": "tyc_scraper2" }] },
@@ -47,7 +47,7 @@
     { "nombre": "Nickelodeon", "categoria": "Infantiles", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Nickelodeon_2023_logo_%28outline%29.svg/960px-Nickelodeon_2023_logo_%28outline%29.svg.png", "opciones": [{ "nombre": "Directo", "id": "nickelodeon_directo" }] },
     { "nombre": "Los Simpsons 24/7", "categoria": "Infantiles", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Los-simpson.logoespa%C3%B1ol.png/960px-Los-simpson.logoespa%C3%B1ol.png", "opciones": [{ "nombre": "Señal SD", "id": "canal_247_local" }] },
 
-    { "nombre": "La Nación +", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/8/81/LN%2B.png", "opciones": [{ "nombre": "Directo", "id": "ln+_directo" }] },
+    { "nombre": "La Nación +", "categoria": "Nacionales", "logo": "https://raw.githubusercontent.com/CINECITY2023/cinecity/refs/heads/cinecity.net/logos/noticias/CHln%2B.png", "opciones": [{ "nombre": "Directo", "id": "ln+_directo" }] },
     { "nombre": "Canal 26", "categoria": "Noticias", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Canal_26_logo_%282022%29.svg/330px-Canal_26_logo_%282022%29.svg.png", "opciones": [{ "nombre": "HD Directo", "id": "canal26_telecentro" }] },
     { "nombre": "TN", "categoria": "Noticias", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/TN_todo_noticias_logo.svg/250px-TN_todo_noticias_logo.svg.png", "opciones": [{ "nombre": "HD Directo", "id": "tn_directo" }] },
     { "nombre": "Crónica TV", "categoria": "Noticias", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Cr%C3%B3nica_TV_logotipo_%282016%29.png/960px-Cr%C3%B3nica_TV_logotipo_%282016%29.png", "opciones": [{ "nombre": "HD Directo", "id": "cronica_directo" }] }
@@ -105,6 +105,12 @@
     "espn_2":             { "nombre": "ESPN 2", "base": "http://45.5.151.147:8000/play/a00j/index.m3u8", "parametros": "", "usarProxy": false },
     "espn_3":             { "nombre": "ESPN 3", "base": "http://45.5.151.147:8000/play/a00k/index.m3u8", "parametros": "", "usarProxy": false },
     "espn_4":             { "nombre": "ESPN 4", "base": "http://45.5.151.147:8000/play/a00l/index.m3u8", "parametros": "", "usarProxy": false },
+
+"espn_pre": { "base": "https://edge6-ccast-sl.cvattv.com.ar/tok_eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOiIxNzgwODQ5ODU1Iiwic2lwIjoiODQuMjUyLjExNC4yIiwicGF0aCI6Ii9saXZlL2M3ZWRzL0Nyb25pY2FUVi9TQV9MaXZlX2Rhc2hfZW5jXy8iLCJzZXNzaW9uX2Nkbl9pZCI6IjhhZTBlOGM0YzQzZGJlOTUiLCJzZXNzaW9uX2lkIjoiIiwiY2xpZW50X2lkIjoiIiwiZGV2aWNlX2lkIjoiIiwibWF4X3Nlc3Npb25zIjowLCJzZXNzaW9uX2R1cmF0aW9uIjowLCJ1cmwiOiJodHRwczovLzIwMS4yMzUuNjYuMTIzIiwiYXVkIjoiMjI1Iiwic291cmNlcyI6Wzg1LDE0NCw4Niw4OF19.FtN067awAEBowzTXLKwi8zgGVsrfQEGr9VydMzNaGVEwQbs67uEq_dqMdgX4aQPv5v3BK-SnCw7AVXm2Z7X8jA==/live/c7eds/Fox_Sports_Premiun_HD/SA_Live_dash_enc/Fox_Sports_Premiun_HD.mpd",
+  "parametros": "",
+  "usarProxy": false,
+  "keyId": "4c230dbc7f6a4bfa6ad0aa73ff792374",
+  "key": "4186a7c2a15f590a9399886feaec4257"},
 
     "tnt_1":              { "base": "https://anden26.ddns.net/live/stream.m3u8", "parametros": "v=1777146764944" },
     "tnt_scraper1":       { "urlScraping": "https://tvlibre-online.com/en-vivo/tnt-sports/", "opcionesBotones": [["Opción 3"],["Opción 1 (FL)"]] },

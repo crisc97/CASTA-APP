@@ -541,12 +541,37 @@ async function correrBot(datosCanal, canalId) {
             console.log(`[BOT] ❌ Fracaso definitivo. No hubo tráfico de video.`);
         }
 
+        // --- INICIO SCRAPING DE LLAVES DRM ---
+        const content = await page.content();
+        const currentUrl = new URL(page.url());
+        const getParam = currentUrl.searchParams.get('get');
+        var llavesDRM = null;
+
+        if (getParam) {
+            const regex = new RegExp(`getURL == "${getParam}"[^\\{]*\\{[^\\}]*keyId\\s*=\\s*"([^"]+)"[^\\}]*key\\s*=\\s*"([^"]+)"`, 'i');
+            const match = content.match(regex);
+            
+            if (match) {
+                llavesDRM = {
+                    keyId: match[1],
+                    key: match[2]
+                };
+                console.log(`[BOT] Llaves encontradas para ${getParam}:`, llavesDRM);
+            }
+        }
+        // --- FIN SCRAPING DE LLAVES DRM ---
+
     } catch (e) {
         console.error(`❌ Error en el proceso del bot:`, e.message);
     } finally {
         try { await browser.close(); } catch (e) {}
     }
-    return linkVideoPuro;
+    
+    // Devolvemos el objeto compuesto
+    return {
+        urlFinal: linkVideoPuro,
+        drm: typeof llavesDRM !== 'undefined' ? llavesDRM : null
+    };
 }
 
 function hexToBase64Url(hexString) {
@@ -567,22 +592,42 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
     if (!datosCanal) return res.status(404).json({ exito: false, mensaje: "Canal no encontrado" });
 
     try {
-        if (datosCanal.urlScraping) {
+       if (datosCanal.urlScraping) {
             const ahora = Date.now();
+            // Revisa si hay caché y devuelve URL + DRM si existe
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
-                return res.json({ exito: true, url: memoriaCache[canalId].url });
+                let respuestaCache = { exito: true, url: memoriaCache[canalId].url };
+                if (memoriaCache[canalId].drm) respuestaCache.drm = memoriaCache[canalId].drm;
+                return res.json(respuestaCache);
             }
 
-            const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
+            const resultadoBot = await encolarBot(() => correrBot(datosCanal, canalId));
 
-            if (linkVideoPuro) {
-                const esMpdDescubierto = linkVideoPuro.toLowerCase().includes('.mpd');
+            if (resultadoBot && resultadoBot.urlFinal) {
+                const esMpdDescubierto = resultadoBot.urlFinal.toLowerCase().includes('.mpd');
                 const urlFinal = esMpdDescubierto 
-                    ? linkVideoPuro 
-                    : `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                    ? resultadoBot.urlFinal 
+                    : `${API_URL}/proxy/stream?url=${encodeURIComponent(resultadoBot.urlFinal)}`;
 
-                memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
-                return res.json({ exito: true, url: urlFinal });
+                let respuesta = { exito: true, url: urlFinal };
+
+                // Procesar DRM si el bot lo encontró
+                if (resultadoBot.drm) {
+                    const clearKeyDrm = {
+                        keys: [{
+                            kty: "oct",
+                            k: hexToBase64Url(resultadoBot.drm.key),
+                            kid: hexToBase64Url(resultadoBot.drm.keyId)
+                        }],
+                        type: "temporary"
+                    };
+                    const clearKeyBase64 = Buffer.from(JSON.stringify(clearKeyDrm)).toString('base64');
+                    respuesta.drm = { type: "clearkey", key: clearKeyBase64 };
+                }
+
+                // Guardamos en caché
+                memoriaCache[canalId] = { url: urlFinal, drm: respuesta.drm, tiempo: Date.now() };
+                return res.json(respuesta);
             } else {
                 return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún stream." });
             }
@@ -631,14 +676,15 @@ app.get('/play/:canal', async (req, res) => {
                 return res.redirect(302, memoriaCache[canalId].url);
             }
 
-            const linkVideoPuro = await encolarBot(() => correrBot(datosCanal, canalId));
+           const resultadoBot = await encolarBot(() => correrBot(datosCanal, canalId));
 
-            if (linkVideoPuro) {
-                const esMpdDescubierto = linkVideoPuro.toLowerCase().includes('.mpd');
+            if (resultadoBot && resultadoBot.urlFinal) {
+                const esMpdDescubierto = resultadoBot.urlFinal.toLowerCase().includes('.mpd');
                 const urlFinal = esMpdDescubierto 
-                    ? linkVideoPuro 
-                    : `${API_URL}/proxy/stream?url=${encodeURIComponent(linkVideoPuro)}`;
+                    ? resultadoBot.urlFinal 
+                    : `${API_URL}/proxy/stream?url=${encodeURIComponent(resultadoBot.urlFinal)}`;
 
+                // La ruta play solo hace redirect, no procesa el DRM para reproductores externos simples
                 memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
                 return res.redirect(302, urlFinal);
             } else {

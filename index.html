@@ -45,7 +45,7 @@
             <p class="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse mt-2">cargando transmisión, gracias por esperar</p>
         </div>
         
-        <video id="video-player" class="w-full h-full object-contain" controls autoplay playsinline></video>
+        <video id="video-player" class="w-full h-full object-contain" autoplay playsinline></video>
 
         <iframe id="iframeElement" allow="encrypted-media" allowfullscreen frameborder="0" scrolling="no" class="w-full h-full bg-black hidden"></iframe>
 
@@ -397,7 +397,8 @@
                 const data = await res.json();
                 
                 if (data.exito && data.url) { 
-                    reproducirCanal(data.url, data.drm || null); 
+    // Le pasamos todo el objeto "data" para que viajen el keyId y el key
+    reproducirCanal(data.url, data); 
                 } else { 
                     ocultarLoader(); 
                     mostrarAlerta(); 
@@ -408,7 +409,26 @@
             }
         }
 
-        function reproducirCanal(url) {
+        async function consultarServidorYReproducir(opcionId) {
+            mostrarLoader();
+            try {
+                const res = await fetch(`/api/stream/${opcionId}`);
+                const data = await res.json();
+                
+                if (data.exito && data.url) { 
+                    // 🚨 CAMBIO CLAVE: Le pasamos "data" completo para que viajen keyId y key estén donde estén
+                    reproducirCanal(data.url, data); 
+                } else { 
+                    ocultarLoader(); 
+                    mostrarAlerta(); 
+                }
+            } catch(e) { 
+                ocultarLoader(); 
+                mostrarAlerta(); 
+            }
+        }
+
+        function reproducirCanal(url, infoStream) { // 🔐 Ahora recibe la información DRM
             console.log("▶️ Intentando reproducir URL:", url);
             mostrarLoader();
 
@@ -428,10 +448,38 @@
 
             if (url.includes('.mpd')) {
                 dashPlayer = dashjs.MediaPlayer().create();
+
+                // 🔐 DETECTOR Y CONFIGURADOR DRM CLEARKEY
+                if (infoStream) {
+                    // Buscamos las llaves en la raíz del objeto o dentro de 'drm' por si acaso
+                    const kid = infoStream.keyId || (infoStream.drm && infoStream.drm.keyId);
+                    const k = infoStream.key || (infoStream.drm && infoStream.drm.key);
+
+                    if (kid && k) {
+                        const protectionData = {
+                            "org.w3.clearkey": {
+                                "clearkeys": {}
+                            }
+                        };
+                        // Vinculamos la Llave ID con su Llave Secreta correspondientemente
+                        protectionData["org.w3.clearkey"].clearkeys[kid] = k;
+                        dashPlayer.setProtectionData(protectionData);
+                        console.log("🔐 DRM ClearKey inyectado correctamente.");
+                    }
+                }
+
                 dashPlayer.initialize(videoElement, url, true);
                 dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
                     ocultarLoader();
                 });
+
+                // Capturador de errores por si el token del MPD se vence o las llaves no son correctas
+                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
+                    console.error("🛑 Error crítico en dash.js (Posible token vencido o DRM incorrecto):", e);
+                    ocultarLoader();
+                    mostrarAlerta();
+                });
+
             } else if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
                     hls = new Hls({
