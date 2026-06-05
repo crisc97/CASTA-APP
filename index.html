@@ -527,18 +527,7 @@
                 videoElement.play();
                 ocultarLoader();
             }
-            } else {
-                videoElement.src = url;
-                
-                let playPromiseDirecto = videoElement.play();
-                if (playPromiseDirecto !== undefined) {
-                    playPromiseDirecto.catch(error => {
-                        console.warn("⚠️ Autoplay bloqueado por el navegador. Forzando Mute...");
-                        videoElement.muted = true; 
-                        videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
-                    });
-                }
-            }
+        }
 
         document.addEventListener('keydown', (e) => {
             const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter' };
