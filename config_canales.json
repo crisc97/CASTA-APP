@@ -131,6 +131,6 @@
     "tyc_scraper1":       { "urlScraping": "https://pelotalibretv.su/tyc-sports/", "opcionesBotones": [["Opción 1"]] },
     "tyc_scraper2":       { "urlScraping": "https://la14hd.com/vivo/canales.php?stream=tycsports", "opcionesBotones": [] },
     "tyc_arg":            { "nombre": "TyC Sports", "base": "http://45.5.151.147:8000/play/a00s/index.m3u8", "parametros": "", "usarProxy": false },
-    "telefe_oficial": { "nombre": "Telefe HD", "usarBotTelefe": true, "usarProxy": true }
+    "telefe_oficial": { "nombre": "Telefe Oficial", "base": "https://telefeappmitelefe1.akamaized.net/hls/live/2037985/appmitelefe/TOK/hdntl=exp=1780868128~acl=%2f*~data=hdntl~hmac=3e42dfe32994ab1994cfcdd5fd5700de0a6df66797148a3185246303a4d61ee1/master-mtlf3.m3u8", "parametros": "", "usarProxy": false }
   }
 }
