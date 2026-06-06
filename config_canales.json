@@ -1,6 +1,6 @@
 {
   "frontend": [
-    { "nombre": "Telefe", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Telefe_%28nuevo_logo%29.png", "opciones": [{ "nombre": "Directo", "id": "telefe_directo" }] },
+    { "nombre": "Telefe", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Telefe_%28nuevo_logo%29.png", "opciones": [{ "nombre": "Opción Oficial", "id": "telefe_oficial" }] },
     { "nombre": "El Trece", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Logo_Canal_13_200_8.png/960px-Logo_Canal_13_200_8.png", "opciones": [{ "nombre": "HD Directo", "id": "eltrece_oficial"},{ "nombre": "Directo", "id": "eltrece_directo" }] },
     { "nombre": "El Nueve", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Canal_9_2015.png?_=20220427200018", "opciones": [{ "nombre": "Directo", "id": "elnueve_directo" }] },
     { "nombre": "América", "categoria": "Nacionales", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Logotipo_de_America_TV.svg/960px-Logotipo_de_America_TV.svg.png", "opciones": [{ "nombre": "Directo", "id": "america_oficial"},{ "nombre": "Directo", "id": "america_directo" }] },
@@ -130,6 +130,7 @@
     "tyc_scraper0":       { "urlScraping": "https://tvlibre-online.com/en-vivo/tyc-sports/", "opcionesBotones": [["Opción 3"],["Opción 1 (FL)"]]},
     "tyc_scraper1":       { "urlScraping": "https://pelotalibretv.su/tyc-sports/", "opcionesBotones": [["Opción 1"]] },
     "tyc_scraper2":       { "urlScraping": "https://la14hd.com/vivo/canales.php?stream=tycsports", "opcionesBotones": [] },
-    "tyc_arg":            { "nombre": "TyC Sports", "base": "http://45.5.151.147:8000/play/a00s/index.m3u8", "parametros": "", "usarProxy": false }
+    "tyc_arg":            { "nombre": "TyC Sports", "base": "http://45.5.151.147:8000/play/a00s/index.m3u8", "parametros": "", "usarProxy": false },
+        "telefe_oficial": { "nombre": "Telefe Oficial", "base": "https://telefe.com/Api/Videos/GetSourceUrl/694564/0/HLS?.m3u8", "parametros": "", "usarProxy": false }
   }
 }
