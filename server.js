@@ -676,7 +676,33 @@ async function obtenerBaseFresca(codigoBase64, ipCliente) {
     }
     return linkCapturado;
 }
-
+// ============================================================
+// NUEVO: MINI-BOT OFICIAL PARA TELEFE (Súper rápido)
+// ============================================================
+async function obtenerLinkTelefeOficial() {
+    console.log("🕵️‍♂️ Mini-bot buscando token oficial de Telefe...");
+    try {
+        // 1. Entramos a la página oficial (con Axios, súper rápido)
+        const respuesta = await axios.get('https://mitelefe.com/vivo');
+        
+        // 2. Buscamos el token con la misma fórmula que encontraste
+        const tokenMatch = respuesta.data.match(/data-player-token-value="([^"]+)"/);
+        
+        if (tokenMatch && tokenMatch[1]) {
+            const token = tokenMatch[1];
+            // 3. Armamos el link oficial de Akamai
+            const linkFinal = `https://telefeappmitelefe1.akamaized.net/hls/live/2037985/appmitelefe/${token}/master.m3u8`;
+            console.log(`✅ ¡Token de Telefe atrapado exitosamente!`);
+            return linkFinal;
+        } else {
+            console.log("❌ No se encontró el token de Telefe en la página.");
+            return null;
+        }
+    } catch (error) {
+        console.log("❌ Error en mini-bot Telefe:", error.message);
+        return null;
+    }
+}
 // ============================================================
 // RUTA PARA LA APP (COMPATIBILIDAD INDEX.HTML)
 // ============================================================
@@ -693,7 +719,20 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
     try {
         const ahora = Date.now();
 
-        // 🔥 1. NUEVA LÓGICA: Si es un canal PREMIUM con Bot Rápido
+       // 📺 0. LÓGICA ESPECIAL: MINI-BOT TELEFE OFICIAL
+        if (datosCanal.usarBotTelefe) {
+            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 3600000)) { // Dura 1 hora
+                return res.json({ exito: true, url: memoriaCache[canalId].url, usarProxy: datosCanal.usarProxy });
+            }
+            const nuevoLinkTelefe = await obtenerLinkTelefeOficial();
+            if (nuevoLinkTelefe) {
+                memoriaCache[canalId] = { url: nuevoLinkTelefe, tiempo: ahora };
+                return res.json({ exito: true, url: nuevoLinkTelefe, usarProxy: datosCanal.usarProxy });
+            } else {
+                return res.status(500).json({ exito: false, mensaje: "El bot no pudo obtener Telefe." });
+            }
+        }
+ // 🔥 1. NUEVA LÓGICA: Si es un canal PREMIUM con Bot Rápido
         if (datosCanal.usarBot && datosCanal.codigoBase64) {
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 43200000)) {
                 return res.json({
@@ -806,11 +845,26 @@ app.get('/play/:canal', async (req, res) => {
     try {
         const ahora = Date.now();
 
+        // 📺 0. LÓGICA ESPECIAL: MINI-BOT TELEFE OFICIAL (PARA SMART TV)
+        if (datosCanal.usarBotTelefe) {
+            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 3600000)) {
+                return res.redirect(302, memoriaCache[canalId].url);
+            }
+            const nuevoLinkTelefe = await obtenerLinkTelefeOficial();
+            if (nuevoLinkTelefe) {
+                memoriaCache[canalId] = { url: nuevoLinkTelefe, tiempo: ahora };
+                return res.redirect(302, nuevoLinkTelefe);
+            } else {
+                return res.status(500).send("Error: El bot no pudo obtener Telefe.");
+            }
+        }
+
+        // 🔥 1. NUEVA LÓGICA: Si es un canal PREMIUM con Bot Rápido
         if (datosCanal.usarBot && datosCanal.codigoBase64) {
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 43200000)) {
                 return res.redirect(302, memoriaCache[canalId].url);
             }
-            const nuevoLink = await encolarBot(() => obtenerBaseFresca(datosCanal.codigoBase64, ipCliente));
+            const nuevoLink = await encolarBot(() => obtenerBaseFresca(datosCanal.codigoBase64));
             if (nuevoLink) {
                 memoriaCache[canalId] = { url: nuevoLink, tiempo: ahora };
                 return res.redirect(302, nuevoLink);
@@ -818,6 +872,8 @@ app.get('/play/:canal', async (req, res) => {
                 return res.status(500).send("Error: El bot no encontró el enlace.");
             }
         } 
+        
+        // 🚀 2. LÓGICA ORIGINAL: Para sitios de Scraping Pesado
         else if (datosCanal.urlScraping) {
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
                 return res.redirect(302, memoriaCache[canalId].url);
@@ -833,7 +889,10 @@ app.get('/play/:canal', async (req, res) => {
             } else {
                 return res.status(500).send("Error: El bot no encontró ningún stream.");
             }
-        } else {
+        } 
+        
+        // 🟢 3. LÓGICA ORIGINAL: Canales Directos
+        else {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
             if (datosCanal.usarProxy) {
