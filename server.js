@@ -677,39 +677,69 @@ async function obtenerBaseFresca(codigoBase64, ipCliente) {
     return linkCapturado;
 }
 // ============================================================
-// NUEVO: MINI-BOT OFICIAL PARA TELEFE (Con Máscara de Humano)
+// NUEVO: MINI-BOT OFICIAL PARA TELEFE (Versión Navegador Blindado)
 // ============================================================
 async function obtenerLinkTelefeOficial() {
-    console.log("🕵️‍♂️ Mini-bot buscando token oficial de Telefe...");
+    console.log("🕵️‍♂️ Mini-bot buscando token oficial de Telefe (Modo Navegador)...");
+    let linkCapturado = null;
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox', 
+            '--disable-dev-shm-usage',
+            '--disable-blink-features=AutomationControlled' // Máscara Anti-Bots
+        ]
+    });
+
     try {
-        // Le mandamos cabeceras oficiales para que Akamai/Telefe no nos bloquee
-        const respuesta = await axios.get('https://mitelefe.com/vivo', {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'es-AR,es;q=0.8,en-US;q=0.5,en;q=0.3',
-                'Referer': 'https://mitelefe.com/'
-            },
-            timeout: 10000 // Le damos 10 segundos máximo
+        const page = await browser.newPage();
+        
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        
+        await page.setRequestInterception(true);
+
+        // 1. EL RADAR: Si el video intenta arrancar, le robamos el link directo de la red
+        page.on('request', (request) => {
+            const urlPeticion = request.url();
+            if (urlPeticion.includes('akamaized.net') && urlPeticion.includes('.m3u8') && urlPeticion.includes('master')) {
+                if (!linkCapturado) {
+                    linkCapturado = urlPeticion;
+                    console.log(`✅ ¡LINK DE TELEFE ATRAPADO EN LA RED!`);
+                }
+            }
+            request.continue();
         });
+
+        console.log("⏳ Entrando a mitelefe.com/vivo...");
+        // Entramos como si fuéramos un humano real
+        await page.goto('https://mitelefe.com/vivo', { waitUntil: 'domcontentloaded', timeout: 20000 });
         
-        // Buscamos el token en el código fuente
-        const tokenMatch = respuesta.data.match(/data-player-token-value="([^"]+)"/);
-        
-        if (tokenMatch && tokenMatch[1]) {
-            const token = tokenMatch[1];
-            // Armamos el link oficial de Akamai
-            const linkFinal = `https://telefeappmitelefe1.akamaized.net/hls/live/2037985/appmitelefe/${token}/master.m3u8`;
-            console.log(`✅ ¡Token de Telefe atrapado exitosamente!: ${token.substring(0, 15)}...`);
-            return linkFinal;
-        } else {
-            console.log("❌ Entramos a Telefe, pero el token no estaba en el texto.");
-            return null;
+        console.log("⏳ Esperando 4 segundos a que pase el chequeo de seguridad...");
+        await new Promise(r => setTimeout(r, 4000));
+
+        // 2. PLAN B: Si no saltó en la red, sacamos el token del código HTML renderizado
+        if (!linkCapturado) {
+            console.log("🔍 Buscando token en el código fuente...");
+            const htmlCompleto = await page.content();
+            const tokenMatch = htmlCompleto.match(/data-player-token-value=['"]([^'"]+)['"]/i);
+            
+            if (tokenMatch && tokenMatch[1]) {
+                const token = tokenMatch[1];
+                linkCapturado = `https://telefeappmitelefe1.akamaized.net/hls/live/2037985/appmitelefe/${token}/master.m3u8`;
+                console.log(`✅ ¡Token de Telefe ensamblado con éxito!`);
+            } else {
+                console.log("❌ Fracaso: Telefe no soltó el token.");
+            }
         }
+
     } catch (error) {
         console.log("❌ Error en mini-bot Telefe:", error.message);
-        return null;
+    } finally {
+        await browser.close();
     }
+    return linkCapturado;
 }
 // ============================================================
 // RUTA PARA LA APP (COMPATIBILIDAD INDEX.HTML)
