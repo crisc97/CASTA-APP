@@ -583,10 +583,10 @@ function hexToBase64Url(hexString) {
 }
 
 // ============================================================
-// NUEVO: BOT RÁPIDO PARA CANALES PREMIUM (MODO ENSAMBLADOR)
+// NUEVO: BOT RÁPIDO PARA CANALES PREMIUM (FANTASMA IP)
 // ============================================================
-async function obtenerBaseFresca(codigoBase64) {
-    console.log(`🕵️‍♂️ Bot buscando link para: ${codigoBase64} (Modo Ensamblador)`);
+async function obtenerBaseFresca(codigoBase64, ipCliente) {
+    console.log(`🕵️‍♂️ Bot buscando link para: ${codigoBase64} | Falsificando IP a: ${ipCliente}`);
     
     const urlObjetivo = `https://bestleague.top/tok.html?get=${codigoBase64}`;
     let linkCapturado = null;
@@ -597,40 +597,76 @@ async function obtenerBaseFresca(codigoBase64) {
             '--no-sandbox', 
             '--disable-setuid-sandbox', 
             '--disable-dev-shm-usage',
-            '--disable-web-security'
+            '--disable-web-security',
+            '--disable-blink-features=AutomationControlled' // 🥷 MODO NINJA ACTIVO
         ]
     });
 
     try {
         const page = await browser.newPage();
+        
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-        await page.setExtraHTTPHeaders({ 'Referer': 'https://tvlibre-online.com/' });
+        
+        // 👻 ENGAÑAMOS A LA PÁGINA PARA QUE CREA QUE EL BOT SOS VOS DESDE TU CASA
+        await page.setExtraHTTPHeaders({ 
+            'Referer': 'https://tvlibre-online.com/',
+            'X-Forwarded-For': ipCliente,
+            'X-Real-IP': ipCliente,
+            'Client-IP': ipCliente
+        });
 
-        console.log("⏳ Entrando a la página para robar los tokens...");
-        // Ya no necesitamos esperar mucho porque no vamos a reproducir el video
+        // 💉 INYECCIÓN PARA SALTAR LA EXTENSIÓN
+        await page.evaluateOnNewDocument(() => {
+            window.chrome = window.chrome || {};
+            window.chrome.runtime = window.chrome.runtime || { sendMessage: (a,b,c) => {} };
+            window.isExtensionInstalled = true;
+            window.hasExtension = true;
+            localStorage.setItem('ext_installed', '1');
+        });
+
+        await page.setRequestInterception(true);
+
+        page.on('request', (request) => {
+            const urlPeticion = request.url();
+            if ((urlPeticion.includes('.mpd') || urlPeticion.includes('.m3u8')) && !urlPeticion.includes('blank')) {
+                if (!linkCapturado) {
+                    linkCapturado = urlPeticion;
+                    console.log(`✅ ¡LINK ATRAPADO EN LA RED!`);
+                }
+            }
+            request.continue();
+        });
+
+        console.log("⏳ Entrando a la página oculta...");
         await page.goto(urlObjetivo, { waitUntil: 'domcontentloaded', timeout: 20000 });
-        await new Promise(r => setTimeout(r, 2000)); 
+        
+        console.log("👆 Simulando clics humanos...");
+        await new Promise(r => setTimeout(r, 4000));
+        await page.mouse.click(300, 200);
+        await new Promise(r => setTimeout(r, 1000));
+        await page.mouse.click(300, 200);
 
-        const htmlCompleto = await page.content();
-        
-        // 🧩 ROBAMOS LAS PIEZAS DEL ROMPECABEZAS DEL CÓDIGO FUENTE
-        const cdnMatch = htmlCompleto.match(/['"]?cdn['"]?\s*:\s*['"]([^'"]+)['"]/i);
-        const tokenMatch = htmlCompleto.match(/['"]?token['"]?\s*:\s*['"]([^'"]+)['"]/i);
-        const numberMatch = htmlCompleto.match(/number\s*=\s*['"]?(\d+)['"]?/i);
-        
-        if (cdnMatch && tokenMatch) {
-            const cdn = cdnMatch[1];
-            const token = tokenMatch[1];
-            const number = numberMatch ? numberMatch[1] : '1';
+        console.log("⏳ Esperando que salte el link...");
+        await new Promise(r => setTimeout(r, 6000)); 
+
+        // 🪚 PLAN B: ENSAMBLADOR DIRECTO DEL CÓDIGO
+        if (!linkCapturado) {
+            console.log("🔍 La red falló. Ensamblando desde el código fuente...");
+            const htmlCompleto = await page.content();
             
-            // Traducimos tu código Base64 ("Rm94...") a texto ("Fox_Sports_Premiun_HD")
-            const decodificado = Buffer.from(codigoBase64, 'base64').toString('utf-8');
+            const cdnMatch = htmlCompleto.match(/['"]?cdn['"]?\s*:\s*['"]([^'"]+)['"]/i);
+            const tokenMatch = htmlCompleto.match(/['"]?token['"]?\s*:\s*['"]([^'"]+)['"]/i);
+            const numberMatch = htmlCompleto.match(/number\s*=\s*['"]?(\d+)['"]?/i);
             
-            // 🔨 ARMAMOS EL LINK FINAL PERFECTO
-            linkCapturado = `https://${cdn}.cvattv.com.ar/${token}/live/c${number}eds/${decodificado}/SA_Live_dash_enc/${decodificado}.mpd`;
-            console.log(`✅ ¡ROMPECABEZAS ARMADO!: ${linkCapturado}`);
-        } else {
-            console.log("❌ No se encontraron los ingredientes en la página.");
+            if (cdnMatch && tokenMatch) {
+                const cdn = cdnMatch[1];
+                const token = tokenMatch[1];
+                const number = numberMatch ? numberMatch[1] : '1';
+                const decodificado = Buffer.from(codigoBase64, 'base64').toString('utf-8');
+                
+                linkCapturado = `https://${cdn}.cvattv.com.ar/${token}/live/c${number}eds/${decodificado}/SA_Live_dash_enc/${decodificado}.mpd`;
+                console.log(`✅ ¡ROMPECABEZAS ARMADO!`);
+            }
         }
 
     } catch (e) {
@@ -650,6 +686,10 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
 
     if (!datosCanal) return res.status(404).json({ exito: false, mensaje: "Canal no encontrado" });
 
+    // 🕵️‍♂️ CAPTURAMOS TU IP REAL PARA ENVIÁRSELA AL BOT
+    let ipCliente = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (ipCliente.includes(',')) ipCliente = ipCliente.split(',')[0]; // Limpiamos por si hay proxies intermedios
+
     try {
         const ahora = Date.now();
 
@@ -664,7 +704,8 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
                 });
             }
 
-            const nuevoLink = await encolarBot(() => obtenerBaseFresca(datosCanal.codigoBase64));
+            // LE PASAMOS TU IP AL BOT
+            const nuevoLink = await encolarBot(() => obtenerBaseFresca(datosCanal.codigoBase64, ipCliente));
 
             if (nuevoLink) {
                 let drmConfig = null;
@@ -759,6 +800,9 @@ app.get('/play/:canal', async (req, res) => {
 
     if (!datosCanal) return res.status(404).send("Error: Canal no encontrado.");
 
+    let ipCliente = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (ipCliente.includes(',')) ipCliente = ipCliente.split(',')[0];
+
     try {
         const ahora = Date.now();
 
@@ -766,7 +810,7 @@ app.get('/play/:canal', async (req, res) => {
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 43200000)) {
                 return res.redirect(302, memoriaCache[canalId].url);
             }
-            const nuevoLink = await encolarBot(() => obtenerBaseFresca(datosCanal.codigoBase64));
+            const nuevoLink = await encolarBot(() => obtenerBaseFresca(datosCanal.codigoBase64, ipCliente));
             if (nuevoLink) {
                 memoriaCache[canalId] = { url: nuevoLink, tiempo: ahora };
                 return res.redirect(302, nuevoLink);
@@ -801,7 +845,6 @@ app.get('/play/:canal', async (req, res) => {
         return res.status(500).send(`Error: ${error.message}`);
     }
 });
-
 // --- ENCENDIDO ---
 app.listen(PORT, () => {
     console.log(`🚀 Servidor de Casta-App corriendo en el puerto ${PORT}`);
