@@ -582,6 +582,42 @@ function hexToBase64Url(hexString) {
         .replace(/=+$/, '');
 }
 
+/// ============================================================
+// NUEVO: BOT RÁPIDO PARA CANALES PREMIUM
+// ============================================================
+async function obtenerBaseFresca(codigoBase64) {
+    console.log(`🕵️‍♂️ Bot rápido buscando link para: ${codigoBase64}`);
+    const urlObjetivo = `https://bestleague.top/tok.html?get=${codigoBase64}`;
+    let linkCapturado = null;
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+
+    try {
+        const page = await browser.newPage();
+        await page.setRequestInterception(true);
+
+        page.on('request', (request) => {
+            const urlPeticion = request.url();
+            // Atrapamos el link MPD con el token
+            if (urlPeticion.includes('.mpd') && urlPeticion.includes('tok_')) {
+                linkCapturado = urlPeticion;
+            }
+            request.continue();
+        });
+
+        await page.goto(urlObjetivo, { waitUntil: 'networkidle2', timeout: 30000 });
+        await new Promise(r => setTimeout(r, 4000)); // Esperamos que cargue
+    } catch (e) {
+        console.log("❌ Error en bot rápido:", e.message);
+    } finally {
+        await browser.close();
+    }
+    return linkCapturado;
+}
+
 // ============================================================
 // RUTA PARA LA APP (COMPATIBILIDAD INDEX.HTML)
 // ============================================================
@@ -592,9 +628,45 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
     if (!datosCanal) return res.status(404).json({ exito: false, mensaje: "Canal no encontrado" });
 
     try {
-       if (datosCanal.urlScraping) {
-            const ahora = Date.now();
-            // Revisa si hay caché y devuelve URL + DRM si existe
+        const ahora = Date.now();
+
+        // 🔥 1. NUEVA LÓGICA: Si es un canal PREMIUM con Bot Rápido
+        if (datosCanal.usarBot && datosCanal.codigoBase64) {
+            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 43200000)) {
+                return res.json({
+                    exito: true, 
+                    url: memoriaCache[canalId].url, 
+                    drm: memoriaCache[canalId].drm,
+                    usarProxy: datosCanal.usarProxy
+                });
+            }
+
+            const nuevoLink = await encolarBot(() => obtenerBaseFresca(datosCanal.codigoBase64));
+
+            if (nuevoLink) {
+                let drmConfig = null;
+                if (datosCanal.keyId && datosCanal.key) {
+                    const clearKeyDrm = {
+                        keys: [{
+                            kty: "oct",
+                            k: hexToBase64Url(datosCanal.key),
+                            kid: hexToBase64Url(datosCanal.keyId)
+                        }],
+                        type: "temporary"
+                    };
+                    const clearKeyBase64 = Buffer.from(JSON.stringify(clearKeyDrm)).toString('base64');
+                    drmConfig = { type: "clearkey", key: clearKeyBase64 };
+                }
+
+                memoriaCache[canalId] = { url: nuevoLink, drm: drmConfig, tiempo: ahora };
+                return res.json({ exito: true, url: nuevoLink, drm: drmConfig, usarProxy: datosCanal.usarProxy });
+            } else {
+                return res.status(500).json({ exito: false, mensaje: "El bot no encontró el enlace premium." });
+            }
+        }
+        
+        // 🚀 2. LÓGICA ORIGINAL: Para sitios de Scraping Pesado
+        else if (datosCanal.urlScraping) {
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
                 let respuestaCache = { exito: true, url: memoriaCache[canalId].url };
                 if (memoriaCache[canalId].drm) respuestaCache.drm = memoriaCache[canalId].drm;
@@ -611,7 +683,6 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
 
                 let respuesta = { exito: true, url: urlFinal };
 
-                // Procesar DRM si el bot lo encontró
                 if (resultadoBot.drm) {
                     const clearKeyDrm = {
                         keys: [{
@@ -625,34 +696,30 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
                     respuesta.drm = { type: "clearkey", key: clearKeyBase64 };
                 }
 
-                // Guardamos en caché
-                memoriaCache[canalId] = { url: urlFinal, drm: respuesta.drm, tiempo: Date.now() };
+                memoriaCache[canalId] = { url: urlFinal, drm: respuesta.drm, tiempo: ahora };
                 return res.json(respuesta);
             } else {
                 return res.status(500).json({ exito: false, mensaje: "El bot no encontró ningún stream." });
             }
-        } else {
+        } 
+        
+        // 🟢 3. LÓGICA ORIGINAL: Canales Directos
+        else {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
-            
             let respuesta = { exito: true, url: urlCompleta };
 
             if (datosCanal.keyId && datosCanal.key) {
                 respuesta.drm = {
                     "org.w3.clearkey": {
-                        "clearkeys": {
-                            [hexToBase64Url(datosCanal.keyId)]: hexToBase64Url(datosCanal.key)
-                        }
+                        "clearkeys": { [hexToBase64Url(datosCanal.keyId)]: hexToBase64Url(datosCanal.key) }
                     }
                 };
             }
             
-            // 🔥 APAGAMOS EL FORZADO: Ya no obligamos a los HTTP a usar el proxy.
-            // Si el canal tiene "usarProxy": true en el JSON, lo usa. Si no, va directo.
             if (datosCanal.usarProxy) {
                 respuesta.url = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
             }
-            
             return res.json(respuesta);
         }
     } catch (error) {
@@ -670,22 +737,31 @@ app.get('/play/:canal', async (req, res) => {
     if (!datosCanal) return res.status(404).send("Error: Canal no encontrado.");
 
     try {
-        if (datosCanal.urlScraping) {
-            const ahora = Date.now();
+        const ahora = Date.now();
+
+        if (datosCanal.usarBot && datosCanal.codigoBase64) {
+            if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 43200000)) {
+                return res.redirect(302, memoriaCache[canalId].url);
+            }
+            const nuevoLink = await encolarBot(() => obtenerBaseFresca(datosCanal.codigoBase64));
+            if (nuevoLink) {
+                memoriaCache[canalId] = { url: nuevoLink, tiempo: ahora };
+                return res.redirect(302, nuevoLink);
+            } else {
+                return res.status(500).send("Error: El bot no encontró el enlace.");
+            }
+        } 
+        else if (datosCanal.urlScraping) {
             if (memoriaCache[canalId] && (ahora - memoriaCache[canalId].tiempo < 7200000)) {
                 return res.redirect(302, memoriaCache[canalId].url);
             }
-
-           const resultadoBot = await encolarBot(() => correrBot(datosCanal, canalId));
-
+            const resultadoBot = await encolarBot(() => correrBot(datosCanal, canalId));
             if (resultadoBot && resultadoBot.urlFinal) {
                 const esMpdDescubierto = resultadoBot.urlFinal.toLowerCase().includes('.mpd');
                 const urlFinal = esMpdDescubierto 
                     ? resultadoBot.urlFinal 
                     : `${API_URL}/proxy/stream?url=${encodeURIComponent(resultadoBot.urlFinal)}`;
-
-                // La ruta play solo hace redirect, no procesa el DRM para reproductores externos simples
-                memoriaCache[canalId] = { url: urlFinal, tiempo: Date.now() };
+                memoriaCache[canalId] = { url: urlFinal, tiempo: ahora };
                 return res.redirect(302, urlFinal);
             } else {
                 return res.status(500).send("Error: El bot no encontró ningún stream.");
@@ -693,12 +769,10 @@ app.get('/play/:canal', async (req, res) => {
         } else {
             const separador = datosCanal.parametros ? '?' : '';
             const urlCompleta = `${datosCanal.base}${separador}${datosCanal.parametros}`;
-            
-           // 🔥 APAGAMOS EL FORZADO PARA REPRODUCTORES EXTERNOS Y SMART TV
             if (datosCanal.usarProxy) {
                 return res.redirect(302, `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`);
             }
-            return res.redirect(302, urlCompleta); // <-- Va directo usando la IP de tu casa
+            return res.redirect(302, urlCompleta);
         }
     } catch (error) {
         return res.status(500).send(`Error: ${error.message}`);
