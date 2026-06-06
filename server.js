@@ -677,25 +677,33 @@ async function obtenerBaseFresca(codigoBase64, ipCliente) {
     return linkCapturado;
 }
 // ============================================================
-// NUEVO: MINI-BOT OFICIAL PARA TELEFE (Súper rápido)
+// NUEVO: MINI-BOT OFICIAL PARA TELEFE (Con Máscara de Humano)
 // ============================================================
 async function obtenerLinkTelefeOficial() {
     console.log("🕵️‍♂️ Mini-bot buscando token oficial de Telefe...");
     try {
-        // 1. Entramos a la página oficial (con Axios, súper rápido)
-        const respuesta = await axios.get('https://mitelefe.com/vivo');
+        // Le mandamos cabeceras oficiales para que Akamai/Telefe no nos bloquee
+        const respuesta = await axios.get('https://mitelefe.com/vivo', {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'es-AR,es;q=0.8,en-US;q=0.5,en;q=0.3',
+                'Referer': 'https://mitelefe.com/'
+            },
+            timeout: 10000 // Le damos 10 segundos máximo
+        });
         
-        // 2. Buscamos el token con la misma fórmula que encontraste
+        // Buscamos el token en el código fuente
         const tokenMatch = respuesta.data.match(/data-player-token-value="([^"]+)"/);
         
         if (tokenMatch && tokenMatch[1]) {
             const token = tokenMatch[1];
-            // 3. Armamos el link oficial de Akamai
+            // Armamos el link oficial de Akamai
             const linkFinal = `https://telefeappmitelefe1.akamaized.net/hls/live/2037985/appmitelefe/${token}/master.m3u8`;
-            console.log(`✅ ¡Token de Telefe atrapado exitosamente!`);
+            console.log(`✅ ¡Token de Telefe atrapado exitosamente!: ${token.substring(0, 15)}...`);
             return linkFinal;
         } else {
-            console.log("❌ No se encontró el token de Telefe en la página.");
+            console.log("❌ Entramos a Telefe, pero el token no estaba en el texto.");
             return null;
         }
     } catch (error) {
