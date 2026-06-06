@@ -583,10 +583,10 @@ function hexToBase64Url(hexString) {
 }
 
 // ============================================================
-// NUEVO: BOT RÁPIDO PARA CANALES PREMIUM (MODO DIAGNÓSTICO)
+// NUEVO: BOT RÁPIDO PARA CANALES PREMIUM (MODO ENSAMBLADOR)
 // ============================================================
 async function obtenerBaseFresca(codigoBase64) {
-    console.log(`🕵️‍♂️ Bot buscando link para: ${codigoBase64} (Modo Diagnóstico)`);
+    console.log(`🕵️‍♂️ Bot buscando link para: ${codigoBase64} (Modo Ensamblador)`);
     
     const urlObjetivo = `https://bestleague.top/tok.html?get=${codigoBase64}`;
     let linkCapturado = null;
@@ -597,62 +597,40 @@ async function obtenerBaseFresca(codigoBase64) {
             '--no-sandbox', 
             '--disable-setuid-sandbox', 
             '--disable-dev-shm-usage',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process' // 🚨 CLAVE: Permite espiar dentro de reproductores ocultos (iframes)
+            '--disable-web-security'
         ]
     });
 
     try {
         const page = await browser.newPage();
-        
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         await page.setExtraHTTPHeaders({ 'Referer': 'https://tvlibre-online.com/' });
-        await page.setRequestInterception(true);
 
-        page.on('request', (request) => {
-            const urlPeticion = request.url();
-            if (urlPeticion.includes('.mpd') || urlPeticion.includes('.m3u8') || urlPeticion.includes('m3u')) {
-                linkCapturado = urlPeticion;
-                console.log(`✅ ¡LINK ATRAPADO EN LA RED!: ${urlPeticion.substring(0, 80)}...`);
-            }
-            request.continue();
-        });
+        console.log("⏳ Entrando a la página para robar los tokens...");
+        // Ya no necesitamos esperar mucho porque no vamos a reproducir el video
+        await page.goto(urlObjetivo, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        await new Promise(r => setTimeout(r, 2000)); 
 
-        console.log("⏳ Entrando a la página...");
-        await page.goto(urlObjetivo, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        const htmlCompleto = await page.content();
         
-        // 🩺 DIAGNÓSTICO: Leemos qué página está viendo el bot en Render
-        const titulo = await page.title();
-        console.log(`📄 Título que está viendo el bot: "${titulo}"`);
-
-        if (titulo.toLowerCase().includes('just a moment') || titulo.toLowerCase().includes('cloudflare')) {
-            console.log("🛑 ALERTA: Cloudflare está bloqueando la conexión desde Render.");
-        }
-
-        console.log("👆 Simulando clics en el centro...");
-        await new Promise(r => setTimeout(r, 4000));
-        await page.mouse.click(300, 200);
-        await new Promise(r => setTimeout(r, 1000));
-        await page.mouse.click(300, 200);
-
-        console.log("⏳ Esperando 8 segundos...");
-        await new Promise(r => setTimeout(r, 8000)); 
-
-        // 🪚 PLAN B: SI LA RED FALLA, CORTAMOS EL CÓDIGO HTML Y BUSCAMOS EL LINK A LA FUERZA
-        if (!linkCapturado) {
-            console.log("🔍 La red falló. Escaneando el código fuente de la página...");
-            const htmlCompleto = await page.content();
+        // 🧩 ROBAMOS LAS PIEZAS DEL ROMPECABEZAS DEL CÓDIGO FUENTE
+        const cdnMatch = htmlCompleto.match(/['"]?cdn['"]?\s*:\s*['"]([^'"]+)['"]/i);
+        const tokenMatch = htmlCompleto.match(/['"]?token['"]?\s*:\s*['"]([^'"]+)['"]/i);
+        const numberMatch = htmlCompleto.match(/number\s*=\s*['"]?(\d+)['"]?/i);
+        
+        if (cdnMatch && tokenMatch) {
+            const cdn = cdnMatch[1];
+            const token = tokenMatch[1];
+            const number = numberMatch ? numberMatch[1] : '1';
             
-            // Buscamos cualquier cosa que empiece con http y termine en .mpd o .m3u8
-            const regex = /(https?:\/\/[^\s"'<>]+\.(?:mpd|m3u8)[^\s"'<>]*)/i;
-            const match = htmlCompleto.match(regex);
+            // Traducimos tu código Base64 ("Rm94...") a texto ("Fox_Sports_Premiun_HD")
+            const decodificado = Buffer.from(codigoBase64, 'base64').toString('utf-8');
             
-            if (match && match[0]) {
-                linkCapturado = match[0];
-                console.log(`✅ ¡LINK RESCATADO DEL CÓDIGO!: ${linkCapturado.substring(0, 80)}...`);
-            } else {
-                console.log("❌ Fracaso total: No se encontró el link ni en la red ni en el código.");
-            }
+            // 🔨 ARMAMOS EL LINK FINAL PERFECTO
+            linkCapturado = `https://${cdn}.cvattv.com.ar/${token}/live/c${number}eds/${decodificado}/SA_Live_dash_enc/${decodificado}.mpd`;
+            console.log(`✅ ¡ROMPECABEZAS ARMADO!: ${linkCapturado}`);
+        } else {
+            console.log("❌ No se encontraron los ingredientes en la página.");
         }
 
     } catch (e) {
