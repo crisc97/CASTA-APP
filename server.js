@@ -583,10 +583,10 @@ function hexToBase64Url(hexString) {
 }
 
 // ============================================================
-// NUEVO: BOT RÁPIDO PARA CANALES PREMIUM (MODO HACKER PC)
+// NUEVO: BOT RÁPIDO PARA CANALES PREMIUM (MODO DIAGNÓSTICO)
 // ============================================================
 async function obtenerBaseFresca(codigoBase64) {
-    console.log(`🕵️‍♂️ Bot buscando link para: ${codigoBase64} (Modo Hacker PC)`);
+    console.log(`🕵️‍♂️ Bot buscando link para: ${codigoBase64} (Modo Diagnóstico)`);
     
     const urlObjetivo = `https://bestleague.top/tok.html?get=${codigoBase64}`;
     let linkCapturado = null;
@@ -597,55 +597,63 @@ async function obtenerBaseFresca(codigoBase64) {
             '--no-sandbox', 
             '--disable-setuid-sandbox', 
             '--disable-dev-shm-usage',
-            '--disable-web-security', 
-            '--autoplay-policy=no-user-gesture-required',
-            '--disable-blink-features=AutomationControlled'
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process' // 🚨 CLAVE: Permite espiar dentro de reproductores ocultos (iframes)
         ]
     });
 
     try {
         const page = await browser.newPage();
         
-        // 💉 INYECCIÓN LETAL: Le hacemos creer a la página que TENEMOS su extensión instalada
-        await page.evaluateOnNewDocument(() => {
-            window.chrome = window.chrome || {};
-            window.chrome.runtime = window.chrome.runtime || { sendMessage: (a,b,c) => {} };
-            window.isExtensionInstalled = true;
-            window.hasExtension = true;
-            localStorage.setItem('ext_installed', '1');
-        });
-
-        // 🎭 Máscara de humano
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         await page.setExtraHTTPHeaders({ 'Referer': 'https://tvlibre-online.com/' });
-
         await page.setRequestInterception(true);
 
         page.on('request', (request) => {
             const urlPeticion = request.url();
-            
-            // 🚨 AMPLIAMOS EL RADAR: Atrapamos .mpd y .m3u8. 
-            if (urlPeticion.includes('.mpd') || urlPeticion.includes('.m3u8')) {
-                // Filtramos publicidades o cosas vacías
-                if (!urlPeticion.includes('blank') && !linkCapturado) { 
-                    linkCapturado = urlPeticion;
-                    console.log(`✅ ¡LINK ATRAPADO!: ${urlPeticion.substring(0, 60)}...`);
-                }
+            if (urlPeticion.includes('.mpd') || urlPeticion.includes('.m3u8') || urlPeticion.includes('m3u')) {
+                linkCapturado = urlPeticion;
+                console.log(`✅ ¡LINK ATRAPADO EN LA RED!: ${urlPeticion.substring(0, 80)}...`);
             }
             request.continue();
         });
 
-        console.log("⏳ Entrando a la página PC engañada...");
+        console.log("⏳ Entrando a la página...");
         await page.goto(urlObjetivo, { waitUntil: 'domcontentloaded', timeout: 30000 });
         
-        console.log("👆 Forzando inicio del reproductor...");
+        // 🩺 DIAGNÓSTICO: Leemos qué página está viendo el bot en Render
+        const titulo = await page.title();
+        console.log(`📄 Título que está viendo el bot: "${titulo}"`);
+
+        if (titulo.toLowerCase().includes('just a moment') || titulo.toLowerCase().includes('cloudflare')) {
+            console.log("🛑 ALERTA: Cloudflare está bloqueando la conexión desde Render.");
+        }
+
+        console.log("👆 Simulando clics en el centro...");
         await new Promise(r => setTimeout(r, 4000));
         await page.mouse.click(300, 200);
         await new Promise(r => setTimeout(r, 1000));
         await page.mouse.click(300, 200);
 
-        console.log("⏳ Dándole 10 segundos al video para arrancar...");
-        await new Promise(r => setTimeout(r, 10000)); 
+        console.log("⏳ Esperando 8 segundos...");
+        await new Promise(r => setTimeout(r, 8000)); 
+
+        // 🪚 PLAN B: SI LA RED FALLA, CORTAMOS EL CÓDIGO HTML Y BUSCAMOS EL LINK A LA FUERZA
+        if (!linkCapturado) {
+            console.log("🔍 La red falló. Escaneando el código fuente de la página...");
+            const htmlCompleto = await page.content();
+            
+            // Buscamos cualquier cosa que empiece con http y termine en .mpd o .m3u8
+            const regex = /(https?:\/\/[^\s"'<>]+\.(?:mpd|m3u8)[^\s"'<>]*)/i;
+            const match = htmlCompleto.match(regex);
+            
+            if (match && match[0]) {
+                linkCapturado = match[0];
+                console.log(`✅ ¡LINK RESCATADO DEL CÓDIGO!: ${linkCapturado.substring(0, 80)}...`);
+            } else {
+                console.log("❌ Fracaso total: No se encontró el link ni en la red ni en el código.");
+            }
+        }
 
     } catch (e) {
         console.log("❌ Error en bot:", e.message);
