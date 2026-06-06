@@ -582,7 +582,7 @@ function hexToBase64Url(hexString) {
         .replace(/=+$/, '');
 }
 
-/// ============================================================
+// ============================================================
 // NUEVO: BOT RÁPIDO PARA CANALES PREMIUM
 // ============================================================
 async function obtenerBaseFresca(codigoBase64) {
@@ -592,24 +592,43 @@ async function obtenerBaseFresca(codigoBase64) {
 
     const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox', 
+            '--disable-dev-shm-usage',
+            '--disable-web-security' // Ayuda a evadir bloqueos cruzados
+        ]
     });
 
     try {
         const page = await browser.newPage();
+        
+        // 🎭 DISFRAZAMOS AL BOT DE UN HUMANO EN GOOGLE CHROME DE WINDOWS
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        
+        // Le decimos a la página que venimos desde TvLibre para que nos deje entrar
+        await page.setExtraHTTPHeaders({
+            'Referer': 'https://tvlibre-online.com/'
+        });
+
         await page.setRequestInterception(true);
 
         page.on('request', (request) => {
             const urlPeticion = request.url();
-            // Atrapamos el link MPD con el token
-            if (urlPeticion.includes('.mpd') && urlPeticion.includes('tok_')) {
+            // Atrapamos cualquier link MPD que contenga un token
+            if (urlPeticion.includes('.mpd') && (urlPeticion.includes('tok_') || urlPeticion.includes('token'))) {
                 linkCapturado = urlPeticion;
+                console.log(`✅ ¡LINK ATRAPADO EXITOSAMENTE!`);
             }
             request.continue();
         });
 
-        await page.goto(urlObjetivo, { waitUntil: 'networkidle2', timeout: 30000 });
-        await new Promise(r => setTimeout(r, 4000)); // Esperamos que cargue
+        console.log("⏳ Entrando a la página oculta...");
+        await page.goto(urlObjetivo, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        
+        console.log("⏳ Dándole 8 segundos al video para que cargue...");
+        await new Promise(r => setTimeout(r, 8000)); 
+
     } catch (e) {
         console.log("❌ Error en bot rápido:", e.message);
     } finally {
