@@ -583,10 +583,10 @@ function hexToBase64Url(hexString) {
 }
 
 // ============================================================
-// NUEVO: BOT RÁPIDO PARA CANALES PREMIUM (MODO STEALTH)
+// NUEVO: BOT RÁPIDO PARA CANALES PREMIUM (MODO HACKER PC)
 // ============================================================
 async function obtenerBaseFresca(codigoBase64) {
-    console.log(`🕵️‍♂️ Bot buscando link para: ${codigoBase64} (Modo Stealth)`);
+    console.log(`🕵️‍♂️ Bot buscando link para: ${codigoBase64} (Modo Hacker PC)`);
     
     const urlObjetivo = `https://bestleague.top/tok.html?get=${codigoBase64}`;
     let linkCapturado = null;
@@ -599,14 +599,23 @@ async function obtenerBaseFresca(codigoBase64) {
             '--disable-dev-shm-usage',
             '--disable-web-security', 
             '--autoplay-policy=no-user-gesture-required',
-            '--disable-blink-features=AutomationControlled' // 🥷 MODO NINJA: Evita que detecten que es un robot
+            '--disable-blink-features=AutomationControlled'
         ]
     });
 
     try {
         const page = await browser.newPage();
         
-        // 🎭 Engañamos al navegador para que parezca un humano real
+        // 💉 INYECCIÓN LETAL: Le hacemos creer a la página que TENEMOS su extensión instalada
+        await page.evaluateOnNewDocument(() => {
+            window.chrome = window.chrome || {};
+            window.chrome.runtime = window.chrome.runtime || { sendMessage: (a,b,c) => {} };
+            window.isExtensionInstalled = true;
+            window.hasExtension = true;
+            localStorage.setItem('ext_installed', '1');
+        });
+
+        // 🎭 Máscara de humano
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         await page.setExtraHTTPHeaders({ 'Referer': 'https://tvlibre-online.com/' });
 
@@ -614,25 +623,29 @@ async function obtenerBaseFresca(codigoBase64) {
 
         page.on('request', (request) => {
             const urlPeticion = request.url();
-            // 🚨 RELAJAMOS EL FILTRO: Atrapamos CUALQUIER archivo .mpd, sin importar si dice "tok_"
-            if (urlPeticion.includes('.mpd')) {
-                linkCapturado = urlPeticion;
-                console.log(`✅ ¡LINK ATRAPADO EXITOSAMENTE!`);
+            
+            // 🚨 AMPLIAMOS EL RADAR: Atrapamos .mpd y .m3u8. 
+            if (urlPeticion.includes('.mpd') || urlPeticion.includes('.m3u8')) {
+                // Filtramos publicidades o cosas vacías
+                if (!urlPeticion.includes('blank') && !linkCapturado) { 
+                    linkCapturado = urlPeticion;
+                    console.log(`✅ ¡LINK ATRAPADO!: ${urlPeticion.substring(0, 60)}...`);
+                }
             }
             request.continue();
         });
 
-        console.log("⏳ Entrando a la página oculta...");
-        await page.goto(urlObjetivo, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        console.log("⏳ Entrando a la página PC engañada...");
+        await page.goto(urlObjetivo, { waitUntil: 'domcontentloaded', timeout: 30000 });
         
-        console.log("👆 Haciendo clics humanos...");
+        console.log("👆 Forzando inicio del reproductor...");
         await new Promise(r => setTimeout(r, 4000));
         await page.mouse.click(300, 200);
         await new Promise(r => setTimeout(r, 1000));
         await page.mouse.click(300, 200);
 
-        console.log("⏳ Dándole 8 segundos al video para arrancar...");
-        await new Promise(r => setTimeout(r, 8000)); 
+        console.log("⏳ Dándole 10 segundos al video para arrancar...");
+        await new Promise(r => setTimeout(r, 10000)); 
 
     } catch (e) {
         console.log("❌ Error en bot:", e.message);
