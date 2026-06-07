@@ -64,7 +64,7 @@
     
     {"nombre": "Universal Comedy HD","categoria": "Cine y Series","logo": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgVwZpFZhnt0eWI_KEB9pw87hA7tpgUsE5ingp0CVLi2utbz9XtCp0zkmA9pD_SL0oc_hiia-zudSCky2GaTyfZ4VJQoDDm6NOxYiXhQucNi7fIK4d_xBilRkeeMbnKaBlHI4Txi9DhTjg/s0/universal-comedy.png","opciones": [{ "nombre": "Reproducir", "id": "universal_comedy" }]},
 
-    { "nombre": "Discovery", "categoria": "Cultura", "logo": "https://logodownload.org/wp-content/uploads/2017/04/discovery-channel-logo-0.png", "opciones": [[{ "nombre": "Ver Canal", "id": "discoverychannel_iptv" },{ "nombre": "Directo", "id": "discovery_arg" }] },
+    { "nombre": "Discovery", "categoria": "Cultura", "logo": "https://logodownload.org/wp-content/uploads/2017/04/discovery-channel-logo-0.png", "opciones": [{ "nombre": "Ver Canal", "id": "discoverychannel_iptv" },{ "nombre": "Directo", "id": "discovery_arg" }] },
     { "nombre": "Discovery ID", "categoria": "Cultura", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/InvestigationDiscoveryLogo2020.svg/250px-InvestigationDiscoveryLogo2020.svg.png", "opciones": [{ "nombre": "Directo", "id": "discoveryid_arg" }] },
    { "nombre": "Discovery H&H", "categoria": "Variedades", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Discovery_Home_%26_Health_logo.svg/330px-Discovery_Home_%26_Health_logo.svg.png", "opciones": [{ "nombre": "Ver Canal", "id": "discoveryhh_iptv" }] },
    { "nombre": "Discovery Science", "categoria": "Variedades", "logo": "https://geo.edge.pontiscloud.com:9002/images/261/CH_LOGO/800/542/0/0/9654717907493.png", "opciones": [{ "nombre": "Ver Canal", "id": "discoveryscience_iptv" }] },
