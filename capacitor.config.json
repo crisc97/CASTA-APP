@@ -6,7 +6,10 @@
   "bundledWebRuntime": false,
   "server": {
     "androidScheme": "http",
-    "cleartext": true
+    "cleartext": true,
+    "allowNavigation": [
+      "*"
+    ]
   },
   "android": {
     "overrideUserAgent": "VLC/3.0.0 LibVLC/3.0.0"

@@ -11,15 +11,12 @@
     <style>
         body { background-color: black !important; }
         
-        /* 🚨 SALVAVIDAS NATIVO: Si Tailwind tarda un milisegundo en iniciar, esto evita que se mezclen los elementos en el celu */
         .hidden { display: none !important; }
         
-        /* 🔪 MATAMOS TODOS LOS CONTROLES NATIVOS INCLUYENDO EL PLAY GIGANTE */
         video::-webkit-media-controls { display: none !important; }
         video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none !important; }
         video::-webkit-media-controls-overlay-play-button { display: none !important; -webkit-appearance: none !important; }
         
-        /* Fondo negro por defecto para que no se vea el pixelado mientras carga */
         video {
             background-color: black !important;
             outline: none !important;
@@ -45,7 +42,7 @@
             <p class="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse mt-2">cargando transmisión, gracias por esperar</p>
         </div>
         
-        <video id="video-player" class="w-full h-full object-contain" autoplay playsinline webkit-playsinline muted></video>
+        <video id="video-player" class="w-full h-full object-contain" autoplay playsinline webkit-playsinline></video>
 
         <iframe id="iframeElement" allow="encrypted-media" allowfullscreen frameborder="0" scrolling="no" class="w-full h-full bg-black hidden"></iframe>
 
@@ -110,10 +107,11 @@
     </div>
 
     <script>
-        // DETECCIÓN GLOBAL DE SMART TV
+        // 🔍 DETECCIÓN AVANZADA DE DISPOSITIVOS
         const ua = navigator.userAgent.toLowerCase();
-        const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox');
-        const esCelular = /android|iphone|ipad|ipod/i.test(ua);
+        const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox') || ua.includes('mibox') || ua.includes('chromecast');
+        const esCelularWeb = /android|iphone|ipad|ipod/i.test(ua);
+        const esCapacitorNativo = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorVideoPlayer);
 
         const videoElement = document.getElementById('video-player');
         const iframeElement = document.getElementById('iframeElement'); 
@@ -208,16 +206,25 @@
             }
         }
 
-        function verificarFiltroDispositivo() {
-            if (esTV || esCelular) {
+        function adaptarInterfazPorDispositivo() {
+            console.log(`🤖 Entorno detectado -> Nativo Android: ${esCapacitorNativo} | SmartTV: ${esTV} | Celular Web: ${esCelularWeb}`);
+            
+            // Si es Smart TV o Celular, escondemos controles de volumen manuales por comodidad
+            if (esTV || esCelularWeb || esCapacitorNativo) {
                 if (btnVolMenos) btnVolMenos.classList.add('hidden');
                 if (btnVolMas) btnVolMas.classList.add('hidden');
                 if (btnSilenciar) btnSilenciar.classList.add('hidden');
                 if (txtVolValue) txtVolValue.classList.add('hidden');
-
-                videoElement.volume = 1.0;
-                videoElement.muted = false;
             }
+            
+            // En Smart TV, ocultamos el menú lateral fijo para maximizar pantalla
+            if (esTV) {
+                ocultarSidebarCompleto();
+            }
+
+            // Forzar encendido total del componente de audio web
+            videoElement.volume = 1.0;
+            videoElement.muted = false;
         }
 
         async function iniciarClima() {
@@ -280,13 +287,12 @@
             btnFullscreen.onclick = function() {
                 this.blur(); 
                 const docElm = document.documentElement; 
-                const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
                 
                 if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                     const req = docElm.requestFullscreen || docElm.webkitRequestFullscreen;
                     if (req) {
                         req.call(docElm).then(() => {
-                            if (esCelular && window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                            if (esCelularWeb && window.screen && window.screen.orientation && window.screen.orientation.lock) {
                                 window.screen.orientation.lock('landscape').catch(e => console.log("Bloqueo horizontal:", e));
                             }
                         }).catch(err => console.log("Error Fullscreen:", err));
@@ -295,22 +301,19 @@
                     }
                 } else {
                     const exit = document.exitFullscreen || document.webkitExitFullscreen;
-                    if (exit) {
-                        exit.call(document);
-                    }
+                    if (exit) exit.call(document);
                 }
             };
         }
 
         function manejarCambioFullscreen() {
             const esFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-            const esCelular = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
 
             if (esFullscreen) {
                 ocultarSidebarCompleto(); 
             } else {
                 mostrarSidebarCompleto(); 
-                if (esCelular && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                if (esCelularWeb && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
                     window.screen.orientation.unlock().catch(() => {});
                 }
             }
@@ -324,6 +327,14 @@
                 const data = await res.json();
                 cacheCanalesGlobal = data;
                 renderizarMenuCanales();
+                
+                // 📺 COMODIDAD SMART TV: Si abre en TV, auto-enfocamos el primer canal de la lista al cargar
+                if (esTV) {
+                    setTimeout(() => {
+                        const primerBoton = listaCanales.querySelector('button');
+                        if (primerBoton) primerBoton.focus();
+                    }, 800);
+                }
             } catch (err) { console.error("Error cargando canales:", err); }
         }
 
@@ -384,7 +395,7 @@
                         }
                     };
                     containerOpciones.appendChild(b);
-                    if (index === 0) b.click(); 
+                    if (index === 0) b.click(); // Ejecuta autoplay inmediato de la opción primaria
                 });
                 mostrarControlesInteractivos();
             } else { mostrarAlerta(); }
@@ -397,7 +408,6 @@
                 const data = await res.json();
                 
                 if (data.exito && data.url) { 
-                    // 🚨 Le pasamos "data" completo para que viajen el token y las llaves codificadas
                     reproducirCanal(data.url, data); 
                 } else { 
                     ocultarLoader(); 
@@ -408,43 +418,74 @@
                 mostrarAlerta(); 
             }
         }
-async function reproducirCanal(url, infoStream) {
+
+        async function reproducirCanal(url, infoStream) {
             console.log("▶️ Intentando reproducir URL:", url);
             mostrarLoader();
 
-            // Limpiamos los reproductores anteriores por si quedó alguno colgado
-            if (hls) {
-                hls.destroy();
-                hls = null;
-            }
-            if (dashPlayer) {
-                if (typeof dashPlayer.destroy === 'function') {
-                    dashPlayer.destroy();
-                } else if (typeof dashPlayer.reset === 'function') {
-                    dashPlayer.reset();
+            // ==========================================================
+            // 📱 ESCENARIO A: COMPONENTE CELULAR NATIVO (EXOPLAYER)
+            // ==========================================================
+            if (esCapacitorNativo) {
+                console.log("📱 Lanzando ExoPlayer nativo sin restricciones...");
+                
+                if (hls) { hls.destroy(); hls = null; }
+                if (dashPlayer) { if (typeof dashPlayer.destroy === 'function') dashPlayer.destroy(); dashPlayer = null; }
+                
+                videoElement.src = "";
+                videoElement.removeAttribute("src");
+                videoElement.classList.add('hidden');
+
+                try {
+                    const { CapacitorVideoPlayer } = window.Capacitor.Plugins;
+                    try { await CapacitorVideoPlayer.stopAllPlayers(); } catch(e) {}
+
+                    const respuesta = await CapacitorVideoPlayer.initPlayer({
+                        mode: "fullscreen",
+                        url: url,
+                        playerId: "fullscreen",
+                        componentTag: "body",
+                        title: canalActualGlobal ? canalActualGlobal.nombre : "CASTA-APP",
+                        subTitle: "Transmisión en Vivo",
+                        httpHeaders: {
+                            "User-Agent": "VLC/3.0.0 LibVLC/3.0.0" // Salto de protección del proveedor
+                        }
+                    });
+
+                    console.log("🚀 ExoPlayer en reproducción:", respuesta);
+                    ocultarLoader();
+                    return; 
+                } catch (error) {
+                    console.error("❌ Falló el componente nativo, cayendo a motor Web:", error);
+                    videoElement.classList.remove('hidden'); 
                 }
+            }
+
+            // ==========================================================
+            // 💻 ESCENARIO B: SMART TV Y PC WEB (AUTOPLAY + AUDIO UNMUTE)
+            // ==========================================================
+            if (hls) { hls.destroy(); hls = null; }
+            if (dashPlayer) {
+                if (typeof dashPlayer.destroy === 'function') dashPlayer.destroy();
+                else if (typeof dashPlayer.reset === 'function') dashPlayer.reset();
                 dashPlayer = null;
             }
 
-            // Limpieza del elemento de video para evitar solapamiento de flujos
             videoElement.src = "";
             videoElement.removeAttribute("src");
             videoElement.classList.remove('hidden');
 
-            // ==========================================================
-            // 🚀 REPRODUCTOR UNIFICADO (PC, SMART TV Y CAPACITOR APP)
-            // ==========================================================
-            // Quitamos el short-circuit nativo. Ahora dejamos que hls.js 
-            // se encargue de procesar los fragmentos .m3u8 dentro de Android.
+            // 🚨 CONFIGURACIÓN DE AUDIO INMEDIATO (AUTOPLAY UNMUTED FORCE)
+            videoElement.muted = false;
+            videoElement.volume = 1.0;
 
-            // 1. CANALES PREMIUM Y FLUJOS MPD (FLOW / DRM)
+            // 1. CANALES PREMIUM Y FLUJOS MPD (DASH / DRM)
             if (url.includes('.mpd')) {
-                console.log("📦 Cargando flujo DASH con dash.js");
+                console.log("📦 Cargando DASH con autoplay unmuted");
                 dashPlayer = dashjs.MediaPlayer().create();
 
                 if (infoStream && infoStream.drm) {
                     let protectionData = {};
-
                     if (infoStream.drm["org.w3.clearkey"]) {
                         protectionData = infoStream.drm;
                     } 
@@ -452,45 +493,35 @@ async function reproducirCanal(url, infoStream) {
                         try {
                             const decodedKey = JSON.parse(atob(infoStream.drm.key));
                             const keyObj = decodedKey.keys[0];
-                            protectionData = {
-                                "org.w3.clearkey": {
-                                    "clearkeys": {
-                                        [keyObj.kid]: keyObj.k
-                                    }
-                                }
-                            };
-                        } catch (e) {
-                            console.error("❌ Error decodificando el DRM:", e);
-                        }
+                            protectionData = { "org.w3.clearkey": { "clearkeys": { [keyObj.kid]: keyObj.k } } };
+                        } catch (e) { console.error("❌ Error DRM:", e); }
                     }
-
-                    if (Object.keys(protectionData).length > 0) {
-                        dashPlayer.setProtectionData(protectionData);
-                    }
+                    if (Object.keys(protectionData).length > 0) dashPlayer.setProtectionData(protectionData);
                 }
 
-                dashPlayer.initialize(videoElement, url, true);
+                dashPlayer.initialize(videoElement, url, true); // El 'true' activa Autoplay nativo en dash.js
                 
                 dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
                     ocultarLoader();
+                    videoElement.play().catch(() => {
+                        // Resguardo por si el navegador bloquea audio por latencia del fetch
+                        videoElement.muted = true;
+                        videoElement.play().then(() => {
+                            setTimeout(() => { videoElement.muted = false; }, 200);
+                        });
+                    });
                 });
-
-                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                    console.error("🛑 Error en dash.js:", e);
-                    alert("ERROR DRM DASH: " + e.error);
-                    ocultarLoader();
-                    mostrarAlerta();
-                });
-
+                
+                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => { ocultarLoader(); mostrarAlerta(); });
             } 
             // 2. CANALES ESTÁNDAR HLS (.M3U8)
             else if (url.includes('.m3u8')) {
-                console.log("📺 Cargando flujo HLS con hls.js");
+                console.log("📺 Cargando HLS con autoplay unmuted");
                 if (Hls.isSupported()) {
                     hls = new Hls({
                         maxBufferLength: 10,
                         maxMaxBufferLength: 20,
-                        enableWorker: true,
+                        enableWorker: false,
                         lowLatencyMode: true
                     });
                     hls.loadSource(url);
@@ -498,41 +529,34 @@ async function reproducirCanal(url, infoStream) {
                     
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
                         ocultarLoader();
-                        let playPromiseHls = videoElement.play();
-                        if (playPromiseHls !== undefined) {
-                            playPromiseHls.catch(error => {
-                                console.warn("⚠️ Autoplay bloqueado, intentando forzar desmuteo...");
-                                videoElement.muted = false; 
-                                videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
+                        videoElement.play().catch(() => {
+                            // Backup: si el navegador jode con el sonido, arranca muted y desmutea al instante
+                            videoElement.muted = true;
+                            videoElement.play().then(() => {
+                                setTimeout(() => { videoElement.muted = false; videoElement.volume = 1.0; }, 150);
                             });
-                        }
+                        });
                     });
                     
-                    hls.on(Hls.Events.ERROR, (event, data) => { 
-                        console.error("🛑 Error en hls.js:", data);
-                        if (data.fatal) { 
-                            // 🚨 Diagnóstico en la pantalla del celular por si pasa algo raro
-                            alert("ERROR HLS: " + data.type + " | Detalle: " + data.details);
-                            ocultarLoader(); 
-                            mostrarAlerta();
-                        } 
-                    });
+                    hls.on(Hls.Events.ERROR, (event, data) => { if (data.fatal) { ocultarLoader(); mostrarAlerta(); } });
                 } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Modo alternativo nativo para Apple/iOS
                     videoElement.src = url;
                     videoElement.play();
                     ocultarLoader();
                 }
             }
-            // 3. OTROS FORMATOS (.mp4, directos, etc)
+            // 3. OTROS FORMATOS DIRECTOS
             else {
-                console.log("🎞️ Cargando formato directo alternativo");
                 videoElement.src = url;
-                videoElement.play();
+                videoElement.play().catch(() => {
+                    videoElement.muted = true;
+                    videoElement.play().then(() => { videoElement.muted = false; });
+                });
                 ocultarLoader();
             }
         }
 
+        // CONTROL REMOTO SMART TV / TECLADO PC
         document.addEventListener('keydown', (e) => {
             const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter' };
             const keyName = keys[e.keyCode];
@@ -559,31 +583,17 @@ async function reproducirCanal(url, infoStream) {
                         } else {
                             mostrarSidebarCompleto(); 
                         }
-                        
                         setTimeout(() => { if (botones.length > 0) botones[0].focus(); }, 150);
                         return;
                     }
-                    
                     mostrarControlesInteractivos();
-                    if (isEnter) {
-                        if (!videoElement.classList.contains('hidden') && videoElement.paused) {
-                            videoElement.play();
-                        }
-                    }
                     return;
                 }
             }
 
             if (document.activeElement === btnFullscreen) {
-                if (isRight) {
-                    if (botones.length > 0) botones[0].focus();
-                    e.preventDefault();
-                }
-                if (isDown) {
-                    const primerBotonOpcion = containerOpciones.querySelector('button');
-                    if (primerBotonOpcion) primerBotonOpcion.focus();
-                    e.preventDefault();
-                }
+                if (isRight) { if (botones.length > 0) botones[0].focus(); e.preventDefault(); }
+                if (isDown) { const pb = containerOpciones.querySelector('button'); if (pb) pb.focus(); e.preventDefault(); }
                 return;
             }
 
@@ -591,34 +601,20 @@ async function reproducirCanal(url, infoStream) {
                 const btnsOpc = Array.from(containerOpciones.querySelectorAll('button'));
                 const idxOpc = btnsOpc.indexOf(document.activeElement);
                 
-                if (isLeft && idxOpc > 0) { 
-                    btnsOpc[idxOpc - 1].focus(); e.preventDefault(); 
-                }
+                if (isLeft && idxOpc > 0) { btnsOpc[idxOpc - 1].focus(); e.preventDefault(); }
                 if (isRight) {
-                    if (idxOpc < btnsOpc.length - 1) { 
-                        btnsOpc[idxOpc + 1].focus(); 
-                    } else {
-                        if (botones.length > 0) botones[0].focus();
-                    }
+                    if (idxOpc < btnsOpc.length - 1) btnsOpc[idxOpc + 1].focus(); 
+                    else if (botones.length > 0) botones[0].focus();
                     e.preventDefault(); 
                 }
-                if (isUp) { 
-                    if (btnFullscreen && !btnFullscreen.classList.contains('hidden')) {
-                        btnFullscreen.focus();
-                    }
-                    e.preventDefault(); 
-                } 
+                if (isUp) { if (btnFullscreen) btnFullscreen.focus(); e.preventDefault(); } 
                 return;
             }
 
             if (document.activeElement.tagName === 'BUTTON' && document.activeElement.closest('#sidebar')) {
                 if (isLeft) {
-                    const primerBotonOpcion = containerOpciones.querySelector('button');
-                    if (primerBotonOpcion) {
-                        primerBotonOpcion.focus();
-                    } else if (btnFullscreen) {
-                        btnFullscreen.focus();
-                    }
+                    const pb = containerOpciones.querySelector('button');
+                    if (pb) pb.focus(); else if (btnFullscreen) btnFullscreen.focus();
                     e.preventDefault();
                     return;
                 }
@@ -631,33 +627,20 @@ async function reproducirCanal(url, infoStream) {
                 }
                 if (isUp) {
                     e.preventDefault();
-                    if (currentIndex === -1 && botones.length > 0) {
-                        botones[0].focus();
-                    } else if (currentIndex > 0) {
+                    if (currentIndex === -1 && botones.length > 0) botones[0].focus();
+                    else if (currentIndex > 0) {
                         botones[currentIndex - 1].focus();
                         botones[currentIndex - 1].scrollIntoView({ block: "nearest", behavior: "smooth" });
                     }
                 }
             } else {
-                if (isLeft || isUp) { 
-                    e.preventDefault(); 
-                    if(botones.length > 0) botones[0].focus(); 
-                    return; 
-                }
-                if (isEnter) {
-                    if (document.activeElement.tagName === 'BUTTON' || document.activeElement.tagName === 'A') {
-                        document.activeElement.click();
-                    } else {
-                        if (!videoElement.classList.contains('hidden') && videoElement.paused) {
-                            videoElement.play();
-                        }
-                    }
-                }
+                if (isLeft || isUp) { e.preventDefault(); if(botones.length > 0) botones[0].focus(); return; }
+                if (isEnter && (document.activeElement.tagName === 'BUTTON')) document.activeElement.click();
             }
         });
 
         window.onload = () => {
-            verificarFiltroDispositivo();
+            adaptarInterfazPorDispositivo();
             descargarListaCanales();
             iniciarReloj();
             iniciarClima();
