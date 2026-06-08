@@ -424,7 +424,8 @@ async function reproducirCanal(url, infoStream) {
                     await CapacitorVideoPlayer.initPlayer({
                         mode: "fullscreen",
                         url: url,
-                        playerId: "reproductor-casta"
+                        playerId: "reproductor-casta",
+                        chromecast: false   // <--- AGREGAMOS ESTA LÍNEA PARA EVITAR CRASHEOS
                     });
                 } catch (error) {
                     console.error("Error en el reproductor nativo: ", error);
