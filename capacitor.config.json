@@ -3,11 +3,8 @@
   "appName": "CASTA-APP",
   "webDir": "www",
   "backgroundColor": "#000000",
-  "server": {
-    "url": "https://casta-app.onrender.com",
-    "cleartext": true,
-    "allowNavigation": [
-      "*"
-    ]
+ "bundledWebRuntime": false,
+  "android": {
+    "overrideUserAgent": "VLC/3.0.0 LibVLC/3.0.0"
   }
 }

@@ -423,17 +423,15 @@ async function reproducirCanal(url, infoStream) {
             }
 
             videoElement.classList.remove('hidden');
-            if (document.getElementById('placeholder-player')) {
-                document.getElementById('placeholder-player').classList.add('hidden');
-            }
 
             // ==========================================================
-            // 🚀 MODO DIRECTO (Para Celular App y Smart TV)
+            // 🚀 MODO DIRECTO DEFINITIVO (Para App Local y Smart TV)
             // ==========================================================
-            // Si estamos en la App de Android (Capacitor) o en un Smart TV, 
-            // le pasamos el link directo al reproductor para esquivar el CORS.
+            // Al estar local y con el User-Agent cambiado en capacitor, 
+            // el tag <video> directo hereda la identidad de VLC y reproduce 
+            // los canales sin bloqueos y dentro de tu propio diseño.
             if (window.Capacitor || esTV) {
-                console.log("📱 Dispositivo Nativo/TV: Usando link directo sin HLS.js");
+                console.log("📱 Entorno Local App/TV: Cargando en tag video directo");
                 
                 videoElement.src = url;
                 
@@ -446,19 +444,19 @@ async function reproducirCanal(url, infoStream) {
                     });
                 };
                 
-                videoElement.onerror = () => {
-                    console.error("🛑 Error al reproducir el link directo.");
+                videoElement.onerror = (e) => {
+                    console.error("🛑 Error en reproducción directa:", e);
                     ocultarLoader();
                     mostrarAlerta();
                 };
                 
-                return; // ✋ Cortamos la función acá. 
+                return; // ✋ Cortamos la función acá para la App y la TV.
             }
 
-            console.log("💻 Cargando reproductores web para PC...");
+            console.log("💻 No estamos en la app, usando reproductores web para PC...");
 
             // ==========================================================
-            // CÓDIGO WEB ORIGINAL (Solo se ejecuta si entrás desde la PC)
+            // CÓDIGO WEB ORIGINAL (Solo para cuando lo mires desde la PC)
             // ==========================================================
 
             // CANALES PREMIUM Y FLUJOS MPD (FLOW / DRM)
@@ -477,7 +475,9 @@ async function reproducirCanal(url, infoStream) {
                             const keyObj = decodedKey.keys[0];
                             protectionData = {
                                 "org.w3.clearkey": {
-                                    [keyObj.kid]: keyObj.k
+                                    "clearkeys": {
+                                        [keyObj.kid]: keyObj.k
+                                    }
                                 }
                             };
                         } catch (e) {
@@ -522,7 +522,7 @@ async function reproducirCanal(url, infoStream) {
                             playPromiseHls.catch(error => {
                                 console.warn("⚠️ Autoplay bloqueado. Forzando Mute...");
                                 videoElement.muted = true; 
-                                videoElement.play();
+                                videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
                             });
                         }
                     });
