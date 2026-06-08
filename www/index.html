@@ -45,7 +45,7 @@
             <p class="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse mt-2">cargando transmisión, gracias por esperar</p>
         </div>
         
-        <video id="video-player" class="w-full h-full object-contain" autoplay playsinline></video>
+        <video id="video-player" class="w-full h-full object-contain" autoplay playsinline webkit-playsinline muted></video>
 
         <iframe id="iframeElement" allow="encrypted-media" allowfullscreen frameborder="0" scrolling="no" class="w-full h-full bg-black hidden"></iframe>
 
@@ -418,49 +418,28 @@ async function reproducirCanal(url, infoStream) {
                 hls = null;
             }
             if (dashPlayer) {
-                dashPlayer.reset();
+                if (typeof dashPlayer.destroy === 'function') {
+                    dashPlayer.destroy();
+                } else if (typeof dashPlayer.reset === 'function') {
+                    dashPlayer.reset();
+                }
                 dashPlayer = null;
             }
 
+            // Limpieza del elemento de video para evitar solapamiento de flujos
+            videoElement.src = "";
+            videoElement.removeAttribute("src");
             videoElement.classList.remove('hidden');
 
             // ==========================================================
-            // 🚀 MODO DIRECTO DEFINITIVO (Para App Local y Smart TV)
+            // 🚀 REPRODUCTOR UNIFICADO (PC, SMART TV Y CAPACITOR APP)
             // ==========================================================
-            // Al estar local y con el User-Agent cambiado en capacitor, 
-            // el tag <video> directo hereda la identidad de VLC y reproduce 
-            // los canales sin bloqueos y dentro de tu propio diseño.
-            if (window.Capacitor || esTV) {
-                console.log("📱 Entorno Local App/TV: Cargando en tag video directo");
-                
-                videoElement.src = url;
-                
-                videoElement.onloadeddata = () => {
-                    ocultarLoader();
-                    videoElement.play().catch(err => {
-                        console.warn("⚠️ Autoplay bloqueado, forzando Mute...");
-                        videoElement.muted = true;
-                        videoElement.play();
-                    });
-                };
-                
-                videoElement.onerror = (e) => {
-                    console.error("🛑 Error en reproducción directa:", e);
-                    ocultarLoader();
-                    mostrarAlerta();
-                };
-                
-                return; // ✋ Cortamos la función acá para la App y la TV.
-            }
+            // Quitamos el short-circuit nativo. Ahora dejamos que hls.js 
+            // se encargue de procesar los fragmentos .m3u8 dentro de Android.
 
-            console.log("💻 No estamos en la app, usando reproductores web para PC...");
-
-            // ==========================================================
-            // CÓDIGO WEB ORIGINAL (Solo para cuando lo mires desde la PC)
-            // ==========================================================
-
-            // CANALES PREMIUM Y FLUJOS MPD (FLOW / DRM)
+            // 1. CANALES PREMIUM Y FLUJOS MPD (FLOW / DRM)
             if (url.includes('.mpd')) {
+                console.log("📦 Cargando flujo DASH con dash.js");
                 dashPlayer = dashjs.MediaPlayer().create();
 
                 if (infoStream && infoStream.drm) {
@@ -498,13 +477,15 @@ async function reproducirCanal(url, infoStream) {
 
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
                     console.error("🛑 Error en dash.js:", e);
+                    alert("ERROR DRM DASH: " + e.error);
                     ocultarLoader();
                     mostrarAlerta();
                 });
 
             } 
-            // CANALES ESTÁNDAR HLS (.M3U8) PARA PC
+            // 2. CANALES ESTÁNDAR HLS (.M3U8)
             else if (url.includes('.m3u8')) {
+                console.log("📺 Cargando flujo HLS con hls.js");
                 if (Hls.isSupported()) {
                     hls = new Hls({
                         maxBufferLength: 10,
@@ -520,26 +501,32 @@ async function reproducirCanal(url, infoStream) {
                         let playPromiseHls = videoElement.play();
                         if (playPromiseHls !== undefined) {
                             playPromiseHls.catch(error => {
-                                console.warn("⚠️ Autoplay bloqueado. Forzando Mute...");
-                                videoElement.muted = true; 
+                                console.warn("⚠️ Autoplay bloqueado, intentando forzar desmuteo...");
+                                videoElement.muted = false; 
                                 videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
                             });
                         }
                     });
                     
                     hls.on(Hls.Events.ERROR, (event, data) => { 
+                        console.error("🛑 Error en hls.js:", data);
                         if (data.fatal) { 
+                            // 🚨 Diagnóstico en la pantalla del celular por si pasa algo raro
+                            alert("ERROR HLS: " + data.type + " | Detalle: " + data.details);
                             ocultarLoader(); 
+                            mostrarAlerta();
                         } 
                     });
                 } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Modo alternativo nativo para Apple/iOS
                     videoElement.src = url;
                     videoElement.play();
                     ocultarLoader();
                 }
             }
-            // OTROS FORMATOS (.mp4, etc)
+            // 3. OTROS FORMATOS (.mp4, directos, etc)
             else {
+                console.log("🎞️ Cargando formato directo alternativo");
                 videoElement.src = url;
                 videoElement.play();
                 ocultarLoader();
