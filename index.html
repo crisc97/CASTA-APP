@@ -44,8 +44,6 @@
         
         <video id="video-player" class="w-full h-full object-contain" autoplay playsinline webkit-playsinline></video>
 
-        <iframe id="iframeElement" allow="encrypted-media" allowfullscreen frameborder="0" scrolling="no" class="w-full h-full bg-black hidden"></iframe>
-
         <div id="topInfo" class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none z-10 transition-opacity duration-300">
             <div class="flex flex-col bg-black bg-opacity-40 backdrop-blur-sm p-2 rounded-lg border border-gray-800">
                 <span id="txtReloj" class="text-2xl font-bold font-mono text-white tracking-widest drop-shadow">00:00:00</span>
@@ -110,10 +108,8 @@
         const ua = navigator.userAgent.toLowerCase();
         const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox') || ua.includes('mibox') || ua.includes('chromecast');
         const esCelularWeb = /android|iphone|ipad|ipod/i.test(ua);
-        const esCapacitorNativo = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorVideoPlayer);
 
         const videoElement = document.getElementById('video-player');
-        const iframeElement = document.getElementById('iframeElement'); 
         const playerArea = document.getElementById('playerArea');
         const loader = document.getElementById('loader');
         const loaderLogo = document.getElementById('loaderLogo');
@@ -124,8 +120,6 @@
         const containerOpciones = document.getElementById('containerOpciones');
         const topInfo = document.getElementById('topInfo');
         
-        const pcMobileControls = document.getElementById('pcMobileControls');
-        const separadorControles = document.getElementById('separadorControles');
         const btnVolMenos = document.getElementById('btnVolMenos');
         const btnSilenciar = document.getElementById('btnSilenciar');
         const btnVolMas = document.getElementById('btnVolMas');
@@ -147,7 +141,6 @@
         }
 
         function mostrarSidebarCompleto() {
-            if (esTV) return; 
             sidebar.classList.remove('hidden');
             playerArea.style.width = '';
             playerArea.style.height = '';
@@ -206,13 +199,12 @@
         }
 
         function adaptarInterfazPorDispositivo() {
-            if (esTV || esCelularWeb || esCapacitorNativo) {
+            if (esTV || esCelularWeb) {
                 if (btnVolMenos) btnVolMenos.classList.add('hidden');
                 if (btnVolMas) btnVolMas.classList.add('hidden');
                 if (btnSilenciar) btnSilenciar.classList.add('hidden');
                 if (txtVolValue) txtVolValue.classList.add('hidden');
             }
-            
             if (esTV) {
                 ocultarSidebarCompleto();
             }
@@ -281,14 +273,9 @@
             btnFullscreen.onclick = function() {
                 this.blur(); 
                 const docElm = document.documentElement; 
-                
                 if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                     const req = docElm.requestFullscreen || docElm.webkitRequestFullscreen;
-                    if (req) {
-                        req.call(docElm).catch(err => console.log("Error Fullscreen:", err));
-                    } else if (videoElement.webkitEnterFullscreen) {
-                        videoElement.webkitEnterFullscreen(); 
-                    }
+                    if (req) req.call(docElm).catch(err => console.log("Error Fullscreen:", err));
                 } else {
                     const exit = document.exitFullscreen || document.webkitExitFullscreen;
                     if (exit) exit.call(document);
@@ -303,9 +290,7 @@
             if (esFullscreen) {
                 ocultarSidebarCompleto(); 
                 if (esMovil && window.screen && window.screen.orientation && window.screen.orientation.lock) {
-                    window.screen.orientation.lock('landscape').catch(err => {
-                        console.log("Rotación asistida activa al girar el dispositivo", err);
-                    });
+                    window.screen.orientation.lock('landscape').catch(() => {});
                 }
             } else {
                 mostrarSidebarCompleto(); 
@@ -324,8 +309,6 @@
                 cacheCanalesGlobal = data;
                 renderizarMenuCanales();
                 
-                // Si es un Smart TV, le da foco al primer botón para usar el control remoto,
-                // PERO NO le da click, espera que el usuario lo seleccione.
                 if (esTV) {
                     setTimeout(() => {
                         const primerBoton = listaCanales.querySelector('button');
@@ -394,8 +377,6 @@
                     };
                     containerOpciones.appendChild(b);
                     
-                    // 🚀 ACÁ SUCEDE LA MAGIA: 
-                    // Cuando armó los botones de opción, si es el primero (index === 0), le manda "click" solito.
                     if (index === 0) b.click(); 
                 });
                 mostrarControlesInteractivos();
@@ -425,44 +406,7 @@
             mostrarLoader();
 
             // ==========================================================
-            // 📱 REPRODUCCIÓN EN CELULAR NATIVO (EXOPLAYER)
-            // ==========================================================
-            if (esCapacitorNativo) {
-                if (hls) { hls.destroy(); hls = null; }
-                if (dashPlayer) { if (typeof dashPlayer.destroy === 'function') dashPlayer.destroy(); dashPlayer = null; }
-                
-                videoElement.src = "";
-                videoElement.removeAttribute("src");
-                videoElement.classList.add('hidden');
-
-                try {
-                    const { CapacitorVideoPlayer } = window.Capacitor.Plugins;
-                    try { await CapacitorVideoPlayer.stopAllPlayers(); } catch(e) {}
-
-                    // ExoPlayer maneja nativamente el formato de pantalla completa de Android
-                    const respuesta = await CapacitorVideoPlayer.initPlayer({
-                        mode: "fullscreen",
-                        url: url,
-                        playerId: "fullscreen",
-                        componentTag: "body",
-                        title: canalActualGlobal ? canalActualGlobal.nombre : "CASTA-APP",
-                        subTitle: "Transmisión en Vivo",
-                        httpHeaders: {
-                            "User-Agent": "VLC/3.0.0 LibVLC/3.0.0"
-                        }
-                    });
-
-                    console.log("🚀 ExoPlayer en reproducción:", respuesta);
-                    ocultarLoader();
-                    return; 
-                } catch (error) {
-                    console.error("❌ Caída a motor Web por falla del plugin:", error);
-                    videoElement.classList.remove('hidden'); 
-                }
-            }
-
-            // ==========================================================
-            // 💻 SMART TV Y PC WEB (AUTOPLAY ADAPTADO + DESMUTEO)
+            // AHORA TODO SE REPRODUCE INTEGRADO EN LA WEB (HTML5 / HLS / DASH)
             // ==========================================================
             if (hls) { hls.destroy(); hls = null; }
             if (dashPlayer) {
@@ -475,7 +419,6 @@
             videoElement.removeAttribute("src");
             videoElement.classList.remove('hidden');
 
-            // Aseguramos sonido de entrada al 100%
             videoElement.muted = false;
             videoElement.volume = 1.0;
 
@@ -552,8 +495,47 @@
             }
         }
 
-        // CONTROL REMOTO / TECLADO
+        // ==========================================================
+        // 🔄 SISTEMA INTELIGENTE PARA EL BOTÓN "ATRÁS" (TV Y MÓVIL)
+        // ==========================================================
+        function manejarBotonAtras() {
+            // 1. Si está en pantalla completa, lo saca de pantalla completa
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                if (exit) exit.call(document);
+                return;
+            }
+
+            // 2. Si el menú de canales está oculto, lo vuelve a mostrar (en vez de cerrar la app)
+            if (sidebar.classList.contains('hidden')) {
+                mostrarSidebarCompleto();
+                const botones = Array.from(listaCanales.querySelectorAll('button'));
+                if (botones.length > 0) botones[0].focus(); // Devuelve el foco a la lista
+                return;
+            }
+
+            // 3. Si el menú YA está a la vista, entonces sí cerramos la app
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+                window.Capacitor.Plugins.App.exitApp();
+            }
+        }
+
+        // Captura el botón "Atrás" en Capacitor (Android TV / Móvil Nativo)
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+            window.Capacitor.Plugins.App.addListener('backButton', () => {
+                manejarBotonAtras();
+            });
+        }
+
+        // CONTROL REMOTO / TECLADO (Incluye captura de botones "Atrás" físicos de la TV)
         document.addEventListener('keydown', (e) => {
+            // Códigos de botón "Atrás": 8 (Retroceso), 27 (Escape), 461 (LG WebOS), 10009 (Samsung Tizen)
+            if (e.keyCode === 8 || e.keyCode === 27 || e.keyCode === 461 || e.keyCode === 10009) {
+                e.preventDefault(); 
+                manejarBotonAtras();
+                return;
+            }
+
             const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter' };
             const keyName = keys[e.keyCode];
             if (!keyName) return;
