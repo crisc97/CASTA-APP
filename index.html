@@ -296,7 +296,6 @@
             };
         }
 
-        // 📱 ROTACIÓN INTELIGENTE EN CELULARES AL PASAR A PANTALLA COMPLETA
         function manejarCambioFullscreen() {
             const esFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
             const esMovil = /android|iphone|ipad|ipod/i.test(navigator.userAgent.toLowerCase());
@@ -325,12 +324,15 @@
                 cacheCanalesGlobal = data;
                 renderizarMenuCanales();
                 
+                // Si es un Smart TV, le da foco al primer botón para usar el control remoto,
+                // PERO NO le da click, espera que el usuario lo seleccione.
                 if (esTV) {
                     setTimeout(() => {
                         const primerBoton = listaCanales.querySelector('button');
                         if (primerBoton) primerBoton.focus();
                     }, 800);
                 }
+
             } catch (err) { console.error("Error cargando canales:", err); }
         }
 
@@ -392,7 +394,8 @@
                     };
                     containerOpciones.appendChild(b);
                     
-                    // 🚀 AUTOPLAY INMEDIATO: Al armarse las opciones, ejecuta el click de una sin retrasos
+                    // 🚀 ACÁ SUCEDE LA MAGIA: 
+                    // Cuando armó los botones de opción, si es el primero (index === 0), le manda "click" solito.
                     if (index === 0) b.click(); 
                 });
                 mostrarControlesInteractivos();
