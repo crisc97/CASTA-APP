@@ -107,7 +107,6 @@
     </div>
 
     <script>
-        // 🔍 DETECCIÓN AVANZADA DE DISPOSITIVOS
         const ua = navigator.userAgent.toLowerCase();
         const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox') || ua.includes('mibox') || ua.includes('chromecast');
         const esCelularWeb = /android|iphone|ipad|ipod/i.test(ua);
@@ -207,9 +206,6 @@
         }
 
         function adaptarInterfazPorDispositivo() {
-            console.log(`🤖 Entorno detectado -> Nativo Android: ${esCapacitorNativo} | SmartTV: ${esTV} | Celular Web: ${esCelularWeb}`);
-            
-            // Si es Smart TV o Celular, escondemos controles de volumen manuales por comodidad
             if (esTV || esCelularWeb || esCapacitorNativo) {
                 if (btnVolMenos) btnVolMenos.classList.add('hidden');
                 if (btnVolMas) btnVolMas.classList.add('hidden');
@@ -217,12 +213,10 @@
                 if (txtVolValue) txtVolValue.classList.add('hidden');
             }
             
-            // En Smart TV, ocultamos el menú lateral fijo para maximizar pantalla
             if (esTV) {
                 ocultarSidebarCompleto();
             }
 
-            // Forzar encendido total del componente de audio web
             videoElement.volume = 1.0;
             videoElement.muted = false;
         }
@@ -291,11 +285,7 @@
                 if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                     const req = docElm.requestFullscreen || docElm.webkitRequestFullscreen;
                     if (req) {
-                        req.call(docElm).then(() => {
-                            if (esCelularWeb && window.screen && window.screen.orientation && window.screen.orientation.lock) {
-                                window.screen.orientation.lock('landscape').catch(e => console.log("Bloqueo horizontal:", e));
-                            }
-                        }).catch(err => console.log("Error Fullscreen:", err));
+                        req.call(docElm).catch(err => console.log("Error Fullscreen:", err));
                     } else if (videoElement.webkitEnterFullscreen) {
                         videoElement.webkitEnterFullscreen(); 
                     }
@@ -306,14 +296,21 @@
             };
         }
 
+        // 📱 ROTACIÓN INTELIGENTE EN CELULARES AL PASAR A PANTALLA COMPLETA
         function manejarCambioFullscreen() {
             const esFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+            const esMovil = /android|iphone|ipad|ipod/i.test(navigator.userAgent.toLowerCase());
 
             if (esFullscreen) {
                 ocultarSidebarCompleto(); 
+                if (esMovil && window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                    window.screen.orientation.lock('landscape').catch(err => {
+                        console.log("Rotación asistida activa al girar el dispositivo", err);
+                    });
+                }
             } else {
                 mostrarSidebarCompleto(); 
-                if (esCelularWeb && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                if (esMovil && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
                     window.screen.orientation.unlock().catch(() => {});
                 }
             }
@@ -328,7 +325,6 @@
                 cacheCanalesGlobal = data;
                 renderizarMenuCanales();
                 
-                // 📺 COMODIDAD SMART TV: Si abre en TV, auto-enfocamos el primer canal de la lista al cargar
                 if (esTV) {
                     setTimeout(() => {
                         const primerBoton = listaCanales.querySelector('button');
@@ -395,7 +391,9 @@
                         }
                     };
                     containerOpciones.appendChild(b);
-                    if (index === 0) b.click(); // Ejecuta autoplay inmediato de la opción primaria
+                    
+                    // 🚀 AUTOPLAY INMEDIATO: Al armarse las opciones, ejecuta el click de una sin retrasos
+                    if (index === 0) b.click(); 
                 });
                 mostrarControlesInteractivos();
             } else { mostrarAlerta(); }
@@ -424,11 +422,9 @@
             mostrarLoader();
 
             // ==========================================================
-            // 📱 ESCENARIO A: COMPONENTE CELULAR NATIVO (EXOPLAYER)
+            // 📱 REPRODUCCIÓN EN CELULAR NATIVO (EXOPLAYER)
             // ==========================================================
             if (esCapacitorNativo) {
-                console.log("📱 Lanzando ExoPlayer nativo sin restricciones...");
-                
                 if (hls) { hls.destroy(); hls = null; }
                 if (dashPlayer) { if (typeof dashPlayer.destroy === 'function') dashPlayer.destroy(); dashPlayer = null; }
                 
@@ -440,6 +436,7 @@
                     const { CapacitorVideoPlayer } = window.Capacitor.Plugins;
                     try { await CapacitorVideoPlayer.stopAllPlayers(); } catch(e) {}
 
+                    // ExoPlayer maneja nativamente el formato de pantalla completa de Android
                     const respuesta = await CapacitorVideoPlayer.initPlayer({
                         mode: "fullscreen",
                         url: url,
@@ -448,7 +445,7 @@
                         title: canalActualGlobal ? canalActualGlobal.nombre : "CASTA-APP",
                         subTitle: "Transmisión en Vivo",
                         httpHeaders: {
-                            "User-Agent": "VLC/3.0.0 LibVLC/3.0.0" // Salto de protección del proveedor
+                            "User-Agent": "VLC/3.0.0 LibVLC/3.0.0"
                         }
                     });
 
@@ -456,13 +453,13 @@
                     ocultarLoader();
                     return; 
                 } catch (error) {
-                    console.error("❌ Falló el componente nativo, cayendo a motor Web:", error);
+                    console.error("❌ Caída a motor Web por falla del plugin:", error);
                     videoElement.classList.remove('hidden'); 
                 }
             }
 
             // ==========================================================
-            // 💻 ESCENARIO B: SMART TV Y PC WEB (AUTOPLAY + AUDIO UNMUTE)
+            // 💻 SMART TV Y PC WEB (AUTOPLAY ADAPTADO + DESMUTEO)
             // ==========================================================
             if (hls) { hls.destroy(); hls = null; }
             if (dashPlayer) {
@@ -475,13 +472,12 @@
             videoElement.removeAttribute("src");
             videoElement.classList.remove('hidden');
 
-            // 🚨 CONFIGURACIÓN DE AUDIO INMEDIATO (AUTOPLAY UNMUTED FORCE)
+            // Aseguramos sonido de entrada al 100%
             videoElement.muted = false;
             videoElement.volume = 1.0;
 
-            // 1. CANALES PREMIUM Y FLUJOS MPD (DASH / DRM)
+            // 1. CANALES MPD (DASH / DRM)
             if (url.includes('.mpd')) {
-                console.log("📦 Cargando DASH con autoplay unmuted");
                 dashPlayer = dashjs.MediaPlayer().create();
 
                 if (infoStream && infoStream.drm) {
@@ -499,12 +495,11 @@
                     if (Object.keys(protectionData).length > 0) dashPlayer.setProtectionData(protectionData);
                 }
 
-                dashPlayer.initialize(videoElement, url, true); // El 'true' activa Autoplay nativo en dash.js
+                dashPlayer.initialize(videoElement, url, true);
                 
                 dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
                     ocultarLoader();
                     videoElement.play().catch(() => {
-                        // Resguardo por si el navegador bloquea audio por latencia del fetch
                         videoElement.muted = true;
                         videoElement.play().then(() => {
                             setTimeout(() => { videoElement.muted = false; }, 200);
@@ -514,9 +509,8 @@
                 
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => { ocultarLoader(); mostrarAlerta(); });
             } 
-            // 2. CANALES ESTÁNDAR HLS (.M3U8)
+            // 2. CANALES HLS (.M3U8)
             else if (url.includes('.m3u8')) {
-                console.log("📺 Cargando HLS con autoplay unmuted");
                 if (Hls.isSupported()) {
                     hls = new Hls({
                         maxBufferLength: 10,
@@ -530,7 +524,6 @@
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
                         ocultarLoader();
                         videoElement.play().catch(() => {
-                            // Backup: si el navegador jode con el sonido, arranca muted y desmutea al instante
                             videoElement.muted = true;
                             videoElement.play().then(() => {
                                 setTimeout(() => { videoElement.muted = false; videoElement.volume = 1.0; }, 150);
@@ -556,7 +549,7 @@
             }
         }
 
-        // CONTROL REMOTO SMART TV / TECLADO PC
+        // CONTROL REMOTO / TECLADO
         document.addEventListener('keydown', (e) => {
             const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter' };
             const keyName = keys[e.keyCode];
@@ -573,7 +566,6 @@
 
             if (esTV) {
                 const sidebarOculto = document.getElementById('sidebar').classList.contains('hidden');
-                
                 if (sidebarOculto) {
                     if (isRight) {
                         e.preventDefault();
