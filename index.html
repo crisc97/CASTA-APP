@@ -412,35 +412,7 @@ async function reproducirCanal(url, infoStream) {
             console.log("▶️ Intentando reproducir URL:", url);
             mostrarLoader();
 
-            // ==========================================
-            // 🚀 NUEVA MAGIA: REPRODUCTOR NATIVO DE ANDROID
-            // ==========================================
-            if (window.Capacitor && window.Capacitor.Plugins.CapacitorVideoPlayer) {
-                console.log("📱 Usando reproductor NATIVO para esquivar CORS");
-                const { CapacitorVideoPlayer } = window.Capacitor.Plugins;
-                ocultarLoader(); // Ocultamos el circulito de carga web
-                
-                try {
-                    await CapacitorVideoPlayer.initPlayer({
-                        mode: "fullscreen",
-                        url: url,
-                        playerId: "reproductor-casta",
-                        chromecast: false   // <--- AGREGAMOS ESTA LÍNEA PARA EVITAR CRASHEOS
-                    });
-                } catch (error) {
-                    console.error("Error en el reproductor nativo: ", error);
-                    mostrarAlerta();
-                }
-                return; // Cortamos acá para que NO ejecute el reproductor de la página web
-            }
-
-            console.log("💻 No estamos en la app nativa, usando reproductor web...");
-
-            // ==========================================
-            // CÓDIGO WEB ORIGINAL (Para PC / Smart TV)
-            // ==========================================
-
-            // Limpiamos los reproductores anteriores
+            // Limpiamos los reproductores anteriores por si quedó alguno colgado
             if (hls) {
                 hls.destroy();
                 hls = null;
@@ -454,6 +426,40 @@ async function reproducirCanal(url, infoStream) {
             if (document.getElementById('placeholder-player')) {
                 document.getElementById('placeholder-player').classList.add('hidden');
             }
+
+            // ==========================================================
+            // 🚀 MODO DIRECTO (Para Celular App y Smart TV)
+            // ==========================================================
+            // Si estamos en la App de Android (Capacitor) o en un Smart TV, 
+            // le pasamos el link directo al reproductor para esquivar el CORS.
+            if (window.Capacitor || esTV) {
+                console.log("📱 Dispositivo Nativo/TV: Usando link directo sin HLS.js");
+                
+                videoElement.src = url;
+                
+                videoElement.onloadeddata = () => {
+                    ocultarLoader();
+                    videoElement.play().catch(err => {
+                        console.warn("⚠️ Autoplay bloqueado, forzando Mute...");
+                        videoElement.muted = true;
+                        videoElement.play();
+                    });
+                };
+                
+                videoElement.onerror = () => {
+                    console.error("🛑 Error al reproducir el link directo.");
+                    ocultarLoader();
+                    mostrarAlerta();
+                };
+                
+                return; // ✋ Cortamos la función acá. 
+            }
+
+            console.log("💻 Cargando reproductores web para PC...");
+
+            // ==========================================================
+            // CÓDIGO WEB ORIGINAL (Solo se ejecuta si entrás desde la PC)
+            // ==========================================================
 
             // CANALES PREMIUM Y FLUJOS MPD (FLOW / DRM)
             if (url.includes('.mpd')) {
@@ -471,9 +477,7 @@ async function reproducirCanal(url, infoStream) {
                             const keyObj = decodedKey.keys[0];
                             protectionData = {
                                 "org.w3.clearkey": {
-                                    "clearkeys": {
-                                        [keyObj.kid]: keyObj.k
-                                    }
+                                    [keyObj.kid]: keyObj.k
                                 }
                             };
                         } catch (e) {
@@ -499,7 +503,7 @@ async function reproducirCanal(url, infoStream) {
                 });
 
             } 
-            // CANALES ESTÁNDAR HLS (.M3U8)
+            // CANALES ESTÁNDAR HLS (.M3U8) PARA PC
             else if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
                     hls = new Hls({
@@ -518,7 +522,7 @@ async function reproducirCanal(url, infoStream) {
                             playPromiseHls.catch(error => {
                                 console.warn("⚠️ Autoplay bloqueado. Forzando Mute...");
                                 videoElement.muted = true; 
-                                videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
+                                videoElement.play();
                             });
                         }
                     });
@@ -534,7 +538,7 @@ async function reproducirCanal(url, infoStream) {
                     ocultarLoader();
                 }
             }
-            // OTROS FORMATOS
+            // OTROS FORMATOS (.mp4, etc)
             else {
                 videoElement.src = url;
                 videoElement.play();
