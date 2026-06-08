@@ -320,7 +320,7 @@
    
         async function descargarListaCanales() {
             try {
-                const res = await fetch('/api/canales');
+                const res = await fetch('https://casta-app.onrender.com/api/canales');
                 const data = await res.json();
                 cacheCanalesGlobal = data;
                 renderizarMenuCanales();
@@ -390,14 +390,15 @@
             } else { mostrarAlerta(); }
         }
 
-        async function consultarServidorYReproducir(opcionId) {
+       async function consultarServidorYReproducir(opcionId) {
             mostrarLoader();
             try {
-                const res = await fetch(`/api/stream/${opcionId}`);
+                const res = await fetch(`https://casta-app.onrender.com/api/stream/${opcionId}`);
                 const data = await res.json();
                 
                 if (data.exito && data.url) { 
-                    reproducirCanal(data.url, data.drm || null); 
+                    // 🚨 Le pasamos "data" completo para que viajen el token y las llaves codificadas
+                    reproducirCanal(data.url, data); 
                 } else { 
                     ocultarLoader(); 
                     mostrarAlerta(); 
@@ -407,11 +408,38 @@
                 mostrarAlerta(); 
             }
         }
-
-        function reproducirCanal(url) {
+async function reproducirCanal(url, infoStream) {
             console.log("▶️ Intentando reproducir URL:", url);
             mostrarLoader();
 
+            // ==========================================
+            // 🚀 NUEVA MAGIA: REPRODUCTOR NATIVO DE ANDROID
+            // ==========================================
+            if (window.Capacitor && window.Capacitor.Plugins.CapacitorVideoPlayer) {
+                console.log("📱 Usando reproductor NATIVO para esquivar CORS");
+                const { CapacitorVideoPlayer } = window.Capacitor.Plugins;
+                ocultarLoader(); // Ocultamos el circulito de carga web
+                
+                try {
+                    await CapacitorVideoPlayer.initPlayer({
+                        mode: "fullscreen",
+                        url: url,
+                        playerId: "reproductor-casta"
+                    });
+                } catch (error) {
+                    console.error("Error en el reproductor nativo: ", error);
+                    mostrarAlerta();
+                }
+                return; // Cortamos acá para que NO ejecute el reproductor de la página web
+            }
+
+            console.log("💻 No estamos en la app nativa, usando reproductor web...");
+
+            // ==========================================
+            // CÓDIGO WEB ORIGINAL (Para PC / Smart TV)
+            // ==========================================
+
+            // Limpiamos los reproductores anteriores
             if (hls) {
                 hls.destroy();
                 hls = null;
@@ -426,13 +454,52 @@
                 document.getElementById('placeholder-player').classList.add('hidden');
             }
 
+            // CANALES PREMIUM Y FLUJOS MPD (FLOW / DRM)
             if (url.includes('.mpd')) {
                 dashPlayer = dashjs.MediaPlayer().create();
+
+                if (infoStream && infoStream.drm) {
+                    let protectionData = {};
+
+                    if (infoStream.drm["org.w3.clearkey"]) {
+                        protectionData = infoStream.drm;
+                    } 
+                    else if (infoStream.drm.type === "clearkey" && infoStream.drm.key) {
+                        try {
+                            const decodedKey = JSON.parse(atob(infoStream.drm.key));
+                            const keyObj = decodedKey.keys[0];
+                            protectionData = {
+                                "org.w3.clearkey": {
+                                    "clearkeys": {
+                                        [keyObj.kid]: keyObj.k
+                                    }
+                                }
+                            };
+                        } catch (e) {
+                            console.error("❌ Error decodificando el DRM:", e);
+                        }
+                    }
+
+                    if (Object.keys(protectionData).length > 0) {
+                        dashPlayer.setProtectionData(protectionData);
+                    }
+                }
+
                 dashPlayer.initialize(videoElement, url, true);
+                
                 dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
                     ocultarLoader();
                 });
-            } else if (url.includes('.m3u8')) {
+
+                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
+                    console.error("🛑 Error en dash.js:", e);
+                    ocultarLoader();
+                    mostrarAlerta();
+                });
+
+            } 
+            // CANALES ESTÁNDAR HLS (.M3U8)
+            else if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
                     hls = new Hls({
                         maxBufferLength: 10,
@@ -442,36 +509,35 @@
                     });
                     hls.loadSource(url);
                     hls.attachMedia(videoElement);
+                    
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
                         ocultarLoader();
-                        
                         let playPromiseHls = videoElement.play();
                         if (playPromiseHls !== undefined) {
                             playPromiseHls.catch(error => {
-                                console.warn("⚠️ Autoplay bloqueado por el navegador. Forzando Mute...");
+                                console.warn("⚠️ Autoplay bloqueado. Forzando Mute...");
                                 videoElement.muted = true; 
                                 videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
                             });
                         }
                     });
+                    
                     hls.on(Hls.Events.ERROR, (event, data) => { 
                         if (data.fatal) { 
-                            console.error("Error Fatal HLS:", data); 
                             ocultarLoader(); 
                         } 
                     });
+                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoElement.src = url;
+                    videoElement.play();
+                    ocultarLoader();
                 }
-            } else {
+            }
+            // OTROS FORMATOS
+            else {
                 videoElement.src = url;
-                
-                let playPromiseDirecto = videoElement.play();
-                if (playPromiseDirecto !== undefined) {
-                    playPromiseDirecto.catch(error => {
-                        console.warn("⚠️ Autoplay bloqueado por el navegador. Forzando Mute...");
-                        videoElement.muted = true; 
-                        videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
-                    });
-                }
+                videoElement.play();
+                ocultarLoader();
             }
         }
 

@@ -4,6 +4,7 @@
   "webDir": "www",
   "backgroundColor": "#000000",
   "server": {
+    "url": "https://casta-app.onrender.com",
     "cleartext": true,
     "allowNavigation": [
       "*"

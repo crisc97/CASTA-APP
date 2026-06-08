@@ -87,7 +87,7 @@
     { "nombre": "Crónica TV", "categoria": "Noticias", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Cr%C3%B3nica_TV_logotipo_%282016%29.png/960px-Cr%C3%B3nica_TV_logotipo_%282016%29.png", "opciones": [{ "nombre": "HD Directo", "id": "cronica_directo" }] }
   ],
   "backend": {
-    "telefe_directo":     { "nombre": "Telefe","base": "http://45.5.151.147:8000/play/a00g/index.m3u8", "parametros": "", "usarProxy": false },
+    "telefe_directo":     { "nombre": "Telefe","base": "http://45.5.151.147:8000/play/a00g/index.m3u8", "parametros": "", "usarProxy": true },
     "eltrece_directo":    { "nombre": "El Trece","base": "http://45.5.151.147:8000/play/a00f/index.m3u8", "parametros": "", "usarProxy": false },
     "elnueve_directo":    { "nombre": "El Nueve","base": "http://45.5.151.147:8000/play/a00e/index.m3u8", "parametros": "", "usarProxy": false },
     "america_directo":    { "nombre": "America","base": "http://45.5.151.147:8000/play/a00c/index.m3u8", "parametros": "", "usarProxy": false },
@@ -165,10 +165,10 @@
     "tyc_scraper1":       { "urlScraping": "https://pelotalibretv.su/tyc-sports/", "opcionesBotones": [["Opción 1"]] },
     "tyc_scraper2":       { "urlScraping": "https://la14hd.com/vivo/canales.php?stream=tycsports", "opcionesBotones": [] },
     "tyc_arg":            { "nombre": "TyC Sports", "base": "http://45.5.151.147:8000/play/a00s/index.m3u8", "parametros": "", "usarProxy": false },
-    "telefe_oficial": { "nombre": "Telefe Oficial", "base": "https://telefeappmitelefe1.akamaized.net/hls/live/2037985/appmitelefe/TOK/hdntl=exp=1780868128~acl=%2f*~data=hdntl~hmac=3e42dfe32994ab1994cfcdd5fd5700de0a6df66797148a3185246303a4d61ee1/master-mtlf3.m3u8", "parametros": "", "usarProxy": false },
+    "telefe_oficial": { "nombre": "Telefe Oficial", "base": "https://telefeappmitelefe1.akamaized.net/hls/live/2037985/appmitelefe/TOK/hdntl=exp=1780868128~acl=%2f*~data=hdntl~hmac=3e42dfe32994ab1994cfcdd5fd5700de0a6df66797148a3185246303a4d61ee1/master-mtlf3.m3u8", "parametros": "", "usarProxy": true },
 
 
-    "telefe_iptv": { "nombre": "Telefe IPTV", "base": "http://190.7.19.197:232/play/a059/index.m3u8", "parametros": "", "usarProxy": false },
+    "telefe_iptv": { "nombre": "Telefe IPTV", "base": "http://190.7.19.197:232/play/a059/index.m3u8", "parametros": "", "usarProxy": true },
     "eltrece_iptv": { "nombre": "El Trece IPTV", "base": "http://181.13.252.102:8000/play/a0bg/index.m3u8", "parametros": "", "usarProxy": false },
     "america_iptv": { "nombre": "América TV", "base": "http://181.13.252.102:8000/play/a055/index.m3u8?PlaylistM3UCL", "parametros": "", "usarProxy": false },
     "canal26_iptv": { "nombre": "Canal 26", "base": "https://stream-gtlc.telecentro.net.ar/hls/canal26hls/main.m3u8", "parametros": "", "usarProxy": false },

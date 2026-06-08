@@ -320,7 +320,7 @@
    
         async function descargarListaCanales() {
             try {
-                const res = await fetch('/api/canales');
+                const res = await fetch('https://casta-app.onrender.com/api/canales');
                 const data = await res.json();
                 cacheCanalesGlobal = data;
                 renderizarMenuCanales();
@@ -393,7 +393,7 @@
        async function consultarServidorYReproducir(opcionId) {
             mostrarLoader();
             try {
-                const res = await fetch(`/api/stream/${opcionId}`);
+                const res = await fetch(`https://casta-app.onrender.com/api/stream/${opcionId}`);
                 const data = await res.json();
                 
                 if (data.exito && data.url) { 
@@ -408,10 +408,36 @@
                 mostrarAlerta(); 
             }
         }
-
-        function reproducirCanal(url, infoStream) {
+async function reproducirCanal(url, infoStream) {
             console.log("▶️ Intentando reproducir URL:", url);
             mostrarLoader();
+
+            // ==========================================
+            // 🚀 NUEVA MAGIA: REPRODUCTOR NATIVO DE ANDROID
+            // ==========================================
+            if (window.Capacitor && window.Capacitor.Plugins.CapacitorVideoPlayer) {
+                console.log("📱 Usando reproductor NATIVO para esquivar CORS");
+                const { CapacitorVideoPlayer } = window.Capacitor.Plugins;
+                ocultarLoader(); // Ocultamos el circulito de carga web
+                
+                try {
+                    await CapacitorVideoPlayer.initPlayer({
+                        mode: "fullscreen",
+                        url: url,
+                        playerId: "reproductor-casta"
+                    });
+                } catch (error) {
+                    console.error("Error en el reproductor nativo: ", error);
+                    mostrarAlerta();
+                }
+                return; // Cortamos acá para que NO ejecute el reproductor de la página web
+            }
+
+            console.log("💻 No estamos en la app nativa, usando reproductor web...");
+
+            // ==========================================
+            // CÓDIGO WEB ORIGINAL (Para PC / Smart TV)
+            // ==========================================
 
             // Limpiamos los reproductores anteriores
             if (hls) {
@@ -428,22 +454,16 @@
                 document.getElementById('placeholder-player').classList.add('hidden');
             }
 
-            // ==========================================
             // CANALES PREMIUM Y FLUJOS MPD (FLOW / DRM)
-            // ==========================================
             if (url.includes('.mpd')) {
                 dashPlayer = dashjs.MediaPlayer().create();
 
-                // 🔐 TRADUCTOR Y CONFIGURADOR DRM CLEARKEY
                 if (infoStream && infoStream.drm) {
                     let protectionData = {};
 
-                    // Caso 1: Llaves directas estándar (org.w3.clearkey)
                     if (infoStream.drm["org.w3.clearkey"]) {
                         protectionData = infoStream.drm;
-                        console.log("🔐 DRM Inyectado (Modo Estándar)");
                     } 
-                    // Caso 2: Llaves codificadas del nuevo Bot Premium (Base64)
                     else if (infoStream.drm.type === "clearkey" && infoStream.drm.key) {
                         try {
                             const decodedKey = JSON.parse(atob(infoStream.drm.key));
@@ -455,9 +475,8 @@
                                     }
                                 }
                             };
-                            console.log("🔐 DRM Inyectado (Decodificado desde el Bot Premium)");
                         } catch (e) {
-                            console.error("❌ Error decodificando el DRM del bot:", e);
+                            console.error("❌ Error decodificando el DRM:", e);
                         }
                     }
 
@@ -472,17 +491,14 @@
                     ocultarLoader();
                 });
 
-                // Capturador de errores por si el bot trajo un token malo
                 dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                    console.error("🛑 Error en dash.js (Posible token vencido o DRM incorrecto):", e);
+                    console.error("🛑 Error en dash.js:", e);
                     ocultarLoader();
                     mostrarAlerta();
                 });
 
             } 
-            // ==========================================
             // CANALES ESTÁNDAR HLS (.M3U8)
-            // ==========================================
             else if (url.includes('.m3u8')) {
                 if (Hls.isSupported()) {
                     hls = new Hls({
@@ -499,7 +515,7 @@
                         let playPromiseHls = videoElement.play();
                         if (playPromiseHls !== undefined) {
                             playPromiseHls.catch(error => {
-                                console.warn("⚠️ Autoplay bloqueado por el navegador. Forzando Mute...");
+                                console.warn("⚠️ Autoplay bloqueado. Forzando Mute...");
                                 videoElement.muted = true; 
                                 videoElement.play().catch(e => console.error("🛑 Bloqueo total:", e));
                             });
@@ -508,20 +524,16 @@
                     
                     hls.on(Hls.Events.ERROR, (event, data) => { 
                         if (data.fatal) { 
-                            console.error("Error Fatal HLS:", data); 
                             ocultarLoader(); 
                         } 
                     });
                 } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Para navegadores Safari (iOS)
                     videoElement.src = url;
                     videoElement.play();
                     ocultarLoader();
                 }
             }
-            // ==========================================
-            // OTROS FORMATOS (MP4 DIRECTO, ETC)
-            // ==========================================
+            // OTROS FORMATOS
             else {
                 videoElement.src = url;
                 videoElement.play();
