@@ -84,7 +84,7 @@
     "canal_247_local":    { "nombre": "Canal 24-7 Local", "base": "http://45.225.40.206:12080/Live/76b678bf3a8a411cb7b2f415a567034d/online-24-7_480.m3u8", "parametros": "", "usarProxy": false },
     "garagetv_directo":   { "nombre": "Garage TV","base": "http://190.7.19.197:232/play/a034/index.m3u8", "parametros": "", "usarProxy": false },
     "ln+_directo":        { "nombre": "La Nacion +","base": "http://190.7.19.197:232/play/a043/index.m3u8", "parametros": "", "usarProxy": false},
-    "ln+_directo2":       { "nombre": "La Nacion +","base": "http://latinostvhd.club:25461/8642755377/437ca16994/128760, "parametros": "", "usarProxy": false},
+    "ln+_directo2":       { "nombre": "La Nacion +","base": "http://latinostvhd.club:25461/8642755377/437ca16994/128760", "parametros": "", "usarProxy": false},
     "canal26_telecentro": { "nombre": "Canal 26", "base": "https://stream-gtlc.telecentro.net.ar/hls/canal26hls/main.m3u8", "parametros": "", "usarProxy": false },
     "tn_directo":         { "nombre": "TN", "base": "https://live-01-01-tn.vodgc.net/TN_DAI_Beta/index.m3u8", "parametros": "", "usarProxy": false },
     "cronica_directo":    { "nombre": "Cronica TV", "base": "http://190.7.19.197:232/play/a041/index.m3u8", "parametros": "sense=true", "usarProxy": false },
