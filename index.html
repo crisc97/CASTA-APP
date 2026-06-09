@@ -13,9 +13,12 @@
         
         .hidden { display: none !important; }
         
-        video::-webkit-media-controls { display: none !important; }
+        /* Ocultar forzosamente los controles nativos del Smart TV (El play gigante) */
+        video::-webkit-media-controls { display: none !important; opacity: 0 !important; }
         video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none !important; }
         video::-webkit-media-controls-overlay-play-button { display: none !important; -webkit-appearance: none !important; }
+        video::-webkit-media-controls-enclosure { display: none !important; }
+        video::part(media-controls) { display: none !important; }
         
         video {
             background-color: black !important;
@@ -32,6 +35,25 @@
  
     <div class="flex-1 relative flex items-center justify-center bg-black overflow-hidden select-none" id="playerArea">
         
+        <div id="welcomeScreen" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-gradient-to-b from-neutral-950 to-black text-center p-6 select-none border border-neutral-900">
+            <div class="relative flex items-center justify-center mb-6 w-28 h-28 bg-blue-600/10 rounded-full border border-blue-500/20 shadow-2xl shadow-blue-500/5 animate-pulse">
+                <span class="text-6xl drop-shadow-md">📺</span>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-black tracking-widest bg-gradient-to-r from-blue-400 via-indigo-400 to-indigo-500 bg-clip-text text-transparent uppercase drop-shadow-sm mb-2">
+                CASTA-APP
+            </h1>
+            <p class="text-[11px] md:text-xs text-gray-400 font-bold tracking-widest uppercase mb-8 max-w-sm leading-relaxed opacity-80">
+                Plataforma Multimedia <br> para Smart TV/Smartphone
+            </p>
+            <div class="w-12 h-1 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mb-8"></div>
+            <div class="bg-neutral-900/80 backdrop-blur-md border border-neutral-800/60 px-6 py-4 rounded-xl shadow-2xl max-w-xs w-full">
+                <span class="text-[10px] font-black uppercase tracking-widest text-blue-400 block mb-1.5 animate-pulse">Instrucciones</span>
+                <p id="welcomeInstruction" class="text-xs text-gray-300 font-bold uppercase tracking-wider leading-relaxed">
+                    Cargando interfaz...
+                </p>
+            </div>
+        </div>
+
         <div id="loader" class="absolute z-50 hidden flex flex-col items-center justify-center bg-black bg-opacity-90 backdrop-blur-sm p-6 rounded-2xl pointer-events-none text-center border border-gray-800 shadow-2xl">
             <div class="relative flex items-center justify-center mb-5 w-24 h-24">
                 <div class="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-l-4 border-transparent border-t-blue-500 border-b-blue-600 absolute opacity-80"></div>
@@ -42,7 +64,7 @@
             <p class="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse mt-2">cargando transmisión, gracias por esperar</p>
         </div>
         
-        <video id="video-player" class="w-full h-full object-contain" autoplay playsinline webkit-playsinline></video>
+        <video id="video-player" class="w-full h-full object-contain hidden" autoplay playsinline webkit-playsinline></video>
 
         <div id="topInfo" class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none z-10 transition-opacity duration-300">
             <div class="flex flex-col bg-black bg-opacity-40 backdrop-blur-sm p-2 rounded-lg border border-gray-800">
@@ -63,7 +85,7 @@
             </div>
         </div>
 
-        <div id="alertBox" class="absolute top-24 left-1/2 transform -translate-x-1/2 bg-red-600 bg-opacity-90 text-white font-bold px-4 py-2 rounded shadow-lg text-sm z-50 hidden transition-all duration-300 border border-red-500 uppercase tracking-wider">
+        <div id="alertBox" class="absolute top-24 left-1/2 transform -translate-x-1/2 bg-red-600 bg-opacity-90 text-white font-bold px-4 py-2 rounded shadow-lg text-sm z-50 hidden transition-all duration-300 border border-red-500 uppercase tracking-wider text-center">
             ¡ERROR AL CARGAR EL CANAL!
         </div>
 
@@ -99,7 +121,7 @@
                     </h1>
                 </div>
             </div>
-            <span class="text-xs text-gray-500 font-semibold tracking-wide uppercase mt-0.5">Seleccione un canal</span>
+            <span class="text-xs text-gray-500 font-semibold tracking-wide uppercase mt-0.5">Vivir es bueno. Con tele, es mejor.</span>
         </div>
         <div id="listaCanales" class="flex flex-col gap-1.5 flex-1 pb-10"></div>
     </div>
@@ -131,6 +153,10 @@
         let hls = null;
         let dashPlayer = null;
         let timeoutControles = null;
+        
+        // Variables para controlar el botón "Atrás"
+        let contadorAtras = 0;
+        let timeoutAtras = null;
 
         const sidebar = document.getElementById('sidebar'); 
         
@@ -157,7 +183,8 @@
         }
         function ocultarLoader() { loader.classList.add('hidden'); }
 
-        function mostrarAlerta() {
+        function mostrarAlerta(mensaje = "¡ERROR AL CARGAR EL CANAL!") {
+            alertBox.textContent = mensaje;
             alertBox.classList.remove('hidden');
             setTimeout(() => { alertBox.classList.add('hidden'); }, 4000);
         }
@@ -205,8 +232,18 @@
                 if (btnSilenciar) btnSilenciar.classList.add('hidden');
                 if (txtVolValue) txtVolValue.classList.add('hidden');
             }
+            
+            // Personalizar texto de bienvenida según el dispositivo
+            const welcomeInstruction = document.getElementById('welcomeInstruction');
             if (esTV) {
                 ocultarSidebarCompleto();
+                if (welcomeInstruction) {
+                    welcomeInstruction.innerHTML = 'Presione cualquier botón o <span class="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[10px] font-black mx-0.5">👉 FLECHA DERECHA</span> para abrir los canales';
+                }
+            } else {
+                if (welcomeInstruction) {
+                    welcomeInstruction.innerHTML = 'Seleccione un canal de la lista de la izquierda para comenzar';
+                }
             }
 
             videoElement.volume = 1.0;
@@ -370,7 +407,15 @@
                     b.textContent = opc.nombre;
                     b.onclick = function() { 
                         this.blur(); 
+                        
+                        // 🚀 TRUCO SMART TV: Desbloqueo sincrónico para evadir el Play Gris
+                        const playPromise = videoElement.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(() => {});
+                        }
+                        
                         consultarServidorYReproducir(opc.id); 
+                        
                         if (esTV && btnFullscreen) {
                             setTimeout(() => { btnFullscreen.focus(); }, 150);
                         }
@@ -401,135 +446,183 @@
             }
         }
 
-        async function reproducirCanal(url, infoStream) {
-            console.log("▶️ Intentando reproducir URL:", url);
-            mostrarLoader();
+       async function reproducirCanal(url, infoStream) {
+    console.log("▶️ Intentando reproducir URL:", url);
+    mostrarLoader();
 
-            // ==========================================================
-            // AHORA TODO SE REPRODUCE INTEGRADO EN LA WEB (HTML5 / HLS / DASH)
-            // ==========================================================
-            if (hls) { hls.destroy(); hls = null; }
-            if (dashPlayer) {
-                if (typeof dashPlayer.destroy === 'function') dashPlayer.destroy();
-                else if (typeof dashPlayer.reset === 'function') dashPlayer.reset();
-                dashPlayer = null;
-            }
+    // Ocultar la pantalla de bienvenida elegantemente al iniciar cualquier reproducción
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    if (welcomeScreen) welcomeScreen.classList.add('hidden');
 
-            videoElement.src = "";
-            videoElement.removeAttribute("src");
+    // 1. LIMPIEZA DE REPRODUCTORES WEB PREVIOS
+    if (hls) { hls.destroy(); hls = null; }
+    if (dashPlayer) {
+        if (typeof dashPlayer.destroy === 'function') dashPlayer.destroy();
+        else if (typeof dashPlayer.reset === 'function') dashPlayer.reset();
+        dashPlayer = null;
+    }
+
+    videoElement.src = "";
+    videoElement.removeAttribute("src");
+    videoElement.muted = false;
+    videoElement.volume = 1.0;
+
+    // 2. ENTORNO APK ANDROID: CAMINO CON PLUGIN NATIVO (EVITA CORS Y TRÁFICO HTTP INSEGURO)
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorVideoPlayer) {
+        
+        // Ocultamos el elemento de video HTML5 web para que no interfiera con la capa nativa
+        videoElement.classList.add('hidden'); 
+        
+        try {
+            // Asegura detener cualquier reproducción nativa previa antes de lanzar una nueva
+            await window.Capacitor.Plugins.CapacitorVideoPlayer.stopAllPlayers();
+
+            // Lanza ExoPlayer de forma nativa. Ignora las cabeceras CORS y reproduce http/https limpio
+            await window.Capacitor.Plugins.CapacitorVideoPlayer.initPlayer({
+                mode: "fullscreen",
+                url: url,
+                playerId: "player-nativo-casta",
+                componentTag: "div",
+                chromecast: true,   // Soporte opcional para enviar a Chromecast
+                exitOnEnd: true
+            });
+
+            ocultarLoader();
+            console.log("✅ Reproduciendo exitosamente con el plugin nativo de Capacitor");
+            return; // Detiene la función aquí para la APK. No ejecuta el flujo web inferior.
+
+        } catch (error) {
+            console.error("❌ Error en plugin nativo, intentando respaldo en WebView:", error);
+            // Si el plugin falla por cualquier motivo, devolvemos la visibilidad al elemento web
             videoElement.classList.remove('hidden');
+        }
+    }
 
-            videoElement.muted = false;
-            videoElement.volume = 1.0;
+    // =========================================================================
+    // 3. ENTORNO WEB / SMART TV NATIVA / PC (TU REPRODUCTOR WEB INTEGRADO ORIGINAL)
+    // =========================================================================
+    
+    // Hacer visible el reproductor nativo una vez que ya tiene flujo real asignado
+    videoElement.classList.remove('hidden');
 
-            // 1. CANALES MPD (DASH / DRM)
-            if (url.includes('.mpd')) {
-                dashPlayer = dashjs.MediaPlayer().create();
+    // 3.1. CANALES MPD (DASH / DRM)
+    if (url.includes('.mpd')) {
+        dashPlayer = dashjs.MediaPlayer().create();
 
-                if (infoStream && infoStream.drm) {
-                    let protectionData = {};
-                    if (infoStream.drm["org.w3.clearkey"]) {
-                        protectionData = infoStream.drm;
-                    } 
-                    else if (infoStream.drm.type === "clearkey" && infoStream.drm.key) {
-                        try {
-                            const decodedKey = JSON.parse(atob(infoStream.drm.key));
-                            const keyObj = decodedKey.keys[0];
-                            protectionData = { "org.w3.clearkey": { "clearkeys": { [keyObj.kid]: keyObj.k } } };
-                        } catch (e) { console.error("❌ Error DRM:", e); }
-                    }
-                    if (Object.keys(protectionData).length > 0) dashPlayer.setProtectionData(protectionData);
-                }
-
-                dashPlayer.initialize(videoElement, url, true);
-                
-                dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
-                    ocultarLoader();
-                    videoElement.play().catch(() => {
-                        videoElement.muted = true;
-                        videoElement.play().then(() => {
-                            setTimeout(() => { videoElement.muted = false; }, 200);
-                        });
-                    });
-                });
-                
-                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => { ocultarLoader(); mostrarAlerta(); });
+        if (infoStream && infoStream.drm) {
+            let protectionData = {};
+            if (infoStream.drm["org.w3.clearkey"]) {
+                protectionData = infoStream.drm;
             } 
-            // 2. CANALES HLS (.M3U8)
-            else if (url.includes('.m3u8')) {
-                if (Hls.isSupported()) {
-                    hls = new Hls({
-                        maxBufferLength: 10,
-                        maxMaxBufferLength: 20,
-                        enableWorker: false,
-                        lowLatencyMode: true
-                    });
-                    hls.loadSource(url);
-                    hls.attachMedia(videoElement);
-                    
-                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        ocultarLoader();
-                        videoElement.play().catch(() => {
-                            videoElement.muted = true;
-                            videoElement.play().then(() => {
-                                setTimeout(() => { videoElement.muted = false; videoElement.volume = 1.0; }, 150);
-                            });
-                        });
-                    });
-                    
-                    hls.on(Hls.Events.ERROR, (event, data) => { if (data.fatal) { ocultarLoader(); mostrarAlerta(); } });
-                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                    videoElement.src = url;
-                    videoElement.play();
-                    ocultarLoader();
-                }
+            else if (infoStream.drm.type === "clearkey" && infoStream.drm.key) {
+                try {
+                    const decodedKey = JSON.parse(atob(infoStream.drm.key));
+                    const keyObj = decodedKey.keys[0];
+                    protectionData = { "org.w3.clearkey": { "clearkeys": { [keyObj.kid]: keyObj.k } } };
+                } catch (e) { console.error("❌ Error DRM:", e); }
             }
-            // 3. OTROS FORMATOS DIRECTOS
-            else {
-                videoElement.src = url;
-                videoElement.play().catch(() => {
-                    videoElement.muted = true;
-                    videoElement.play().then(() => { videoElement.muted = false; });
-                });
-                ocultarLoader();
-            }
+            if (Object.keys(protectionData).length > 0) dashPlayer.setProtectionData(protectionData);
         }
 
+        dashPlayer.initialize(videoElement, url, true);
+        
+        dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
+            ocultarLoader();
+            videoElement.play().catch(() => {
+                videoElement.muted = true;
+                videoElement.play().then(() => {
+                    setTimeout(() => { videoElement.muted = false; }, 200);
+                });
+            });
+        });
+        
+        dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => { ocultarLoader(); mostrarAlerta(); });
+    } 
+    // 3.2. CANALES HLS (.M3U8)
+    else if (url.includes('.m3u8')) {
+        if (Hls.isSupported()) {
+            hls = new Hls({
+                maxBufferLength: 10,
+                maxMaxBufferLength: 20,
+                enableWorker: false,
+                lowLatencyMode: true
+            });
+            hls.loadSource(url);
+            hls.attachMedia(videoElement);
+            
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                ocultarLoader();
+                videoElement.play().catch(() => {
+                    videoElement.muted = true;
+                    videoElement.play().then(() => {
+                        setTimeout(() => { videoElement.muted = false; videoElement.volume = 1.0; }, 150);
+                    });
+                });
+            });
+            
+            hls.on(Hls.Events.ERROR, (event, data) => { if (data.fatal) { ocultarLoader(); mostrarAlerta(); } });
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            videoElement.src = url;
+            videoElement.play();
+            ocultarLoader();
+        }
+    }
+    // 3.3. OTROS FORMATOS DIRECTOS
+    else {
+        videoElement.src = url;
+        videoElement.play().catch(() => {
+            videoElement.muted = true;
+            videoElement.play().then(() => { videoElement.muted = false; });
+        });
+        ocultarLoader();
+    }
+}
+
         // ==========================================================
-        // 🔄 SISTEMA INTELIGENTE PARA EL BOTÓN "ATRÁS" (TV Y MÓVIL)
+        // 🔄 SISTEMA INTELIGENTE PARA EL BOTÓN "ATRÁS"
         // ==========================================================
         function manejarBotonAtras() {
-            // 1. Si está en pantalla completa, lo saca de pantalla completa
             if (document.fullscreenElement || document.webkitFullscreenElement) {
                 const exit = document.exitFullscreen || document.webkitExitFullscreen;
                 if (exit) exit.call(document);
                 return;
             }
 
-            // 2. Si el menú de canales está oculto, lo vuelve a mostrar (en vez de cerrar la app)
             if (sidebar.classList.contains('hidden')) {
                 mostrarSidebarCompleto();
                 const botones = Array.from(listaCanales.querySelectorAll('button'));
-                if (botones.length > 0) botones[0].focus(); // Devuelve el foco a la lista
+                if (botones.length > 0) botones[0].focus(); 
                 return;
             }
 
-            // 3. Si el menú YA está a la vista, entonces sí cerramos la app
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-                window.Capacitor.Plugins.App.exitApp();
+            contadorAtras++;
+            if (contadorAtras === 1) {
+                mostrarAlerta("Presiona ATRÁS nuevamente para salir");
+                clearTimeout(timeoutAtras);
+                timeoutAtras = setTimeout(() => { contadorAtras = 0; }, 2500); 
+            } else if (contadorAtras >= 2) {
+                if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+                    window.Capacitor.Plugins.App.exitApp();
+                } else {
+                    if (window.tizen) {
+                        window.tizen.application.getCurrentApplication().exit();
+                    } else if (window.NetCastExit) {
+                        window.NetCastExit();
+                    } else {
+                        window.close();
+                    }
+                }
             }
         }
 
-        // Captura el botón "Atrás" en Capacitor (Android TV / Móvil Nativo)
         if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
             window.Capacitor.Plugins.App.addListener('backButton', () => {
                 manejarBotonAtras();
             });
         }
 
-        // CONTROL REMOTO / TECLADO (Incluye captura de botones "Atrás" físicos de la TV)
+        // CONTROL REMOTO / TECLADO
         document.addEventListener('keydown', (e) => {
-            // Códigos de botón "Atrás": 8 (Retroceso), 27 (Escape), 461 (LG WebOS), 10009 (Samsung Tizen)
             if (e.keyCode === 8 || e.keyCode === 27 || e.keyCode === 461 || e.keyCode === 10009) {
                 e.preventDefault(); 
                 manejarBotonAtras();
@@ -552,16 +645,24 @@
             if (esTV) {
                 const sidebarOculto = document.getElementById('sidebar').classList.contains('hidden');
                 if (sidebarOculto) {
-                    if (isRight) {
-                        e.preventDefault();
-                        if (document.fullscreenElement || document.webkitFullscreenElement) {
-                            const exit = document.exitFullscreen || document.webkitExitFullscreen;
-                            if (exit) exit.call(document);
-                        } else {
-                            mostrarSidebarCompleto(); 
+                    const welcomeVisible = !document.getElementById('welcomeScreen').classList.contains('hidden');
+                    
+                    // 🌟 UX DE BIENVENIDA: Si la bienvenida está visible, CUALQUIER flecha o enter despliega los canales
+                    if (welcomeVisible) {
+                        if (isRight || isLeft || isUp || isDown || isEnter) {
+                            e.preventDefault();
+                            mostrarSidebarCompleto();
+                            setTimeout(() => { if (botones.length > 0) botones[0].focus(); }, 150);
+                            return;
                         }
-                        setTimeout(() => { if (botones.length > 0) botones[0].focus(); }, 150);
-                        return;
+                    } else {
+                        // Comportamiento regular cuando ya hay un video reproduciéndose en el fondo
+                        if (isRight) {
+                            e.preventDefault();
+                            mostrarSidebarCompleto(); 
+                            setTimeout(() => { if (botones.length > 0) botones[0].focus(); }, 150);
+                            return;
+                        }
                     }
                     mostrarControlesInteractivos();
                     return;
