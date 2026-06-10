@@ -149,7 +149,7 @@
     
     "dsports2_iptv": { "nombre": "Dsports 2", "base": "http://217.26.190.76:8888/play/a0jb/index.m3u8", "keyId": "5c86e237317c2231ac1bc130e995fad6", "key": "dcacf7b239ee03df3c69ca11dbcde4eb", "parametros": "", "usarProxy": false },
     "disney2_drm": { "nombre": "Disney 2 DRM", "base": "http://191.97.14.162:8000/play/a016/index.m3u8", "keyId": "ed53871dc50dcdc59a6271db3c8c51b3", "key": "0c21dc8629e3f2e6fe9efa8b80dc447e", "parametros": "", "usarProxy": false },
-    "disney4_iptv": { "nombre": "Disney 4 IPTV", "base": "http://205.235.6.29:8000/play/a0pz/index.m3u8", "parametros": "", "usarProxy": false },
+    "disney4_iptv": { "nombre": "Disney 4 IPTV", "base": "http://205.235.6.29:8000/play/a0pz/index.m3u8","keyId": "","key": "", "parametros": "", "usarProxy": false },
     "espn_iptv": { "nombre": "ESPN 1", "base": "http://200.112.174.230/mtcast_espnhd/mpegts", "parametros": "", "usarProxy": false },
     "espn2_iptv": { "nombre": "ESPN 2", "base": "http://200.112.174.230/mtcast_espn2hd/mpegts", "parametros": "", "usarProxy": false },
     "espn3_iptv": { "nombre": "ESPN 3", "base": "http://200.112.174.230/mtcast_espn3hd/mpegts", "parametros": "", "usarProxy": false },

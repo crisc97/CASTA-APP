@@ -3,7 +3,6 @@
   "appName": "CASTA-APP",
   "webDir": "www",
   "backgroundColor": "#000000",
-  "bundledWebRuntime": false,
   "server": {
     "androidScheme": "http",
     "cleartext": true,
@@ -12,7 +11,9 @@
     ]
   },
   "android": {
-    "overrideUserAgent": "VLC/3.0.0 LibVLC/3.0.0"
+    "overrideUserAgent": "VLC/3.0.0 LibVLC/3.0.0",
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": false
   },
   "plugins": {
     "CapacitorHttp": {

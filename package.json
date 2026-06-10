@@ -16,9 +16,9 @@
   "dependencies": {
     "@capacitor/android": "^8.3.4",
     "@capacitor/core": "^8.3.0",
+    "@capacitor/preferences": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",
     "axios": "^1.15.2",
-    "capacitor-video-player": "^6.0.2",
     "cheerio": "^1.2.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",

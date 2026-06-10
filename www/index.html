@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.js"></script>
     <style>
         body { background-color: black !important; }
         
@@ -21,7 +22,7 @@
             background-color: black !important;
             outline: none !important;
         }
-
+ 
         #sidebar::-webkit-scrollbar { width: 6px; }
         #sidebar::-webkit-scrollbar-track { background: transparent; }
         #sidebar::-webkit-scrollbar-thumb { background-color: #1e3a8a; border-radius: 10px; }
@@ -32,7 +33,8 @@
  
     <div class="flex-1 relative flex items-center justify-center bg-black overflow-hidden select-none" id="playerArea">
         
-        <div id="loader" class="absolute z-50 hidden flex flex-col items-center justify-center bg-black bg-opacity-90 backdrop-blur-sm p-6 rounded-2xl pointer-events-none text-center border border-gray-800 shadow-2xl">
+       <!-- Reemplazo para tu Div de Loader en la Página 2 -->
+<div id="loader" class="absolute z-40 hidden flex flex-col items-center justify-center bg-neutral-950 bg-opacity-80 backdrop-blur-sm p-6 rounded-2xl pointer-events-none text-center border border-gray-800 shadow-2xl max-w-sm">
             <div class="relative flex items-center justify-center mb-5 w-24 h-24">
                 <div class="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-l-4 border-transparent border-t-blue-500 border-b-blue-600 absolute opacity-80"></div>
                 <img id="loaderLogo" class="w-14 h-14 object-contain rounded-lg bg-white p-1 hidden z-10 shadow-lg" src="" alt="logo">
@@ -43,7 +45,9 @@
         </div>
         
         <video id="video-player" class="w-full h-full object-contain" autoplay playsinline webkit-playsinline></video>
-
+ 
+        <iframe id="iframeElement" allow="encrypted-media" allowfullscreen frameborder="0" scrolling="no" class="w-full h-full bg-black hidden"></iframe>
+ 
         <div id="topInfo" class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none z-10 transition-opacity duration-300">
             <div class="flex flex-col bg-black bg-opacity-40 backdrop-blur-sm p-2 rounded-lg border border-gray-800">
                 <span id="txtReloj" class="text-2xl font-bold font-mono text-white tracking-widest drop-shadow">00:00:00</span>
@@ -62,11 +66,11 @@
                 </div>
             </div>
         </div>
-
+ 
         <div id="alertBox" class="absolute top-24 left-1/2 transform -translate-x-1/2 bg-red-600 bg-opacity-90 text-white font-bold px-4 py-2 rounded shadow-lg text-sm z-50 hidden transition-all duration-300 border border-red-500 uppercase tracking-wider">
             ¡ERROR AL CARGAR EL CANAL!
         </div>
-
+ 
         <div id="bottomControls" class="absolute bottom-4 left-4 right-4 flex flex-col bg-black bg-opacity-70 backdrop-blur-md p-3 rounded-xl border border-gray-800 shadow-2xl z-10 opacity-0 pointer-events-none transition-opacity duration-300">
             
             <div id="pcMobileControls" class="flex flex-wrap justify-center items-center gap-2 mb-3">
@@ -78,16 +82,16 @@
                 <button id="btnVolMas" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-all uppercase tracking-wider focus:outline-none focus:bg-blue-700 focus:ring-4 focus:ring-blue-500 focus:scale-110">🔊 Vol +</button>
                 <button id="btnFullscreen" class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-4 py-1.5 rounded font-black transition-all uppercase tracking-wider ml-1 shadow-md focus:outline-none focus:bg-blue-500 focus:ring-4 focus:ring-blue-300 focus:scale-105">Pantalla completa 🖥️</button>
             </div>
-
+ 
             <div class="w-full h-px bg-gray-800/60 mb-2" id="separadorControles"></div>
-
+ 
             <div class="flex flex-col items-center w-full">
                 <div class="text-[10px] font-bold tracking-widest text-blue-400 uppercase mb-2" id="lblOpcionesCanal">OPCIONES DISPONIBLES</div>
                 <div id="containerOpciones" class="flex flex-wrap gap-2 justify-center w-full"></div>
             </div>
         </div>
     </div>
-
+ 
     <div id="sidebar" class="w-full md:w-80 h-1/2 md:h-full bg-neutral-950 border-t md:border-t-0 md:border-r border-gray-900 flex flex-col overflow-y-auto p-4 transition-transform duration-300 z-20">
         <div class="flex flex-col mb-4 border-b border-gray-900 pb-3 gap-1">
             <div class="flex items-center justify-between w-full">
@@ -103,13 +107,15 @@
         </div>
         <div id="listaCanales" class="flex flex-col gap-1.5 flex-1 pb-10"></div>
     </div>
-
+ 
     <script>
         const ua = navigator.userAgent.toLowerCase();
         const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox') || ua.includes('mibox') || ua.includes('chromecast');
         const esCelularWeb = /android|iphone|ipad|ipod/i.test(ua);
-
+        const esCapacitorNativo = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorVideoPlayer);
+ 
         const videoElement = document.getElementById('video-player');
+        const iframeElement = document.getElementById('iframeElement'); 
         const playerArea = document.getElementById('playerArea');
         const loader = document.getElementById('loader');
         const loaderLogo = document.getElementById('loaderLogo');
@@ -120,18 +126,21 @@
         const containerOpciones = document.getElementById('containerOpciones');
         const topInfo = document.getElementById('topInfo');
         
+        const pcMobileControls = document.getElementById('pcMobileControls');
+        const separadorControles = document.getElementById('separadorControles');
         const btnVolMenos = document.getElementById('btnVolMenos');
         const btnSilenciar = document.getElementById('btnSilenciar');
         const btnVolMas = document.getElementById('btnVolMas');
         const btnFullscreen = document.getElementById('btnFullscreen');
         const txtVolValue = document.getElementById('txtVolValue');
-
+ 
         let cacheCanalesGlobal = [];
         let canalActualGlobal = null;
         let hls = null;
         let dashPlayer = null;
+        let mpegtsPlayer = null;
         let timeoutControles = null;
-
+ 
         const sidebar = document.getElementById('sidebar'); 
         
         function ocultarSidebarCompleto() {
@@ -139,13 +148,14 @@
             playerArea.style.width = '100%';
             playerArea.style.height = '100%';
         }
-
+ 
         function mostrarSidebarCompleto() {
+            if (esTV) return; 
             sidebar.classList.remove('hidden');
             playerArea.style.width = '';
             playerArea.style.height = '';
         }
-
+ 
         function mostrarLoader() { 
             if (canalActualGlobal && canalActualGlobal.logo) {
                 loaderLogo.src = canalActualGlobal.logo;
@@ -156,17 +166,17 @@
             loader.classList.remove('hidden'); 
         }
         function ocultarLoader() { loader.classList.add('hidden'); }
-
+ 
         function mostrarAlerta() {
             alertBox.classList.remove('hidden');
             setTimeout(() => { alertBox.classList.add('hidden'); }, 4000);
         }
-
+ 
         function mostrarControlesInteractivos() {
             bottomControls.classList.remove('opacity-0', 'pointer-events-none');
             topInfo.classList.remove('opacity-0');
             document.body.style.cursor = 'default';
-
+ 
             clearTimeout(timeoutControles);
             timeoutControles = setTimeout(() => {
                 bottomControls.classList.add('opacity-0', 'pointer-events-none');
@@ -176,11 +186,11 @@
                 }
             }, 3500); 
         }
-
+ 
         document.addEventListener('mousemove', mostrarControlesInteractivos);
         document.addEventListener('keydown', mostrarControlesInteractivos);
         videoElement.addEventListener('play', mostrarControlesInteractivos);
-
+ 
         function iniciarReloj() {
             const actualizar = () => {
                 const n = new Date();
@@ -190,29 +200,30 @@
             actualizar();
             setInterval(actualizar, 1000);
         }
-
+ 
         function actualizarIndicadorVolumen() {
             if (txtVolValue) {
                 const porcentaje = Math.round(videoElement.volume * 100);
                 txtVolValue.textContent = videoElement.muted ? "MUTED" : `VOL: ${porcentaje}%`;
             }
         }
-
+ 
         function adaptarInterfazPorDispositivo() {
-            if (esTV || esCelularWeb) {
+            if (esTV || esCelularWeb || esCapacitorNativo) {
                 if (btnVolMenos) btnVolMenos.classList.add('hidden');
                 if (btnVolMas) btnVolMas.classList.add('hidden');
                 if (btnSilenciar) btnSilenciar.classList.add('hidden');
                 if (txtVolValue) txtVolValue.classList.add('hidden');
             }
+            
             if (esTV) {
                 ocultarSidebarCompleto();
             }
-
+ 
             videoElement.volume = 1.0;
             videoElement.muted = false;
         }
-
+ 
         async function iniciarClima() {
             try {
                 const res = await fetch('https://wttr.in/La+Plata?format=j1');
@@ -237,11 +248,11 @@
                 else if (["176", "263", "266", "293", "296", "299", "302", "305", "308", "353", "356", "359"].includes(code)) emoji = "🌧️"; 
                 else if (["200", "386", "389"].includes(code)) emoji = "⛈️"; 
                 else if (["227", "320", "323", "326", "329", "332", "335", "338", "368", "371", "392", "395"].includes(code)) emoji = "❄️"; 
-
+ 
                 document.getElementById('lblDiaNoche').textContent = emoji;
             } catch(e) { console.error("Error clima:", e); }
         }
-
+ 
         if (btnVolMenos) {
             btnVolMenos.onclick = function() { 
                 videoElement.volume = Math.max(0, videoElement.volume - 0.1); 
@@ -268,29 +279,37 @@
                 this.blur();
             };
         }
-
+ 
         if (btnFullscreen) {
             btnFullscreen.onclick = function() {
                 this.blur(); 
                 const docElm = document.documentElement; 
+                
                 if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                     const req = docElm.requestFullscreen || docElm.webkitRequestFullscreen;
-                    if (req) req.call(docElm).catch(err => console.log("Error Fullscreen:", err));
+                    if (req) {
+                        req.call(docElm).catch(err => console.log("Error Fullscreen:", err));
+                    } else if (videoElement.webkitEnterFullscreen) {
+                        videoElement.webkitEnterFullscreen(); 
+                    }
                 } else {
                     const exit = document.exitFullscreen || document.webkitExitFullscreen;
                     if (exit) exit.call(document);
                 }
             };
         }
-
+ 
+        // 📱 ROTACIÓN INTELIGENTE EN CELULARES AL PASAR A PANTALLA COMPLETA
         function manejarCambioFullscreen() {
             const esFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
             const esMovil = /android|iphone|ipad|ipod/i.test(navigator.userAgent.toLowerCase());
-
+ 
             if (esFullscreen) {
                 ocultarSidebarCompleto(); 
                 if (esMovil && window.screen && window.screen.orientation && window.screen.orientation.lock) {
-                    window.screen.orientation.lock('landscape').catch(() => {});
+                    window.screen.orientation.lock('landscape').catch(err => {
+                        console.log("Rotación asistida activa al girar el dispositivo", err);
+                    });
                 }
             } else {
                 mostrarSidebarCompleto(); 
@@ -315,10 +334,9 @@
                         if (primerBoton) primerBoton.focus();
                     }, 800);
                 }
-
             } catch (err) { console.error("Error cargando canales:", err); }
         }
-
+ 
         function renderizarMenuCanales() {
             listaCanales.innerHTML = "";
             const canalesAgrupados = {};
@@ -328,17 +346,17 @@
                 if (!canalesAgrupados[cat]) canalesAgrupados[cat] = [];
                 canalesAgrupados[cat].push(canal);
             });
-
+ 
             for (const [categoria, canales] of Object.entries(canalesAgrupados)) {
                 const franja = document.createElement('div');
                 franja.className = "w-full bg-blue-900/20 border-l-4 border-blue-500 text-blue-400 text-[10px] font-black uppercase tracking-widest px-3 py-2 mt-3 mb-1.5 rounded-r shadow-sm pointer-events-none select-none";
                 franja.textContent = categoria;
                 listaCanales.appendChild(franja);
-
+ 
                 canales.forEach(canal => {
                     const btn = document.createElement('button');
                     btn.className = "w-full flex items-center bg-neutral-900 hover:bg-neutral-800 active:bg-blue-950 border border-gray-900 rounded-lg p-2 text-left transition-all focus:outline-none focus:bg-blue-800 focus:border-blue-400 focus:ring-4 focus:ring-blue-500 focus:scale-[1.02] text-sm font-medium tracking-wide";
-
+ 
                     const img = document.createElement('img');
                     img.className = "w-14 h-14 object-contain mr-3 rounded-lg bg-white p-0.5 border border-gray-300 flex-shrink-0 shadow-sm";
                     img.src = canal.logo;
@@ -350,7 +368,7 @@
                     const span = document.createElement('span');
                     span.textContent = canal.nombre;
                     span.className = "truncate flex-1 font-semibold";
-
+ 
                     btn.appendChild(img);
                     btn.appendChild(span);
                     btn.onclick = () => seleccionarCanal(canal);
@@ -358,31 +376,37 @@
                 });
             }
         }
-
+ 
         function seleccionarCanal(canal) {
-            canalActualGlobal = canal;
-            containerOpciones.innerHTML = "";
-
-            if (canal.opciones && canal.opciones.length > 0) {
-                canal.opciones.forEach((opc, index) => {
-                    const b = document.createElement('button');
-                    b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:bg-blue-600 focus:ring-4 focus:ring-blue-400 focus:scale-110 shadow-lg";
-                    b.textContent = opc.nombre;
-                    b.onclick = function() { 
-                        this.blur(); 
-                        consultarServidorYReproducir(opc.id); 
-                        if (esTV && btnFullscreen) {
-                            setTimeout(() => { btnFullscreen.focus(); }, 150);
-                        }
-                    };
-                    containerOpciones.appendChild(b);
-                    
-                    if (index === 0) b.click(); 
-                });
-                mostrarControlesInteractivos();
-            } else { mostrarAlerta(); }
-        }
-
+    canalActualGlobal = canal;
+    containerOpciones.innerHTML = "";
+    
+    if (canal.opciones && canal.opciones.length > 0) {
+        canal.opciones.forEach((opc, index) => {
+            const b = document.createElement('button');
+            b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:bg-blue-600 focus:ring-4 focus:ring-blue-400 focus:scale-110 shadow-lg";
+            b.textContent = opc.nombre;
+            b.onclick = function() { 
+                this.blur(); 
+                consultarServidorYReproducir(opc.id); 
+                if (esTV && btnFullscreen) {
+                    setTimeout(() => { btnFullscreen.focus(); }, 150);
+                }
+            };
+            containerOpciones.appendChild(b);
+        });
+        
+        // 🌟 CORRECCIÓN: Enfoque sin bloqueo. 
+        // En lugar de hacer .click() y congelar la pantalla, solo le damos foco al primer botón para navegación con control remoto
+        const primerBotonOpc = containerOpciones.querySelector('button');
+        if (primerBotonOpc) primerBotonOpc.focus();
+        
+        mostrarControlesInteractivos();
+    } else { 
+        mostrarAlerta(); 
+    }
+}
+ 
        async function consultarServidorYReproducir(opcionId) {
             mostrarLoader();
             try {
@@ -400,155 +424,171 @@
                 mostrarAlerta(); 
             }
         }
-
-        async function reproducirCanal(url, infoStream) {
-            console.log("▶️ Intentando reproducir URL:", url);
-            mostrarLoader();
-
-            // ==========================================================
-            // AHORA TODO SE REPRODUCE INTEGRADO EN LA WEB (HTML5 / HLS / DASH)
-            // ==========================================================
-            if (hls) { hls.destroy(); hls = null; }
-            if (dashPlayer) {
-                if (typeof dashPlayer.destroy === 'function') dashPlayer.destroy();
-                else if (typeof dashPlayer.reset === 'function') dashPlayer.reset();
-                dashPlayer = null;
-            }
-
-            videoElement.src = "";
-            videoElement.removeAttribute("src");
-            videoElement.classList.remove('hidden');
-
+ 
+     async function reproducirCanal(url, infoStream) {
+    console.log("▶️ Sintonizando enlace directo sin CORS:", url);
+    mostrarLoader();
+ 
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    if (welcomeScreen) welcomeScreen.classList.add('hidden');
+ 
+    // 1. LIMPIEZA TOTAL DE REPRODUCTORES PREVIOS
+    if (hls) { hls.destroy(); hls = null; }
+    if (dashPlayer) {
+        if (typeof dashPlayer.destroy === 'function') dashPlayer.destroy();
+        else if (typeof dashPlayer.reset === 'function') dashPlayer.reset();
+        dashPlayer = null;
+    }
+    if (mpegtsPlayer) {
+        mpegtsPlayer.destroy();
+        mpegtsPlayer = null;
+    }
+ 
+    videoElement.src = "";
+    videoElement.removeAttribute("src");
+    
+    // 2. TRUCO DE VELOCIDAD: Arranca mutado para que Android apruebe el Autoplay inmediato
+    videoElement.muted = true;
+    videoElement.volume = 1.0;
+ 
+    // Forzamos al elemento a mantenerse integrado dentro de tu recuadro de Tailwind
+    videoElement.setAttribute('playsinline', 'true');
+    videoElement.setAttribute('webkit-playsinline', 'true');
+    videoElement.classList.remove('hidden');
+ 
+    // Escuchador automático: Enciende el sonido de forma invisible apenas hay imagen real
+    const restaurarAudioNativo = () => {
+        console.log("📺 Señal activa en recuadro. Encendiendo audio.");
+        setTimeout(() => {
             videoElement.muted = false;
             videoElement.volume = 1.0;
-
-            // 1. CANALES MPD (DASH / DRM)
-            if (url.includes('.mpd')) {
-                dashPlayer = dashjs.MediaPlayer().create();
-
-                if (infoStream && infoStream.drm) {
-                    let protectionData = {};
-                    if (infoStream.drm["org.w3.clearkey"]) {
-                        protectionData = infoStream.drm;
-                    } 
-                    else if (infoStream.drm.type === "clearkey" && infoStream.drm.key) {
-                        try {
-                            const decodedKey = JSON.parse(atob(infoStream.drm.key));
-                            const keyObj = decodedKey.keys[0];
-                            protectionData = { "org.w3.clearkey": { "clearkeys": { [keyObj.kid]: keyObj.k } } };
-                        } catch (e) { console.error("❌ Error DRM:", e); }
-                    }
-                    if (Object.keys(protectionData).length > 0) dashPlayer.setProtectionData(protectionData);
-                }
-
-                dashPlayer.initialize(videoElement, url, true);
-                
-                dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => {
-                    ocultarLoader();
-                    videoElement.play().catch(() => {
-                        videoElement.muted = true;
-                        videoElement.play().then(() => {
-                            setTimeout(() => { videoElement.muted = false; }, 200);
-                        });
-                    });
-                });
-                
-                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => { ocultarLoader(); mostrarAlerta(); });
-            } 
-            // 2. CANALES HLS (.M3U8)
-            else if (url.includes('.m3u8')) {
-                if (Hls.isSupported()) {
-                    hls = new Hls({
-                        maxBufferLength: 10,
-                        maxMaxBufferLength: 20,
-                        enableWorker: false,
-                        lowLatencyMode: true
-                    });
-                    hls.loadSource(url);
-                    hls.attachMedia(videoElement);
-                    
-                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        ocultarLoader();
-                        videoElement.play().catch(() => {
-                            videoElement.muted = true;
-                            videoElement.play().then(() => {
-                                setTimeout(() => { videoElement.muted = false; videoElement.volume = 1.0; }, 150);
-                            });
-                        });
-                    });
-                    
-                    hls.on(Hls.Events.ERROR, (event, data) => { if (data.fatal) { ocultarLoader(); mostrarAlerta(); } });
-                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                    videoElement.src = url;
-                    videoElement.play();
-                    ocultarLoader();
-                }
+            if (typeof actualizarIndicadorVolumen === 'function') actualizarIndicadorVolumen();
+        }, 100);
+    };
+    videoElement.addEventListener('playing', restaurarAudioNativo, { once: true });
+ 
+    // =========================================================================
+    // 3. BIFURCACIÓN INTELIGENTE DE FORMATOS MULTIMEDIA
+    // =========================================================================
+ 
+    // 3.1. FORMATO MPD (DASH / DRM) o CANALES CON CLAVES (Como tu DSports 2)
+    if (url.includes('.mpd') || (infoStream && (infoStream.key || infoStream.keyId))) {
+        dashPlayer = dashjs.MediaPlayer().create();
+ 
+        if (infoStream && (infoStream.drm || infoStream.key)) {
+            let protectionData = {};
+            if (infoStream.drm && infoStream.drm["org.w3.clearkey"]) {
+                protectionData = infoStream.drm;
+            } else if (infoStream.keyId && infoStream.key) {
+                try {
+                    protectionData = { "org.w3.clearkey": { "clearkeys": { [infoStream.keyId]: infoStream.key } } };
+                } catch (e) { console.error("❌ Error DRM ClearKey:", e); }
             }
-            // 3. OTROS FORMATOS DIRECTOS
-            else {
-                videoElement.src = url;
+            if (Object.keys(protectionData).length > 0) dashPlayer.setProtectionData(protectionData);
+        }
+        
+        dashPlayer.setAutoPlay(true);
+        dashPlayer.initialize(videoElement, url, true);
+        
+        videoElement.play().then(() => { ocultarLoader(); }).catch(() => {
+            videoElement.muted = true;
+            videoElement.play().then(() => { ocultarLoader(); });
+        });
+        
+        dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => { ocultarLoader(); mostrarAlerta(); });
+    } 
+    
+    // 3.2. FORMATO HLS (.M3U8) O LISTAS SIMPLES (Como tu Telefe IPTV Abierto)
+    else if (url.includes('.m3u8') || url.includes('.m3u')) {
+        if (Hls.isSupported()) {
+            hls = new Hls({
+                maxBufferLength: 4,        // Buffer ultra-bajo para sintonizar instantáneo como VLC
+                maxMaxBufferLength: 8,
+                enableWorker: true,        // Decodificación acelerada por hilos secundarios del procesador
+                lowLatencyMode: true,
+                xhrSetup: function (xhr) {
+                    xhr.withCredentials = false;
+                }
+            });
+            hls.loadSource(url);
+            hls.attachMedia(videoElement);
+            
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                ocultarLoader();
                 videoElement.play().catch(() => {
                     videoElement.muted = true;
-                    videoElement.play().then(() => { videoElement.muted = false; });
+                    videoElement.play().then(() => { ocultarLoader(); });
                 });
-                ocultarLoader();
-            }
-        }
-
-        // ==========================================================
-        // 🔄 SISTEMA INTELIGENTE PARA EL BOTÓN "ATRÁS" (TV Y MÓVIL)
-        // ==========================================================
-        function manejarBotonAtras() {
-            // 1. Si está en pantalla completa, lo saca de pantalla completa
-            if (document.fullscreenElement || document.webkitFullscreenElement) {
-                const exit = document.exitFullscreen || document.webkitExitFullscreen;
-                if (exit) exit.call(document);
-                return;
-            }
-
-            // 2. Si el menú de canales está oculto, lo vuelve a mostrar (en vez de cerrar la app)
-            if (sidebar.classList.contains('hidden')) {
-                mostrarSidebarCompleto();
-                const botones = Array.from(listaCanales.querySelectorAll('button'));
-                if (botones.length > 0) botones[0].focus(); // Devuelve el foco a la lista
-                return;
-            }
-
-            // 3. Si el menú YA está a la vista, entonces sí cerramos la app
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-                window.Capacitor.Plugins.App.exitApp();
-            }
-        }
-
-        // Captura el botón "Atrás" en Capacitor (Android TV / Móvil Nativo)
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-            window.Capacitor.Plugins.App.addListener('backButton', () => {
-                manejarBotonAtras();
             });
+            
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (!data.fatal) return;
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.warn("⚠️ Error de red HLS, reintentando...", data);
+                        hls.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.warn("⚠️ Error de media HLS, recuperando...", data);
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        ocultarLoader();
+                        mostrarAlerta();
+                        break;
+                }
+            });
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            videoElement.src = url;
+            videoElement.play().then(() => { ocultarLoader(); });
         }
-
-        // CONTROL REMOTO / TECLADO (Incluye captura de botones "Atrás" físicos de la TV)
+    }
+    
+    // 3.3. ENLACES DIRECTOS HTTP EN BRUTO SIN EXTENSIÓN DEFINIDA (MPEG-TS plano, etc.)
+    else {
+        console.log("🔗 Cargando transmisión IPTV directa en bruto.");
+ 
+        if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
+            mpegtsPlayer = mpegts.createPlayer({
+                type: 'mpegts',
+                isLive: true,
+                url: url
+            });
+            mpegtsPlayer.attachMediaElement(videoElement);
+            mpegtsPlayer.load();
+            mpegtsPlayer.play()
+                .then(() => { ocultarLoader(); })
+                .catch(() => {
+                    videoElement.muted = true;
+                    mpegtsPlayer.play().then(() => { ocultarLoader(); });
+                });
+            mpegtsPlayer.on(mpegts.Events.ERROR, () => { ocultarLoader(); mostrarAlerta(); });
+        } else {
+            videoElement.src = url;
+            videoElement.play()
+                .then(() => { ocultarLoader(); })
+                .catch(() => {
+                    videoElement.muted = true;
+                    videoElement.play().then(() => { ocultarLoader(); });
+                });
+        }
+    }
+}
+        // CONTROL REMOTO / TECLADO
         document.addEventListener('keydown', (e) => {
-            // Códigos de botón "Atrás": 8 (Retroceso), 27 (Escape), 461 (LG WebOS), 10009 (Samsung Tizen)
-            if (e.keyCode === 8 || e.keyCode === 27 || e.keyCode === 461 || e.keyCode === 10009) {
-                e.preventDefault(); 
-                manejarBotonAtras();
-                return;
-            }
-
             const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter' };
             const keyName = keys[e.keyCode];
             if (!keyName) return;
-
+ 
             const botones = Array.from(listaCanales.querySelectorAll('button'));
             const currentIndex = botones.indexOf(document.activeElement);
-
+ 
             const isUp = keyName === 'Up';
             const isDown = keyName === 'Down';
             const isLeft = keyName === 'Left';
             const isRight = keyName === 'Right';
             const isEnter = keyName === 'Enter';
-
+ 
             if (esTV) {
                 const sidebarOculto = document.getElementById('sidebar').classList.contains('hidden');
                 if (sidebarOculto) {
@@ -567,13 +607,13 @@
                     return;
                 }
             }
-
+ 
             if (document.activeElement === btnFullscreen) {
                 if (isRight) { if (botones.length > 0) botones[0].focus(); e.preventDefault(); }
                 if (isDown) { const pb = containerOpciones.querySelector('button'); if (pb) pb.focus(); e.preventDefault(); }
                 return;
             }
-
+ 
             if (document.activeElement.closest('#containerOpciones')) {
                 const btnsOpc = Array.from(containerOpciones.querySelectorAll('button'));
                 const idxOpc = btnsOpc.indexOf(document.activeElement);
@@ -587,7 +627,7 @@
                 if (isUp) { if (btnFullscreen) btnFullscreen.focus(); e.preventDefault(); } 
                 return;
             }
-
+ 
             if (document.activeElement.tagName === 'BUTTON' && document.activeElement.closest('#sidebar')) {
                 if (isLeft) {
                     const pb = containerOpciones.querySelector('button');
@@ -615,7 +655,7 @@
                 if (isEnter && (document.activeElement.tagName === 'BUTTON')) document.activeElement.click();
             }
         });
-
+ 
         window.onload = () => {
             adaptarInterfazPorDispositivo();
             descargarListaCanales();
