@@ -27,14 +27,32 @@
         #sidebar::-webkit-scrollbar-track { background: transparent; }
         #sidebar::-webkit-scrollbar-thumb { background-color: #1e3a8a; border-radius: 10px; }
         #sidebar { -ms-overflow-style: none; scrollbar-width: thin; scrollbar-color: #1e3a8a transparent; -webkit-overflow-scrolling: touch; }
-    </style>
+   </style>
 </head>
 <body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen flex flex-col md:flex-row font-sans">
  
     <div class="flex-1 relative flex items-center justify-center bg-black overflow-hidden select-none" id="playerArea">
         
-       <!-- Reemplazo para tu Div de Loader en la Página 2 -->
-<div id="loader" class="absolute z-40 hidden flex flex-col items-center justify-center bg-neutral-950 bg-opacity-80 backdrop-blur-sm p-6 rounded-2xl pointer-events-none text-center border border-gray-800 shadow-2xl max-w-sm">
+        <div id="welcomeScreen" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-gradient-to-b from-neutral-950 to-black text-center p-6 select-none border border-neutral-900">
+            <div class="relative flex items-center justify-center mb-6 w-28 h-28 bg-blue-600/10 rounded-full border border-blue-500/20 shadow-2xl shadow-blue-500/5 animate-pulse">
+                <span class="text-6xl drop-shadow-md">📺</span>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-black tracking-widest bg-gradient-to-r from-blue-400 via-indigo-400 to-indigo-500 bg-clip-text text-transparent uppercase drop-shadow-sm mb-2">
+                CASTA-APP
+            </h1>
+            <p class="text-[11px] md:text-xs text-gray-400 font-bold tracking-widest uppercase mb-8 max-w-sm leading-relaxed opacity-80">
+                Plataforma Multimedia Premium para Smart TV
+            </p>
+            <div class="w-12 h-1 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mb-8"></div>
+            <div class="bg-neutral-900/80 backdrop-blur-md border border-neutral-800/60 px-6 py-4 rounded-xl shadow-2xl max-w-xs w-full">
+                <span class="text-[10px] font-black uppercase tracking-widest text-blue-400 block mb-1.5 animate-pulse">Instrucciones</span>
+                <p id="welcomeInstruction" class="text-xs text-gray-300 font-bold uppercase tracking-wider leading-relaxed">
+                    Cargando interfaz...
+                </p>
+            </div>
+        </div>
+
+        <div id="loader" class="absolute z-50 hidden flex flex-col items-center justify-center bg-black bg-opacity-90 backdrop-blur-sm p-6 rounded-2xl pointer-events-none text-center border border-gray-800 shadow-2xl">
             <div class="relative flex items-center justify-center mb-5 w-24 h-24">
                 <div class="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-l-4 border-transparent border-t-blue-500 border-b-blue-600 absolute opacity-80"></div>
                 <img id="loaderLogo" class="w-14 h-14 object-contain rounded-lg bg-white p-1 hidden z-10 shadow-lg" src="" alt="logo">
@@ -142,6 +160,25 @@
         let timeoutControles = null;
  
         const sidebar = document.getElementById('sidebar'); 
+// ==========================================
+// TRADUCTOR AUTOMÁTICO DE LLAVES BASE64 (KODI) A HEXADECIMAL
+// ==========================================
+function kodiBase64ToHex(base64String) {
+    if (!base64String) return "";
+    let textoLimpio = base64String.trim().replace(/-/g, '+').replace(/_/g, '/');
+    try {
+        let binario = window.atob(textoLimpio);
+        let resultadoHex = '';
+        for (let i = 0; i < binario.length; i++) {
+            let byteHex = binario.charCodeAt(i).toString(16);
+            resultadoHex += (byteHex.length === 1 ? '0' : '') + byteHex;
+        }
+        return resultadoHex.toLowerCase();
+    } catch(err) {
+        console.error("Error al convertir la llave Base64:", err);
+        return base64String; // Si ya venía en HEX, la devuelve igual
+    }
+}
         
         function ocultarSidebarCompleto() {
             sidebar.classList.add('hidden');
@@ -387,7 +424,15 @@
             b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:bg-blue-600 focus:ring-4 focus:ring-blue-400 focus:scale-110 shadow-lg";
             b.textContent = opc.nombre;
             b.onclick = function() { 
-                this.blur(); 
+                        this.blur(); 
+                        
+                        // 🚀 TRUCO SMART TV: Desbloqueo sincrónico para evadir el Play Gris
+                        // Forzamos un comando de reproducción en el mismo instante del click
+                        // para que el televisor no bloquee el autoplay por culpa del retraso de la red.
+                        const playPromise = videoElement.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(() => {});
+                        }
                 consultarServidorYReproducir(opc.id); 
                 if (esTV && btnFullscreen) {
                     setTimeout(() => { btnFullscreen.focus(); }, 150);
@@ -467,82 +512,149 @@
     };
     videoElement.addEventListener('playing', restaurarAudioNativo, { once: true });
  
-    // =========================================================================
-    // 3. BIFURCACIÓN INTELIGENTE DE FORMATOS MULTIMEDIA
-    // =========================================================================
- 
-    // 3.1. FORMATO MPD (DASH / DRM) o CANALES CON CLAVES (Como tu DSports 2)
-    if (url.includes('.mpd') || (infoStream && (infoStream.key || infoStream.keyId))) {
-        dashPlayer = dashjs.MediaPlayer().create();
- 
-        if (infoStream && (infoStream.drm || infoStream.key)) {
-            let protectionData = {};
-            if (infoStream.drm && infoStream.drm["org.w3.clearkey"]) {
-                protectionData = infoStream.drm;
-            } else if (infoStream.keyId && infoStream.key) {
-                try {
-                    protectionData = { "org.w3.clearkey": { "clearkeys": { [infoStream.keyId]: infoStream.key } } };
-                } catch (e) { console.error("❌ Error DRM ClearKey:", e); }
-            }
-            if (Object.keys(protectionData).length > 0) dashPlayer.setProtectionData(protectionData);
+   // =========================================================================
+// 3. BIFURCACIÓN INTELIGENTE DE FORMATOS MULTIMEDIA
+// =========================================================================
+
+// 3.1. FORMATO MPD (DASH / DRM) o CANALES CON CLAVES (Como tu TyC o DSports)
+if (url.includes('.mpd') || (infoStream && (infoStream.key || infoStream.keyId))) {
+    const videoElement = document.getElementById('video-player');
+    
+    if (typeof dashPlayer !== 'undefined' && dashPlayer) {
+        try { dashPlayer.reset(); } catch(e){}
+    }
+    dashPlayer = dashjs.MediaPlayer().create();
+
+    // Inyección segura de Cabeceras HTTP (Referer) sin romper la app si viene vacío
+    if (infoStream && infoStream.parametros && infoStream.parametros.includes('Referer=')) {
+        dashPlayer.extend("RequestModifier", function () {
+            return {
+                modifyRequestHeader: function (xhr) {
+                    const partes = infoStream.parametros.split('Referer=');
+                    if (partes.length > 1) {
+                        xhr.setRequestHeader('Referer', partes[1].trim());
+                    }
+                    return xhr;
+                }
+            };
+        }, true);
+    }
+
+    // Configuración con traducción automática de llaves de Kodi a HEX sobre la marcha
+    if (infoStream && infoStream.keyId && infoStream.key) {
+        try {
+            const cleanKid = kodiBase64ToHex(infoStream.keyId);
+            const cleanKey = kodiBase64ToHex(infoStream.key);
+
+            const protectionData = {
+                "org.w3.clearkey": {
+                    "clearkeys": {
+                        [cleanKid]: cleanKey
+                    }
+                }
+            };
+            dashPlayer.setProtectionData(protectionData);
+        } catch (e) { 
+            console.error("❌ Error al estructurar ClearKey DRM:", e); 
         }
-        
-        dashPlayer.setAutoPlay(true);
-        dashPlayer.initialize(videoElement, url, true);
-        
-        videoElement.play().then(() => { ocultarLoader(); }).catch(() => {
+    }
+    
+    dashPlayer.setAutoPlay(true);
+    dashPlayer.initialize(videoElement, url, true);
+    
+    videoElement.play()
+        .then(() => { ocultarLoader(); })
+        .catch((err) => {
+            console.warn("Autoplay bloqueado con audio, intentando en mute...", err);
             videoElement.muted = true;
             videoElement.play().then(() => { ocultarLoader(); });
         });
-        
-        dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => { ocultarLoader(); mostrarAlerta(); });
-    } 
     
-    // 3.2. FORMATO HLS (.M3U8) O LISTAS SIMPLES (Como tu Telefe IPTV Abierto)
-    else if (url.includes('.m3u8') || url.includes('.m3u')) {
-        if (Hls.isSupported()) {
-            hls = new Hls({
-                maxBufferLength: 4,        // Buffer ultra-bajo para sintonizar instantáneo como VLC
-                maxMaxBufferLength: 8,
-                enableWorker: true,        // Decodificación acelerada por hilos secundarios del procesador
-                lowLatencyMode: true,
-                xhrSetup: function (xhr) {
-                    xhr.withCredentials = false;
+    dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => { 
+        console.error("❌ Error en motor Dash.js:", e);
+        ocultarLoader(); 
+        mostrarAlerta(); 
+    });
+}
+   // 3.2. FORMATO HLS (.M3U8) O LISTAS SIMPLES (Corregido para evadir el Play Gris)
+else if (url.includes('.m3u8') || url.includes('.m3u')) {
+    const videoElement = document.getElementById('video-player');
+    if (!videoElement) {
+        console.error("❌ No se encontró el elemento #video-player en el DOM.");
+        return;
+    }
+
+    // Forzamos el uso estricto de hls.js en Capacitor anulando bloqueos nativos del WebView
+    if (Hls.isSupported()) {
+        if (hls) { 
+            hls.destroy(); 
+        }
+        hls = new Hls({
+            maxBufferLength: 4,
+            maxMaxBufferLength: 8,
+            enableWorker: true,
+            lowLatencyMode: true,
+            xhrSetup: function (xhr, urlConfig) {
+                xhr.withCredentials = false;
+
+                if (xhr.overrideMimeType) {
+                    xhr.overrideMimeType("application/vnd.apple.mpegurl");
                 }
-            });
-            hls.loadSource(url);
-            hls.attachMedia(videoElement);
-            
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                ocultarLoader();
-                videoElement.play().catch(() => {
-                    videoElement.muted = true;
-                    videoElement.play().then(() => { ocultarLoader(); });
-                });
-            });
-            
-            hls.on(Hls.Events.ERROR, (event, data) => {
-                if (!data.fatal) return;
-                switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR:
-                        console.warn("⚠️ Error de red HLS, reintentando...", data);
-                        hls.startLoad();
-                        break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                        console.warn("⚠️ Error de media HLS, recuperando...", data);
-                        hls.recoverMediaError();
-                        break;
-                    default:
+            }
+        });
+        hls.loadSource(url);
+        hls.attachMedia(videoElement);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            ocultarLoader();
+            videoElement.play().catch(() => {
+                videoElement.muted = true;
+                videoElement.play()
+                    .then(() => { ocultarLoader(); })
+                    .catch((err) => {
+                        console.error("Fallo definitivo de reproducción hls.js:", err);
                         ocultarLoader();
                         mostrarAlerta();
-                        break;
-                }
+                    });
             });
-        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-            videoElement.src = url;
-            videoElement.play().then(() => { ocultarLoader(); });
-        }
+        });
+        
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            if (!data.fatal) return;
+            switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.warn("⚠️ Error de red HLS detectado, reintentando carga...", data);
+                    hls.startLoad();
+                    break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.warn("⚠️ Error de decodificación de fragmentos, recuperando búfer...", data);
+                    hls.recoverMediaError();
+                    break;
+                default:
+                    console.error("❌ Fallo irrecuperable en la transmisión HLS.");
+                    hls.destroy();
+                    ocultarLoader();
+                    mostrarAlerta();
+                    break;
+            }
+        });
+    } 
+    // RESPALDO DE SEGURIDAD EXTREMO
+    else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        videoElement.src = url;
+        videoElement.play()
+            .then(() => { ocultarLoader(); })
+            .catch(() => {
+                videoElement.muted = true;
+                videoElement.play()
+                    .then(() => { ocultarLoader(); })
+                    .catch(() => { ocultarLoader(); mostrarAlerta(); });
+            });
+    } else {
+        ocultarLoader();
+        mostrarAlerta();
     }
+}
     
     // 3.3. ENLACES DIRECTOS HTTP EN BRUTO SIN EXTENSIÓN DEFINIDA (MPEG-TS plano, etc.)
     else {
