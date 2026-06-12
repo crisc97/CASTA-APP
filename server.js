@@ -858,7 +858,10 @@ app.get(['/api/get-stream/:canal', '/api/stream/:canal'], async (req, res) => {
                 };
             }
             
-            if (datosCanal.usarProxy) {
+            // Por defecto SIEMPRE proxeamos canales HTTP directos (.m3u8/.ts/http plano)
+            // salvo que se marque explícitamente usarProxy: false para forzar enlace directo (ej. .mpd con CDN que requiere IP origen).
+            const esHttpPlano = urlCompleta.startsWith('http://') || urlCompleta.includes('.m3u8') || urlCompleta.includes('.ts');
+            if (datosCanal.usarProxy !== false && (datosCanal.usarProxy === true || esHttpPlano)) {
                 respuesta.url = `${API_URL}/proxy/stream?url=${encodeURIComponent(urlCompleta)}`;
             }
             return res.json(respuesta);

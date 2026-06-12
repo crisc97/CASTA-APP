@@ -517,7 +517,7 @@ function kodiBase64ToHex(base64String) {
 // =========================================================================
 
 // 3.1. FORMATO MPD (DASH / DRM) o CANALES CON CLAVES (Como tu TyC o DSports)
-if (url.includes('.mpd') || (infoStream && (infoStream.key || infoStream.keyId))) {
+if (url.includes('.mpd') || (infoStream && infoStream.drm)) {
     const videoElement = document.getElementById('video-player');
     
     if (typeof dashPlayer !== 'undefined' && dashPlayer) {
@@ -540,20 +540,34 @@ if (url.includes('.mpd') || (infoStream && (infoStream.key || infoStream.keyId))
         }, true);
     }
 
-    // Configuración con traducción automática de llaves de Kodi a HEX sobre la marcha
-    if (infoStream && infoStream.keyId && infoStream.key) {
+    // Configuración ClearKey DRM a partir del campo "drm" enviado por el servidor
+    if (infoStream && infoStream.drm) {
         try {
-            const cleanKid = kodiBase64ToHex(infoStream.keyId);
-            const cleanKey = kodiBase64ToHex(infoStream.key);
+            let clearkeys = null;
 
-            const protectionData = {
-                "org.w3.clearkey": {
-                    "clearkeys": {
-                        [cleanKid]: cleanKey
-                    }
-                }
-            };
-            dashPlayer.setProtectionData(protectionData);
+            if (infoStream.drm.type === 'clearkey' && infoStream.drm.key) {
+                // Servidor envía un blob base64 con { keys: [{ k, kid, kty, type }] }
+                const decodificado = JSON.parse(atob(infoStream.drm.key));
+                clearkeys = {};
+                (decodificado.keys || []).forEach(k => {
+                    // k.kid y k.k vienen en base64url -> dashjs espera hex
+                    const kidHex = kodiBase64ToHex(k.kid);
+                    const keyHex = kodiBase64ToHex(k.k);
+                    clearkeys[kidHex] = keyHex;
+                });
+            } else if (infoStream.drm['org.w3.clearkey'] && infoStream.drm['org.w3.clearkey'].clearkeys) {
+                // Servidor envía directamente { "org.w3.clearkey": { "clearkeys": { kid: key } } } en base64url
+                clearkeys = {};
+                Object.entries(infoStream.drm['org.w3.clearkey'].clearkeys).forEach(([kid, key]) => {
+                    clearkeys[kodiBase64ToHex(kid)] = kodiBase64ToHex(key);
+                });
+            }
+
+            if (clearkeys) {
+                dashPlayer.setProtectionData({
+                    "org.w3.clearkey": { "clearkeys": clearkeys }
+                });
+            }
         } catch (e) { 
             console.error("❌ Error al estructurar ClearKey DRM:", e); 
         }
