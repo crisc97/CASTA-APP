@@ -455,268 +455,98 @@ function seleccionarCanal(canal) {
     }
 }
  
-       async function consultarServidorYReproducir(opcionId) {
-            mostrarLoader();
-            try {
-                const res = await fetch(`https://casta-app.onrender.com/api/stream/${opcionId}`);
-                const data = await res.json();
-                
-                if (data.exito && data.url) { 
-                    reproducirCanal(data.url, data); 
-                } else { 
-                    ocultarLoader(); 
-                    mostrarAlerta(); 
-                }
-            } catch(e) { 
-                ocultarLoader(); 
-                mostrarAlerta(); 
-            }
-        }
- 
-     async function reproducirCanal(url, infoStream) {
-    console.log("▶️ Sintonizando enlace directo sin CORS:", url);
-    mostrarLoader();
- 
-    const welcomeScreen = document.getElementById('welcomeScreen');
-    if (welcomeScreen) welcomeScreen.classList.add('hidden');
- 
-    // 1. LIMPIEZA TOTAL DE REPRODUCTORES PREVIOS
-    if (hls) { hls.destroy(); hls = null; }
-    if (dashPlayer) {
-        if (typeof dashPlayer.destroy === 'function') dashPlayer.destroy();
-        else if (typeof dashPlayer.reset === 'function') dashPlayer.reset();
-        dashPlayer = null;
-    }
-    if (mpegtsPlayer) {
-        mpegtsPlayer.destroy();
-        mpegtsPlayer = null;
-    }
- 
-    videoElement.src = "";
-    videoElement.removeAttribute("src");
-    
-    // 2. TRUCO DE VELOCIDAD: Arranca mutado para que Android apruebe el Autoplay inmediato
-    videoElement.muted = true;
-    videoElement.volume = 1.0;
- 
-    // Forzamos al elemento a mantenerse integrado dentro de tu recuadro de Tailwind
-    videoElement.setAttribute('playsinline', 'true');
-    videoElement.setAttribute('webkit-playsinline', 'true');
-    videoElement.classList.remove('hidden');
- 
-    // Escuchador automático: Enciende el sonido de forma invisible apenas hay imagen real
-    const restaurarAudioNativo = () => {
-        console.log("📺 Señal activa en recuadro. Encendiendo audio.");
-        setTimeout(() => {
-            videoElement.muted = false;
-            videoElement.volume = 1.0;
-            if (typeof actualizarIndicadorVolumen === 'function') actualizarIndicadorVolumen();
-        }, 100);
-    };
-    videoElement.addEventListener('playing', restaurarAudioNativo, { once: true });
- 
-   // =========================================================================
-// 3. BIFURCACIÓN INTELIGENTE DE FORMATOS MULTIMEDIA
+// =========================================================================
+// INTEGRACIÓN NATIVA: INTERCEPTOR UNIVERSAL EXOPLAYER
 // =========================================================================
 
-// 3.1. FORMATO MPD (DASH / DRM) o CANALES CON CLAVES (Como tu TyC o DSports)
-if (url.includes('.mpd') || (infoStream && infoStream.drm)) {
-    const videoElement = document.getElementById('video-player');
-    
-    if (typeof dashPlayer !== 'undefined' && dashPlayer) {
-        try { dashPlayer.reset(); } catch(e){}
-    }
-    dashPlayer = dashjs.MediaPlayer().create();
-
-    // Inyección segura de Cabeceras HTTP (Referer) sin romper la app si viene vacío
-    if (infoStream && infoStream.parametros && infoStream.parametros.includes('Referer=')) {
-        dashPlayer.extend("RequestModifier", function () {
-            return {
-                modifyRequestHeader: function (xhr) {
-                    const partes = infoStream.parametros.split('Referer=');
-                    if (partes.length > 1) {
-                        xhr.setRequestHeader('Referer', partes[1].trim());
-                    }
-                    return xhr;
-                }
-            };
-        }, true);
-    }
-
-    // Configuración ClearKey DRM a partir del campo "drm" enviado por el servidor
-    if (infoStream && infoStream.drm) {
-        try {
-            let clearkeys = null;
-
-            if (infoStream.drm.type === 'clearkey' && infoStream.drm.key) {
-                // Servidor envía un blob base64 con { keys: [{ k, kid, kty, type }] }
-                const decodificado = JSON.parse(atob(infoStream.drm.key));
-                clearkeys = {};
-                (decodificado.keys || []).forEach(k => {
-                    // k.kid y k.k vienen en base64url -> dashjs espera hex
-                    const kidHex = kodiBase64ToHex(k.kid);
-                    const keyHex = kodiBase64ToHex(k.k);
-                    clearkeys[kidHex] = keyHex;
-                });
-            } else if (infoStream.drm['org.w3.clearkey'] && infoStream.drm['org.w3.clearkey'].clearkeys) {
-                // Servidor envía directamente { "org.w3.clearkey": { "clearkeys": { kid: key } } } en base64url
-                clearkeys = {};
-                Object.entries(infoStream.drm['org.w3.clearkey'].clearkeys).forEach(([kid, key]) => {
-                    clearkeys[kodiBase64ToHex(kid)] = kodiBase64ToHex(key);
-                });
-            }
-
-            if (clearkeys) {
-                dashPlayer.setProtectionData({
-                    "org.w3.clearkey": { "clearkeys": clearkeys }
-                });
-            }
-        } catch (e) { 
-            console.error("❌ Error al estructurar ClearKey DRM:", e); 
+async function consultarServidorYReproducir(opcionId) {
+    mostrarLoader();
+    try {
+        const res = await fetch(`https://onrender.com{opcionId}`);
+        const data = await res.json();
+        
+        if (data.exito && data.url) { 
+            // Le pasamos toda la información del stream a nuestra función
+            reproducirCanal(data.url, data); 
+        } else { 
+            ocultarLoader(); 
+            mostrarAlerta(); 
         }
-    }
-    
-    dashPlayer.setAutoPlay(true);
-    dashPlayer.initialize(videoElement, url, true);
-    
-    videoElement.play()
-        .then(() => { ocultarLoader(); })
-        .catch((err) => {
-            console.warn("Autoplay bloqueado con audio, intentando en mute...", err);
-            videoElement.muted = true;
-            videoElement.play().then(() => { ocultarLoader(); });
-        });
-    
-    dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => { 
-        console.error("❌ Error en motor Dash.js:", e);
+    } catch(e) { 
         ocultarLoader(); 
         mostrarAlerta(); 
-    });
+    }
 }
-// =========================================================================
-// 3.2. FORMATO HLS (.M3U8) O LISTAS SIMPLES
-// =========================================================================
-else if (url.includes('.m3u8') || url.includes('.m3u')) {
+
+async function reproducirCanal(url, infoStream) {
+    console.log("🚀 Sintonizando a través de ExoPlayer Nativo:", url);
+    mostrarLoader();
     
-    // SI ESTÁ EN CAPACITOR NATIVO, USAMOS EL REPRODUCTOR DEL SISTEMA PARA EVADIR CORS
-    if (esCapacitorNativo) {
-        ocultarLoader();
-        try {
-            window.Capacitor.Plugins.CapacitorVideoPlayer.initPlayer({
-                mode: "fullscreen",
-                url: url,
-                playerId: "fullscreen",
-                componentTag: "div"
-            });
-            return; // Interrumpimos la carga del elemento de video HTML
-        } catch(err) {
-            console.error("Error con el reproductor nativo, reintentando por web...", err);
-        }
+    // Ocultamos la pantalla de bienvenida si seguía visible
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    if (welcomeScreen) welcomeScreen.classList.add('hidden');
+    
+    // Apagamos cualquier rastro del elemento de video web para liberar memoria
+    if (videoElement) {
+        videoElement.pause();
+        videoElement.src = "";
+        videoElement.removeAttribute("src");
+        videoElement.classList.add('hidden');
     }
 
-    // RESPALDO WEB (Si falla lo nativo o estamos en navegador web de PC)
-    const videoElement = document.getElementById('video-player');
-    if (!videoElement) return;
+    // Inicializamos variables para las llaves DRM
+    let keyIdHex = null;
+    let keyHex = null;
 
-    if (Hls.isSupported()) {
-        if (hls) { 
-            hls.destroy(); 
-        }
-        hls = new Hls({
-            maxBufferLength: 4,
-            maxMaxBufferLength: 8,
-            enableWorker: true,
-            lowLatencyMode: true,
-            xhrSetup: function (xhr, urlConfig) {
-                xhr.withCredentials = false;
-
-                if (xhr.overrideMimeType) {
-                    xhr.overrideMimeType("application/vnd.apple.mpegurl");
+    // DETECTOR DE LLAVES OPTIMIZADO PARA TU JSON
+    if (infoStream) {
+        try {
+            // 1. Detección directa (Para tus canales Dsports 2 y Disney 2 DRM)
+            if (infoStream.keyId && infoStream.key) {
+                keyIdHex = infoStream.keyId;
+                keyHex = infoStream.key;
+                console.log("🔑 Llaves ClearKey detectadas directamente:", keyIdHex);
+            } 
+            // 2. Detección alternativa (Por si el backend te devuelve las llaves dentro de un objeto llamado drm)
+            else if (infoStream.drm) {
+                if (infoStream.drm.keyId && infoStream.drm.key) {
+                    keyIdHex = infoStream.drm.keyId;
+                    keyHex = infoStream.drm.key;
+                } else if (infoStream.drm.type === 'clearkey' && infoStream.drm.key) {
+                    const decodificado = JSON.parse(atob(infoStream.drm.key));
+                    if (decodificado.keys && decodificado.keys.length > 0) {
+                        keyIdHex = kodiBase64ToHex(decodificado.keys[0].kid);
+                        keyHex = kodiBase64ToHex(decodificado.keys[0].k);
+                    }
                 }
             }
-        });
-        hls.loadSource(url);
-        hls.attachMedia(videoElement);
+        } catch (e) {
+            console.error("Error al procesar llaves DRM para ExoPlayer:", e);
+        }
+    }
+
+    // Invocamos de forma segura el plugin personalizado de Capacitor que creamos en Java
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
+        const { CustomPlayer } = window.Capacitor.Plugins;
         
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        CustomPlayer.playVideo({
+            url: url,
+            keyId: keyIdHex,
+            key: keyHex
+        })
+        .then(() => {
             ocultarLoader();
-            videoElement.play().catch(() => {
-                videoElement.muted = true;
-                videoElement.play()
-                    .then(() => { ocultarLoader(); })
-                    .catch((err) => {
-                        console.error("Fallo definitivo de reproducción hls.js:", err);
-                        ocultarLoader();
-                        mostrarAlerta();
-                    });
-            });
+            console.log("ExoPlayer nativo lanzado con éxito.");
+        })
+        .catch((err) => {
+            ocultarLoader();
+            console.error("Error al invocar el reproductor nativo:", err);
+            mostrarAlerta();
         });
-        
-        hls.on(Hls.Events.ERROR, (event, data) => {
-            if (!data.fatal) return;
-            switch (data.type) {
-                case Hls.ErrorTypes.NETWORK_ERROR:
-                    console.warn("⚠️ Error de red HLS detectado, reintentando carga...", data);
-                    hls.startLoad();
-                    break;
-                case Hls.ErrorTypes.MEDIA_ERROR:
-                    console.warn("⚠️ Error de decodificación de fragmentos, recuperando búfer...", data);
-                    hls.recoverMediaError();
-                    break;
-                default:
-                    console.error("❌ Fallo irrecuperable en la transmisión HLS.");
-                    hls.destroy();
-                    ocultarLoader();
-                    mostrarAlerta();
-                    break;
-            }
-        });
-    } 
-    // RESPALDO DE SEGURIDAD EXTREMO
-    else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-        videoElement.src = url;
-        videoElement.play()
-            .then(() => { ocultarLoader(); })
-            .catch(() => {
-                videoElement.muted = true;
-                videoElement.play()
-                    .then(() => { ocultarLoader(); })
-                    .catch(() => { ocultarLoader(); mostrarAlerta(); });
-            });
     } else {
         ocultarLoader();
-        mostrarAlerta();
-    }
-}
-    
-    // 3.3. ENLACES DIRECTOS HTTP EN BRUTO SIN EXTENSIÓN DEFINIDA (MPEG-TS plano, etc.)
-    else {
-        console.log("🔗 Cargando transmisión IPTV directa en bruto.");
- 
-        if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
-            mpegtsPlayer = mpegts.createPlayer({
-                type: 'mpegts',
-                isLive: true,
-                url: url
-            });
-            mpegtsPlayer.attachMediaElement(videoElement);
-            mpegtsPlayer.load();
-            mpegtsPlayer.play()
-                .then(() => { ocultarLoader(); })
-                .catch(() => {
-                    videoElement.muted = true;
-                    mpegtsPlayer.play().then(() => { ocultarLoader(); });
-                });
-            mpegtsPlayer.on(mpegts.Events.ERROR, () => { ocultarLoader(); mostrarAlerta(); });
-        } else {
-            videoElement.src = url;
-            videoElement.play()
-                .then(() => { ocultarLoader(); })
-                .catch(() => {
-                    videoElement.muted = true;
-                    videoElement.play().then(() => { ocultarLoader(); });
-                });
-        }
+        console.warn("Plugin CustomPlayer no detectado. ¿Estás ejecutando la app en el navegador de la PC?");
+        alert("El reproductor nativo ExoPlayer solo funciona dentro de la APK instalada en Android.");
     }
 }
         // CONTROL REMOTO / TECLADO
