@@ -41,7 +41,7 @@
                 CASTA-APP
             </h1>
             <p class="text-[11px] md:text-xs text-gray-400 font-bold tracking-widest uppercase mb-8 max-w-sm leading-relaxed opacity-80">
-                Plataforma Multimedia Premium para Smart TV
+                Plataforma Multimedia para Smart TV / Smartphone
             </p>
             <div class="w-12 h-1 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mb-8"></div>
             <div class="bg-neutral-900/80 backdrop-blur-md border border-neutral-800/60 px-6 py-4 rounded-xl shadow-2xl max-w-xs w-full">
@@ -121,7 +121,7 @@
                     </h1>
                 </div>
             </div>
-            <span class="text-xs text-gray-500 font-semibold tracking-wide uppercase mt-0.5">Seleccione un canal</span>
+            <span class="text-xs text-gray-500 font-semibold tracking-wide uppercase mt-0.5">Un play y a disfrutar</span>
         </div>
         <div id="listaCanales" class="flex flex-col gap-1.5 flex-1 pb-10"></div>
     </div>
@@ -357,66 +357,74 @@ function kodiBase64ToHex(base64String) {
         }
         document.addEventListener('fullscreenchange', manejarCambioFullscreen);
         document.addEventListener('webkitfullscreenchange', manejarCambioFullscreen);
-   
-        async function descargarListaCanales() {
-            try {
-                const res = await fetch('https://casta-app.onrender.com/api/canales');
-                const data = await res.json();
-                cacheCanalesGlobal = data;
-                renderizarMenuCanales();
-                
-                if (esTV) {
-                    setTimeout(() => {
-                        const primerBoton = listaCanales.querySelector('button');
-                        if (primerBoton) primerBoton.focus();
-                    }, 800);
-                }
-            } catch (err) { console.error("Error cargando canales:", err); }
+
+// ====== PEGA ESTO JUSTO ARRIBA DE descargarListaCanales ======
+function renderizarMenuCanales() {
+    const listaCanales = document.getElementById('listaCanales');
+    listaCanales.innerHTML = "";
+    
+    cacheCanalesGlobal.forEach((canal) => {
+        const btn = document.createElement('button');
+        btn.className = "flex items-center w-full text-left bg-neutral-900 hover:bg-neutral-800 focus:bg-blue-600 focus:outline-none p-2 rounded-xl transition-all border border-gray-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-500 shadow-sm group";
+        
+        btn.innerHTML = `
+            <div class="w-10 h-10 bg-white rounded-lg p-1 mr-3 flex-shrink-0 shadow-inner">
+                <img src="${canal.logo}" class="w-full h-full object-contain" alt="logo">
+            </div>
+            <div class="flex flex-col flex-1 truncate">
+                <span class="text-white font-bold text-sm tracking-wide truncate">${canal.nombre}</span>
+                <span class="text-blue-400 text-[10px] font-black uppercase tracking-widest mt-0.5">${canal.categoria || 'CANAL'}</span>
+            </div>
+        `;
+        
+        btn.onclick = () => seleccionarCanal(canal);
+        listaCanales.appendChild(btn);
+    });
+}
+// =============================================================
+
+async function descargarListaCanales() {
+    try {
+        const res = await fetch('https://casta-app.onrender.com/api/canales');
+        
+        // Si el servidor responde con un error (403, 404, 500, etc) lo atrapamos aquí
+        if (!res.ok) {
+            throw new Error(`Código de estado HTTP: ${res.status}`);
         }
- 
-        function renderizarMenuCanales() {
-            listaCanales.innerHTML = "";
-            const canalesAgrupados = {};
-            
-            cacheCanalesGlobal.forEach(canal => {
-                const cat = (canal.categoria || "OTROS").toUpperCase();
-                if (!canalesAgrupados[cat]) canalesAgrupados[cat] = [];
-                canalesAgrupados[cat].push(canal);
-            });
- 
-            for (const [categoria, canales] of Object.entries(canalesAgrupados)) {
-                const franja = document.createElement('div');
-                franja.className = "w-full bg-blue-900/20 border-l-4 border-blue-500 text-blue-400 text-[10px] font-black uppercase tracking-widest px-3 py-2 mt-3 mb-1.5 rounded-r shadow-sm pointer-events-none select-none";
-                franja.textContent = categoria;
-                listaCanales.appendChild(franja);
- 
-                canales.forEach(canal => {
-                    const btn = document.createElement('button');
-                    btn.className = "w-full flex items-center bg-neutral-900 hover:bg-neutral-800 active:bg-blue-950 border border-gray-900 rounded-lg p-2 text-left transition-all focus:outline-none focus:bg-blue-800 focus:border-blue-400 focus:ring-4 focus:ring-blue-500 focus:scale-[1.02] text-sm font-medium tracking-wide";
- 
-                    const img = document.createElement('img');
-                    img.className = "w-14 h-14 object-contain mr-3 rounded-lg bg-white p-0.5 border border-gray-300 flex-shrink-0 shadow-sm";
-                    img.src = canal.logo;
-                    img.onerror = () => { 
-                        img.className = "w-14 h-14 object-contain mr-3 rounded-lg bg-neutral-950 p-1.5 border border-gray-800 flex-shrink-0";
-                        img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='2' width='20' height='20' rx='2.18' ry='2.18'></rect><line x1='7' y1='2' x2='7' y2='22'></line><line x1='17' y1='2' x2='17' y2='22'></line><line x1='2' y1='12' x2='22' y2='12'></line></svg>"; 
-                    };
-                    
-                    const span = document.createElement('span');
-                    span.textContent = canal.nombre;
-                    span.className = "truncate flex-1 font-semibold";
- 
-                    btn.appendChild(img);
-                    btn.appendChild(span);
-                    btn.onclick = () => seleccionarCanal(canal);
-                    listaCanales.appendChild(btn);
-                });
-            }
+
+        const data = await res.json();
+        cacheCanalesGlobal = data;
+        renderizarMenuCanales();
+        
+        const welcomeInstruction = document.getElementById('welcomeInstruction');
+        if (welcomeInstruction) {
+            welcomeInstruction.textContent = "Seleccione un canal de la lista.";
         }
- 
-        function seleccionarCanal(canal) {
+        
+        if (esTV) {
+            setTimeout(() => {
+                const primerBoton = listaCanales.querySelector('button');
+                if (primerBoton) primerBoton.focus();
+            }, 800);
+        }
+    } catch (err) { 
+        console.error("Error cargando canales:", err); 
+        const welcomeInstruction = document.getElementById('welcomeInstruction');
+        if (welcomeInstruction) {
+            // Ahora la pantalla te dirá exactamente QUÉ falló (ej. si fue un bloqueo o formato)
+            welcomeInstruction.textContent = `Error: ${err.message}`;
+        }
+    }
+}
+
+function seleccionarCanal(canal) {
     canalActualGlobal = canal;
     containerOpciones.innerHTML = "";
+    
+    // CORRECCIÓN: Ocultar la pantalla de bienvenida de inmediato para que 
+    // no tape la zona de reproducción ni los botones de opciones (z-10)
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    if (welcomeScreen) welcomeScreen.classList.add('hidden');
     
     if (canal.opciones && canal.opciones.length > 0) {
         canal.opciones.forEach((opc, index) => {
@@ -424,15 +432,12 @@ function kodiBase64ToHex(base64String) {
             b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:bg-blue-600 focus:ring-4 focus:ring-blue-400 focus:scale-110 shadow-lg";
             b.textContent = opc.nombre;
             b.onclick = function() { 
-                        this.blur(); 
-                        
-                        // 🚀 TRUCO SMART TV: Desbloqueo sincrónico para evadir el Play Gris
-                        // Forzamos un comando de reproducción en el mismo instante del click
-                        // para que el televisor no bloquee el autoplay por culpa del retraso de la red.
-                        const playPromise = videoElement.play();
-                        if (playPromise !== undefined) {
-                            playPromise.catch(() => {});
-                        }
+                this.blur(); 
+                
+                const playPromise = videoElement.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(() => {});
+                }
                 consultarServidorYReproducir(opc.id); 
                 if (esTV && btnFullscreen) {
                     setTimeout(() => { btnFullscreen.focus(); }, 150);
@@ -441,8 +446,6 @@ function kodiBase64ToHex(base64String) {
             containerOpciones.appendChild(b);
         });
         
-        // 🌟 CORRECCIÓN: Enfoque sin bloqueo. 
-        // En lugar de hacer .click() y congelar la pantalla, solo le damos foco al primer botón para navegación con control remoto
         const primerBotonOpc = containerOpciones.querySelector('button');
         if (primerBotonOpc) primerBotonOpc.focus();
         
@@ -590,15 +593,31 @@ if (url.includes('.mpd') || (infoStream && infoStream.drm)) {
         mostrarAlerta(); 
     });
 }
-   // 3.2. FORMATO HLS (.M3U8) O LISTAS SIMPLES (Corregido para evadir el Play Gris)
+// =========================================================================
+// 3.2. FORMATO HLS (.M3U8) O LISTAS SIMPLES
+// =========================================================================
 else if (url.includes('.m3u8') || url.includes('.m3u')) {
-    const videoElement = document.getElementById('video-player');
-    if (!videoElement) {
-        console.error("❌ No se encontró el elemento #video-player en el DOM.");
-        return;
+    
+    // SI ESTÁ EN CAPACITOR NATIVO, USAMOS EL REPRODUCTOR DEL SISTEMA PARA EVADIR CORS
+    if (esCapacitorNativo) {
+        ocultarLoader();
+        try {
+            window.Capacitor.Plugins.CapacitorVideoPlayer.initPlayer({
+                mode: "fullscreen",
+                url: url,
+                playerId: "fullscreen",
+                componentTag: "div"
+            });
+            return; // Interrumpimos la carga del elemento de video HTML
+        } catch(err) {
+            console.error("Error con el reproductor nativo, reintentando por web...", err);
+        }
     }
 
-    // Forzamos el uso estricto de hls.js en Capacitor anulando bloqueos nativos del WebView
+    // RESPALDO WEB (Si falla lo nativo o estamos en navegador web de PC)
+    const videoElement = document.getElementById('video-player');
+    if (!videoElement) return;
+
     if (Hls.isSupported()) {
         if (hls) { 
             hls.destroy(); 

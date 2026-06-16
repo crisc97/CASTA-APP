@@ -4,6 +4,7 @@
   "webDir": "www",
   "backgroundColor": "#000000",
   "server": {
+    "allowMixedContent": true,
     "androidScheme": "http",
     "cleartext": true,
     "allowNavigation": [
@@ -11,9 +12,8 @@
     ]
   },
   "android": {
-    "overrideUserAgent": "VLC/3.0.0 LibVLC/3.0.0",
     "allowMixedContent": true,
-    "webContentsDebuggingEnabled": false
+    "webContentsDebuggingEnabled": true
   },
   "plugins": {
     "CapacitorHttp": {
