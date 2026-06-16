@@ -204,10 +204,17 @@ function kodiBase64ToHex(base64String) {
         }
         function ocultarLoader() { loader.classList.add('hidden'); }
  
-        function mostrarAlerta() {
-            alertBox.classList.remove('hidden');
-            setTimeout(() => { alertBox.classList.add('hidden'); }, 4000);
-        }
+        function mostrarAlerta(mensaje) {
+    const alertBox = document.getElementById('alertBox');
+    if (mensaje) {
+        // Ahora mostrará el error real en mayúsculas
+        alertBox.textContent = `¡ERROR: ${mensaje.toUpperCase()}!`;
+    } else {
+        alertBox.textContent = "¡ERROR AL CARGAR EL CANAL!";
+    }
+    alertBox.classList.remove('hidden');
+    setTimeout(() => { alertBox.classList.add('hidden'); }, 6000);
+}
  
         function mostrarControlesInteractivos() {
             bottomControls.classList.remove('opacity-0', 'pointer-events-none');
@@ -462,31 +469,35 @@ function seleccionarCanal(canal) {
 async function consultarServidorYReproducir(opcionId) {
     mostrarLoader();
     try {
-        const res = await fetch(`https://onrender.com{opcionId}`);
+        // 🎯 CORRECCIÓN FINAL: Usamos la ruta exacta que está en tu backend
+        const urlAPI = `https://casta-app.onrender.com/api/get-stream/${opcionId}`;
+        console.log("Consultando al servidor:", urlAPI);
+
+        const res = await fetch(urlAPI);
+        
+        if (!res.ok) {
+            throw new Error(`Servidor rechazó la conexión (Error ${res.status})`);
+        }
+        
         const data = await res.json();
         
         if (data.exito && data.url) { 
-            // Le pasamos toda la información del stream a nuestra función
             reproducirCanal(data.url, data); 
         } else { 
             ocultarLoader(); 
-            mostrarAlerta(); 
+            mostrarAlerta(data.mensaje || "El servidor no envió una URL válida"); 
         }
     } catch(e) { 
         ocultarLoader(); 
-        mostrarAlerta(); 
+        mostrarAlerta(`Fallo de red: ${e.message}`); 
     }
 }
 
 async function reproducirCanal(url, infoStream) {
-    console.log("🚀 Sintonizando a través de ExoPlayer Nativo:", url);
     mostrarLoader();
-    
-    // Ocultamos la pantalla de bienvenida si seguía visible
     const welcomeScreen = document.getElementById('welcomeScreen');
     if (welcomeScreen) welcomeScreen.classList.add('hidden');
     
-    // Apagamos cualquier rastro del elemento de video web para liberar memoria
     if (videoElement) {
         videoElement.pause();
         videoElement.src = "";
@@ -494,59 +505,58 @@ async function reproducirCanal(url, infoStream) {
         videoElement.classList.add('hidden');
     }
 
-    // Inicializamos variables para las llaves DRM
     let keyIdHex = null;
     let keyHex = null;
 
-    // DETECTOR DE LLAVES OPTIMIZADO PARA TU JSON
     if (infoStream) {
         try {
-            // 1. Detección directa (Para tus canales Dsports 2 y Disney 2 DRM)
             if (infoStream.keyId && infoStream.key) {
                 keyIdHex = infoStream.keyId;
                 keyHex = infoStream.key;
-                console.log("🔑 Llaves ClearKey detectadas directamente:", keyIdHex);
-            } 
-            // 2. Detección alternativa (Por si el backend te devuelve las llaves dentro de un objeto llamado drm)
-            else if (infoStream.drm) {
-                if (infoStream.drm.keyId && infoStream.drm.key) {
-                    keyIdHex = infoStream.drm.keyId;
-                    keyHex = infoStream.drm.key;
-                } else if (infoStream.drm.type === 'clearkey' && infoStream.drm.key) {
-                    const decodificado = JSON.parse(atob(infoStream.drm.key));
-                    if (decodificado.keys && decodificado.keys.length > 0) {
-                        keyIdHex = kodiBase64ToHex(decodificado.keys[0].kid);
-                        keyHex = kodiBase64ToHex(decodificado.keys[0].k);
-                    }
-                }
+            } else if (infoStream.drm && infoStream.drm.keyId && infoStream.drm.key) {
+                keyIdHex = infoStream.drm.keyId;
+                keyHex = infoStream.drm.key;
             }
         } catch (e) {
-            console.error("Error al procesar llaves DRM para ExoPlayer:", e);
+            console.error("Error DRM:", e);
         }
     }
 
-    // Invocamos de forma segura el plugin personalizado de Capacitor que creamos en Java
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
-        const { CustomPlayer } = window.Capacitor.Plugins;
-        
-        CustomPlayer.playVideo({
-            url: url,
-            keyId: keyIdHex,
-            key: keyHex
-        })
-        .then(() => {
+    // ⚡ CONTROL ULTRA SEGURO (Buscamos el plugin por ambos caminos de Capacitor)
+    if (window.Capacitor) {
+        try {
+            let CustomPlayer = null;
+
+            // Camino 1: Ver si Capacitor ya lo registró automáticamente en sus Plugins globales
+            if (window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
+                CustomPlayer = window.Capacitor.Plugins.CustomPlayer;
+            } 
+            // Camino 2: Intentar forzar el registro manual (CUIDANDO MAYÚSCULAS PERFECTAMENTE)
+            else if (typeof window.Capacitor.registerPlugin === 'function') {
+                CustomPlayer = window.Capacitor.registerPlugin('CustomPlayer');
+            }
+
+            // Si logramos enganchar el código Java por cualquiera de las dos vías:
+            if (CustomPlayer) {
+                await CustomPlayer.playVideo({
+                    url: url,
+                    keyId: keyIdHex || null,
+                    key: keyHex || null
+                });
+                ocultarLoader();
+            } else {
+                ocultarLoader();
+                // Si llega acá, es porque Android Studio NO está compilando el archivo CustomPlayerPlugin.java
+                mostrarAlerta("Java no activó el Plugin. Rebuild necesario en Android Studio.");
+            }
+
+        } catch (err) {
             ocultarLoader();
-            console.log("ExoPlayer nativo lanzado con éxito.");
-        })
-        .catch((err) => {
-            ocultarLoader();
-            console.error("Error al invocar el reproductor nativo:", err);
-            mostrarAlerta();
-        });
+            mostrarAlerta(`Fallo en el puente nativo: ${err.message || err}`);
+        }
     } else {
         ocultarLoader();
-        console.warn("Plugin CustomPlayer no detectado. ¿Estás ejecutando la app en el navegador de la PC?");
-        alert("El reproductor nativo ExoPlayer solo funciona dentro de la APK instalada en Android.");
+        mostrarAlerta("No estás dentro de la App de Android");
     }
 }
         // CONTROL REMOTO / TECLADO
