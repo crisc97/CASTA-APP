@@ -6,6 +6,7 @@
     <meta name="referrer" content="no-referrer">
     <title>📺CASTA-APP⚽</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js"></script>
     <style>
         body { background-color: black !important; }
         
@@ -438,17 +439,12 @@ function seleccionarCanal(canal) {
             b.onclick = function() { 
                 this.blur(); 
                 
-                // 🌟 DETECTOR HÍBRIDO INTELIGENTE
+                // URL directa → va directo a ExoPlayer (APK) o hls.js (web), sin proxy
                 if (opc.url) {
-                    // Si tiene URL fija, se la mandamos directo al reproductor
                     reproducirCanal(opc.url, null);
                 } else if (opc.id) {
-                    // Si no tiene URL pero tiene ID, ejecutamos tu bot
-                    const playPromise = videoElement.play();
-                    if (playPromise !== undefined) {
-                        playPromise.catch(() => {});
-                    }
-                    consultarServidorYReproducir(opc.id); 
+                    // Canal con bot/scraping → consulta Render
+                    consultarServidorYReproducir(opc.id);
                 }
 
                 if (esTV && btnFullscreen) {
@@ -558,7 +554,7 @@ async function reproducirCanal(url, infoStream) {
         }
     }
 
-    if (Hls.isSupported()) {
+    if (typeof Hls !== 'undefined' && Hls.isSupported()) {
         let hlsConfig = { maxMaxBufferLength: 10 };
         if (drmConfig) {
             hlsConfig.emeEnabled = true;
@@ -590,10 +586,9 @@ async function reproducirCanal(url, infoStream) {
             ocultarLoader();
             videoElement.play().catch(err => console.log("Auto-play bloqueado:", err));
         });
-    } 
-    else {
+   } else {
         ocultarLoader();
-        mostrarAlerta("Tu dispositivo no soporta reproducción HLS.");
+        mostrarAlerta("Tu dispositivo no soporta reproducción HLS o la librería no cargó correctamente.");
     }
 }
         // CONTROL REMOTO / TECLADO
