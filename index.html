@@ -2,16 +2,27 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
     <title>📺CASTA-APP⚽</title>
+    <!-- Tailwind CSS para diseño moderno y fluido -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HLS.js para streams de tipo .m3u8 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js"></script>
+    <!-- Dash.js para streams de tipo .mpd (comunes en IPTV modernos y Smart TVs) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.4/dash.all.min.js"></script>
+    
     <style>
-        body { background-color: black !important; }
+        body { 
+            background-color: black !important;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: pan-y;
+        }
         
         .hidden { display: none !important; }
         
+        /* Ocultar controles nativos de video en todas las plataformas */
         video::-webkit-media-controls { display: none !important; }
         video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none !important; }
         video::-webkit-media-controls-overlay-play-button { display: none !important; -webkit-appearance: none !important; }
@@ -21,16 +32,53 @@
             outline: none !important;
         }
  
+        /* Scroll elegante para barra lateral */
         #sidebar::-webkit-scrollbar { width: 6px; }
         #sidebar::-webkit-scrollbar-track { background: transparent; }
-        #sidebar::-webkit-scrollbar-thumb { background-color: #1e3a8a; border-radius: 10px; }
-        #sidebar { -ms-overflow-style: none; scrollbar-width: thin; scrollbar-color: #1e3a8a transparent; -webkit-overflow-scrolling: touch; }
+        #sidebar::-webkit-scrollbar-thumb { background-color: #1d4ed8; border-radius: 10px; }
+        #sidebar { 
+            -ms-overflow-style: none; 
+            scrollbar-width: thin; 
+            scrollbar-color: #1d4ed8 transparent; 
+            -webkit-overflow-scrolling: touch; 
+        }
+
+        /* Efecto de enfoque "Glow" de Smart TV para navegación con control remoto */
+        .tv-focusable:focus {
+            transform: scale(1.04);
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.7);
+            background-color: #1e3a8a !important;
+            outline: none;
+        }
+        
+        /* Transición de menús flotantes */
+        .sidebar-transition {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Estilo para simular pantalla completa si la política del navegador la bloquea */
+        .pseudo-fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999 !important;
+            background-color: black !important;
+        }
    </style>
 </head>
 <body class="bg-black text-white overflow-hidden m-0 p-0 w-screen h-screen flex flex-col md:flex-row font-sans">
  
     <div class="flex-1 relative flex items-center justify-center bg-black overflow-hidden select-none" id="playerArea">
         
+        <!-- Botón de Menú Flotante para Celulares y Pantallas Táctiles -->
+        <button id="btnMenuFlotante" class="absolute top-4 left-4 z-40 bg-neutral-900/90 border border-neutral-800 text-white p-3 rounded-full md:hidden flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+
+        <!-- Pantalla de bienvenida -->
         <div id="welcomeScreen" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-gradient-to-b from-neutral-950 to-black text-center p-6 select-none border border-neutral-900">
             <div class="relative flex items-center justify-center mb-6 w-28 h-28 bg-blue-600/10 rounded-full border border-blue-500/20 shadow-2xl shadow-blue-500/5 animate-pulse">
                 <span class="text-6xl drop-shadow-md">📺</span>
@@ -50,83 +98,91 @@
             </div>
         </div>
 
-        <div id="loader" class="absolute z-50 hidden flex flex-col items-center justify-center bg-black bg-opacity-90 backdrop-blur-sm p-6 rounded-2xl pointer-events-none text-center border border-gray-800 shadow-2xl">
+        <!-- Cargador de transmisión (Loader) -->
+        <div id="loader" class="absolute z-50 hidden flex flex-col items-center justify-center bg-black bg-opacity-95 backdrop-blur-sm p-6 rounded-2xl pointer-events-none text-center border border-gray-800 shadow-2xl">
             <div class="relative flex items-center justify-center mb-5 w-24 h-24">
                 <div class="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-l-4 border-transparent border-t-blue-500 border-b-blue-600 absolute opacity-80"></div>
                 <img id="loaderLogo" class="w-14 h-14 object-contain rounded-lg bg-white p-1 hidden z-10 shadow-lg" src="" alt="logo">
             </div>
-            <p class="text-base font-bold tracking-wider text-blue-400 mb-2 drop-shadow-md">🤖 Buscando enlace del canal...</p>
-            <p class="text-sm text-gray-300 font-medium mb-1">Esto puede tardar hasta 60 segundos</p>
-            <p class="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse mt-2">cargando transmisión, gracias por esperar</p>
+            <p class="text-base font-bold tracking-wider text-blue-400 mb-2 drop-shadow-md">🤖 Conectando transmisión...</p>
+            <p class="text-sm text-gray-300 font-medium mb-1">Esto puede tardar unos segundos</p>
+            <p class="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse mt-2">Cargando enlace seguro</p>
         </div>
         
         <video id="video-player" class="w-full h-full object-contain" autoplay playsinline webkit-playsinline></video>
  
+        <!-- Respaldo para contenido incrustado (Iframe) -->
         <iframe id="iframeElement" allow="encrypted-media" allowfullscreen frameborder="0" scrolling="no" class="w-full h-full bg-black hidden"></iframe>
  
-        <div id="topInfo" class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none z-10 transition-opacity duration-300">
-            <div class="flex flex-col bg-black bg-opacity-40 backdrop-blur-sm p-2 rounded-lg border border-gray-800">
-                <span id="txtReloj" class="text-2xl font-bold font-mono text-white tracking-widest drop-shadow">00:00:00</span>
-                <span id="txtFecha" class="text-[10px] text-white font-bold uppercase tracking-wider mt-0.5 drop-shadow-md">--- -- ---</span>
+        <!-- Barra de Información Superior -->
+        <div id="topInfo" class="absolute top-4 right-4 flex gap-4 items-center pointer-events-none z-10 transition-opacity duration-300">
+            <div class="flex flex-col bg-black bg-opacity-60 backdrop-blur-sm p-2 rounded-lg border border-neutral-800/80 items-end">
+                <span id="txtReloj" class="text-xl font-bold font-mono text-white tracking-widest drop-shadow">00:00:00</span>
+                <span id="txtFecha" class="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-0.5 drop-shadow-md">--- -- ---</span>
             </div>
             
-            <div id="boxClima" class="hidden flex flex-col justify-center bg-black bg-opacity-40 backdrop-blur-sm px-4 py-2 rounded-lg border border-gray-800 text-right">
+            <div id="boxClima" class="hidden flex flex-col justify-center bg-black bg-opacity-60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-neutral-800/80 text-right">
                 <div class="flex items-center justify-end gap-1.5">
-                    <span id="lblDiaNoche" class="text-lg drop-shadow-md">☀️</span>
-                    <div id="txtTemp" class="text-xl font-bold text-white leading-none">0°C</div>
+                    <span id="lblDiaNoche" class="text-base drop-shadow-md">☀️</span>
+                    <div id="txtTemp" class="text-lg font-bold text-white leading-none">0°C</div>
                 </div>
-                <div id="txtClimaDesc" class="text-[9px] text-blue-400 font-bold uppercase tracking-wider mt-1">Cargando...</div>
-                <div class="flex items-center justify-end gap-1 mt-0.5">
-                    <span class="text-[9px] drop-shadow-md">📍</span>
-                    <div id="txtCiudad" class="text-[9px] text-white font-bold uppercase tracking-wider drop-shadow-md">LA PLATA, BA</div>
-                </div>
+                <div id="txtClimaDesc" class="text-[8px] text-blue-400 font-bold uppercase tracking-wider mt-0.5">Cargando...</div>
             </div>
         </div>
  
-        <div id="alertBox" class="absolute top-24 left-1/2 transform -translate-x-1/2 bg-red-600 bg-opacity-90 text-white font-bold px-4 py-2 rounded shadow-lg text-sm z-50 hidden transition-all duration-300 border border-red-500 uppercase tracking-wider">
+        <!-- Cuadro de Alertas y Errores -->
+        <div id="alertBox" class="absolute top-24 left-1/2 transform -translate-x-1/2 bg-red-600 bg-opacity-95 text-white font-bold px-5 py-2.5 rounded-xl shadow-2xl text-xs z-50 hidden transition-all duration-300 border border-red-500 uppercase tracking-widest text-center max-w-sm">
             ¡ERROR AL CARGAR EL CANAL!
         </div>
  
-        <div id="bottomControls" class="absolute bottom-4 left-4 right-4 flex flex-col bg-black bg-opacity-70 backdrop-blur-md p-3 rounded-xl border border-gray-800 shadow-2xl z-10 opacity-0 pointer-events-none transition-opacity duration-300">
+        <!-- Panel de Controles Inferior -->
+        <div id="bottomControls" class="absolute bottom-4 left-4 right-4 flex flex-col bg-neutral-950/95 backdrop-blur-md p-4 rounded-xl border border-neutral-800/90 shadow-2xl z-10 opacity-0 pointer-events-none transition-opacity duration-300">
             
-            <div id="pcMobileControls" class="flex flex-wrap justify-center items-center gap-2 mb-3">
-                <button id="btnVolMenos" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-all uppercase tracking-wider focus:outline-none focus:bg-blue-700 focus:ring-4 focus:ring-blue-500 focus:scale-110">🔉 Vol -</button>
+            <!-- Controles de volumen y pantalla completa -->
+            <div id="pcMobileControls" class="flex flex-wrap justify-center items-center gap-2.5 mb-3">
+                <button id="btnVolMenos" class="tv-focusable bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-neutral-800 text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all uppercase tracking-wider focus:outline-none">🔉 Vol -</button>
                 
-                <span id="txtVolValue" class="bg-neutral-950 text-blue-400 border border-gray-800 text-[11px] px-3 py-1.5 rounded font-black uppercase tracking-wider select-none">VOL: 100%</span>
+                <span id="txtVolValue" class="bg-neutral-950 text-blue-400 border border-neutral-800 text-[11px] px-3 py-1.5 rounded-lg font-black uppercase tracking-wider select-none">VOL: 100%</span>
                 
-                <button id="btnSilenciar" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-all uppercase tracking-wider focus:outline-none focus:bg-blue-700 focus:ring-4 focus:ring-blue-500 focus:scale-110">🔇 Silenciar</button>
-                <button id="btnVolMas" class="bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-gray-800 text-[11px] px-3 py-1.5 rounded font-bold transition-all uppercase tracking-wider focus:outline-none focus:bg-blue-700 focus:ring-4 focus:ring-blue-500 focus:scale-110">🔊 Vol +</button>
-                <button id="btnFullscreen" class="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-4 py-1.5 rounded font-black transition-all uppercase tracking-wider ml-1 shadow-md focus:outline-none focus:bg-blue-500 focus:ring-4 focus:ring-blue-300 focus:scale-105">Pantalla completa 🖥️</button>
+                <button id="btnSilenciar" class="tv-focusable bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-neutral-800 text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all uppercase tracking-wider focus:outline-none">🔇 Silenciar</button>
+                <button id="btnVolMas" class="tv-focusable bg-neutral-900 hover:bg-neutral-800 text-gray-300 hover:text-white border border-neutral-800 text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all uppercase tracking-wider focus:outline-none">🔊 Vol +</button>
+                <button id="btnFullscreen" class="tv-focusable bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 text-[11px] px-4 py-1.5 rounded-lg font-black transition-all uppercase tracking-wider ml-1 shadow-md focus:outline-none">Pantalla completa 🖥️</button>
             </div>
  
-            <div class="w-full h-px bg-gray-800/60 mb-2" id="separadorControles"></div>
+            <div class="w-full h-px bg-neutral-800/60 mb-2.5" id="separadorControles"></div>
  
+            <!-- Opciones del canal actual -->
             <div class="flex flex-col items-center w-full">
-                <div class="text-[10px] font-bold tracking-widest text-blue-400 uppercase mb-2" id="lblOpcionesCanal">OPCIONES DISPONIBLES</div>
+                <div class="text-[9px] font-black tracking-widest text-blue-400 uppercase mb-2" id="lblOpcionesCanal">OPCIONES DISPONIBLES</div>
                 <div id="containerOpciones" class="flex flex-wrap gap-2 justify-center w-full"></div>
             </div>
         </div>
     </div>
  
-    <div id="sidebar" class="w-full md:w-80 h-1/2 md:h-full bg-neutral-950 border-t md:border-t-0 md:border-r border-gray-900 flex flex-col overflow-y-auto p-4 transition-transform duration-300 z-20">
-        <div class="flex flex-col mb-4 border-b border-gray-900 pb-3 gap-1">
+    <div id="sidebar" class="sidebar-transition w-full md:w-80 h-1/2 md:h-full bg-neutral-950 border-t md:border-t-0 md:border-r border-neutral-900 flex flex-col overflow-y-auto p-4 z-20 absolute md:relative bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto md:translate-x-0">
+        <div class="flex flex-col mb-4 border-b border-neutral-900 pb-3 gap-1">
             <div class="flex items-center justify-between w-full">
-                <div class="flex items-center">
+                <div class="flex items-center justify-between w-full">
                     <h1 class="text-lg font-black tracking-wider flex items-center gap-1">
                         <span>📺</span>
                         <span class="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">CASTA-APP</span>
                         <span>⚽</span>
                     </h1>
+                    <!-- Botón para cerrar menú lateral en móviles -->
+                    <button id="btnCloseSidebar" class="md:hidden text-gray-400 hover:text-white p-1">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
                 </div>
             </div>
-            <span class="text-xs text-gray-500 font-semibold tracking-wide uppercase mt-0.5">Un play y a disfrutar</span>
+            <span class="text-[10px] text-gray-500 font-bold tracking-wider uppercase mt-0.5">Control Remoto y Táctil compatible</span>
         </div>
         <div id="listaCanales" class="flex flex-col gap-1.5 flex-1 pb-10"></div>
     </div>
  
     <script>
         const ua = navigator.userAgent.toLowerCase();
-        const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox') || ua.includes('mibox') || ua.includes('chromecast');
+        // Detección exhaustiva de Smart TVs
+        const esTV = ua.includes('smarttv') || ua.includes('googletv') || ua.includes('appletv') || ua.includes('hbbtv') || ua.includes('tizen') || ua.includes('webos') || ua.includes('netcast') || ua.includes('playstation') || ua.includes('xbox') || ua.includes('mibox') || ua.includes('chromecast') || ua.includes('firetv') || ua.includes('smart-tv');
         const esCelularWeb = /android|iphone|ipad|ipod/i.test(ua);
         const esCapacitorNativo = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorVideoPlayer);
  
@@ -137,59 +193,78 @@
         const loaderLogo = document.getElementById('loaderLogo');
         const alertBox = document.getElementById('alertBox');
         const listaCanales = document.getElementById('listaCanales');
+        const sidebar = document.getElementById('sidebar'); 
         
         const bottomControls = document.getElementById('bottomControls');
         const containerOpciones = document.getElementById('containerOpciones');
         const topInfo = document.getElementById('topInfo');
         
         const pcMobileControls = document.getElementById('pcMobileControls');
-        const separadorControles = document.getElementById('separadorControles');
         const btnVolMenos = document.getElementById('btnVolMenos');
         const btnSilenciar = document.getElementById('btnSilenciar');
         const btnVolMas = document.getElementById('btnVolMas');
         const btnFullscreen = document.getElementById('btnFullscreen');
         const txtVolValue = document.getElementById('txtVolValue');
+        const btnMenuFlotante = document.getElementById('btnMenuFlotante');
+        const btnCloseSidebar = document.getElementById('btnCloseSidebar');
  
         let cacheCanalesGlobal = [];
         let canalActualGlobal = null;
         let hls = null;
         let dashPlayer = null;
-        let mpegtsPlayer = null;
         let timeoutControles = null;
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let isPseudoFullscreen = false;
  
-        const sidebar = document.getElementById('sidebar'); 
-// ==========================================
-// TRADUCTOR AUTOMÁTICO DE LLAVES BASE64 (KODI) A HEXADECIMAL
-// ==========================================
-function kodiBase64ToHex(base64String) {
-    if (!base64String) return "";
-    let textoLimpio = base64String.trim().replace(/-/g, '+').replace(/_/g, '/');
-    try {
-        let binario = window.atob(textoLimpio);
-        let resultadoHex = '';
-        for (let i = 0; i < binario.length; i++) {
-            let byteHex = binario.charCodeAt(i).toString(16);
-            resultadoHex += (byteHex.length === 1 ? '0' : '') + byteHex;
-        }
-        return resultadoHex.toLowerCase();
-    } catch(err) {
-        console.error("Error al convertir la llave Base64:", err);
-        return base64String; // Si ya venía en HEX, la devuelve igual
-    }
-}
-        
         function ocultarSidebarCompleto() {
-            sidebar.classList.add('hidden');
+            sidebar.classList.add('translate-y-full', 'md:hidden');
+            sidebar.classList.remove('translate-y-0');
             playerArea.style.width = '100%';
             playerArea.style.height = '100%';
         }
  
         function mostrarSidebarCompleto() {
-            if (esTV) return; 
-            sidebar.classList.remove('hidden');
-            playerArea.style.width = '';
-            playerArea.style.height = '';
+            sidebar.classList.remove('translate-y-full', 'md:hidden');
+            sidebar.classList.add('translate-y-0');
+            if (!esCelularWeb) {
+                playerArea.style.width = '';
+                playerArea.style.height = '';
+            }
         }
+
+        function togglePseudoFullscreen() {
+            isPseudoFullscreen = !isPseudoFullscreen;
+            if (isPseudoFullscreen) {
+                playerArea.classList.add('pseudo-fullscreen');
+                if (btnFullscreen) btnFullscreen.innerHTML = "Salir Pantalla 🖥️";
+                ocultarSidebarCompleto();
+            } else {
+                playerArea.classList.remove('pseudo-fullscreen');
+                if (btnFullscreen) btnFullscreen.innerHTML = "Pantalla completa 🖥️";
+                if (!esCelularWeb && !esTV) {
+                    mostrarSidebarCompleto();
+                }
+            }
+        }
+
+        // Eventos táctiles para deslizar el menú en móviles (Swipe Gestures)
+        playerArea.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        playerArea.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            manejarGestoSwipe();
+        }, { passive: true });
+
+        function manejarGestoSwipe() {
+            if (touchEndX - touchStartX > 80) mostrarSidebarCompleto();
+            if (touchStartX - touchEndX > 80) ocultarSidebarCompleto();
+        }
+
+        btnMenuFlotante.onclick = () => mostrarSidebarCompleto();
+        btnCloseSidebar.onclick = () => ocultarSidebarCompleto();
  
         function mostrarLoader() { 
             if (canalActualGlobal && canalActualGlobal.logo) {
@@ -203,16 +278,15 @@ function kodiBase64ToHex(base64String) {
         function ocultarLoader() { loader.classList.add('hidden'); }
  
         function mostrarAlerta(mensaje) {
-    const alertBox = document.getElementById('alertBox');
-    if (mensaje) {
-        // Ahora mostrará el error real en mayúsculas
-        alertBox.textContent = `¡ERROR: ${mensaje.toUpperCase()}!`;
-    } else {
-        alertBox.textContent = "¡ERROR AL CARGAR EL CANAL!";
-    }
-    alertBox.classList.remove('hidden');
-    setTimeout(() => { alertBox.classList.add('hidden'); }, 6000);
-}
+            const alertBox = document.getElementById('alertBox');
+            if (mensaje) {
+                alertBox.textContent = `¡INFO: ${mensaje.toUpperCase()}!`;
+            } else {
+                alertBox.textContent = "¡ERROR AL CARGAR EL CANAL!";
+            }
+            alertBox.classList.remove('hidden');
+            setTimeout(() => { alertBox.classList.add('hidden'); }, 6000);
+        }
  
         function mostrarControlesInteractivos() {
             bottomControls.classList.remove('opacity-0', 'pointer-events-none');
@@ -226,18 +300,19 @@ function kodiBase64ToHex(base64String) {
                 if (document.fullscreenElement) {
                     document.body.style.cursor = 'none';
                 }
-            }, 3500); 
+            }, 4000); 
         }
  
         document.addEventListener('mousemove', mostrarControlesInteractivos);
         document.addEventListener('keydown', mostrarControlesInteractivos);
         videoElement.addEventListener('play', mostrarControlesInteractivos);
+        videoElement.addEventListener('click', mostrarControlesInteractivos);
  
         function iniciarReloj() {
             const actualizar = () => {
                 const n = new Date();
                 document.getElementById('txtReloj').textContent = n.toLocaleTimeString('es-AR', { hour12: false });
-                document.getElementById('txtFecha').textContent = n.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                document.getElementById('txtFecha').textContent = n.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
             };
             actualizar();
             setInterval(actualizar, 1000);
@@ -260,6 +335,12 @@ function kodiBase64ToHex(base64String) {
             
             if (esTV) {
                 ocultarSidebarCompleto();
+                document.getElementById('welcomeInstruction').textContent = "Use el control remoto (Flechas y botón OK) para navegar.";
+            } else if (esCelularWeb) {
+                ocultarSidebarCompleto();
+                document.getElementById('welcomeInstruction').textContent = "Toque el botón superior o deslice para ver canales.";
+            } else {
+                document.getElementById('welcomeInstruction').textContent = "Seleccione un canal de la lista para comenzar.";
             }
  
             videoElement.volume = 1.0;
@@ -278,19 +359,11 @@ function kodiBase64ToHex(base64String) {
                 
                 document.getElementById('txtTemp').textContent = `${temp}°C`;
                 document.getElementById('txtClimaDesc').textContent = desc.toUpperCase();
-                document.getElementById('txtCiudad').textContent = "LA PLATA, BA";
                 document.getElementById('boxClima').classList.remove('hidden');
                 
                 const horaActual = new Date().getHours();
                 const esDia = horaActual >= 6 && horaActual < 19;
-                
                 let emoji = esDia ? "☀️" : "🌙";
-                if (["116", "119", "122"].includes(code)) emoji = esDia ? "⛅" : "☁️"; 
-                else if (["143", "248", "260"].includes(code)) emoji = "🌫️"; 
-                else if (["176", "263", "266", "293", "296", "299", "302", "305", "308", "353", "356", "359"].includes(code)) emoji = "🌧️"; 
-                else if (["200", "386", "389"].includes(code)) emoji = "⛈️"; 
-                else if (["227", "320", "323", "326", "329", "332", "335", "338", "368", "371", "392", "395"].includes(code)) emoji = "❄️"; 
- 
                 document.getElementById('lblDiaNoche').textContent = emoji;
             } catch(e) { console.error("Error clima:", e); }
         }
@@ -325,23 +398,39 @@ function kodiBase64ToHex(base64String) {
         if (btnFullscreen) {
             btnFullscreen.onclick = function() {
                 this.blur(); 
+                if (isPseudoFullscreen) {
+                    togglePseudoFullscreen();
+                    return;
+                }
+
                 const docElm = document.documentElement; 
                 
                 if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                     const req = docElm.requestFullscreen || docElm.webkitRequestFullscreen;
                     if (req) {
-                        req.call(docElm).catch(err => console.log("Error Fullscreen:", err));
-                    } else if (videoElement.webkitEnterFullscreen) {
-                        videoElement.webkitEnterFullscreen(); 
+                        req.call(docElm).catch(err => {
+                            if (videoElement && videoElement.webkitEnterFullscreen) {
+                                try { videoElement.webkitEnterFullscreen(); } catch (e) { togglePseudoFullscreen(); }
+                            } else {
+                                togglePseudoFullscreen();
+                            }
+                        });
+                    } else if (videoElement && videoElement.webkitEnterFullscreen) {
+                        try { videoElement.webkitEnterFullscreen(); } catch (e) { togglePseudoFullscreen(); }
+                    } else {
+                        togglePseudoFullscreen();
                     }
                 } else {
                     const exit = document.exitFullscreen || document.webkitExitFullscreen;
-                    if (exit) exit.call(document);
+                    if (exit) {
+                        exit.call(document).catch(() => { togglePseudoFullscreen(); });
+                    } else {
+                        togglePseudoFullscreen();
+                    }
                 }
             };
         }
  
-        // 📱 ROTACIÓN INTELIGENTE EN CELULARES AL PASAR A PANTALLA COMPLETA
         function manejarCambioFullscreen() {
             const esFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
             const esMovil = /android|iphone|ipad|ipod/i.test(navigator.userAgent.toLowerCase());
@@ -349,12 +438,10 @@ function kodiBase64ToHex(base64String) {
             if (esFullscreen) {
                 ocultarSidebarCompleto(); 
                 if (esMovil && window.screen && window.screen.orientation && window.screen.orientation.lock) {
-                    window.screen.orientation.lock('landscape').catch(err => {
-                        console.log("Rotación asistida activa al girar el dispositivo", err);
-                    });
+                    window.screen.orientation.lock('landscape').catch(err => { console.log("Rotación asistida", err); });
                 }
             } else {
-                mostrarSidebarCompleto(); 
+                if (!esCelularWeb && !isPseudoFullscreen) mostrarSidebarCompleto(); 
                 if (esMovil && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
                     window.screen.orientation.unlock().catch(() => {});
                 }
@@ -363,265 +450,285 @@ function kodiBase64ToHex(base64String) {
         document.addEventListener('fullscreenchange', manejarCambioFullscreen);
         document.addEventListener('webkitfullscreenchange', manejarCambioFullscreen);
 
-// ====== PEGA ESTO JUSTO ARRIBA DE descargarListaCanales ======
-function renderizarMenuCanales() {
-    const listaCanales = document.getElementById('listaCanales');
-    listaCanales.innerHTML = "";
-    
-    cacheCanalesGlobal.forEach((canal) => {
-        const btn = document.createElement('button');
-        btn.className = "flex items-center w-full text-left bg-neutral-900 hover:bg-neutral-800 focus:bg-blue-600 focus:outline-none p-2 rounded-xl transition-all border border-gray-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-500 shadow-sm group";
-        
-        btn.innerHTML = `
-            <div class="w-10 h-10 bg-white rounded-lg p-1 mr-3 flex-shrink-0 shadow-inner">
-                <img src="${canal.logo}" class="w-full h-full object-contain" alt="logo">
-            </div>
-            <div class="flex flex-col flex-1 truncate">
-                <span class="text-white font-bold text-sm tracking-wide truncate">${canal.nombre}</span>
-                <span class="text-blue-400 text-[10px] font-black uppercase tracking-widest mt-0.5">${canal.categoria || 'CANAL'}</span>
-            </div>
-        `;
-        
-        btn.onclick = () => seleccionarCanal(canal);
-        listaCanales.appendChild(btn);
-    });
-}
-// =============================================================
-
-async function descargarListaCanales() {
-    try {
-        const res = await fetch('https://casta-app.onrender.com/api/canales');
-        
-        // Si el servidor responde con un error (403, 404, 500, etc) lo atrapamos aquí
-        if (!res.ok) {
-            throw new Error(`Código de estado HTTP: ${res.status}`);
-        }
-
-        const data = await res.json();
-        cacheCanalesGlobal = data;
-        renderizarMenuCanales();
-        
-        const welcomeInstruction = document.getElementById('welcomeInstruction');
-        if (welcomeInstruction) {
-            welcomeInstruction.textContent = "Seleccione un canal de la lista.";
-        }
-        
-        if (esTV) {
-            setTimeout(() => {
-                const primerBoton = listaCanales.querySelector('button');
-                if (primerBoton) primerBoton.focus();
-            }, 800);
-        }
-    } catch (err) { 
-        console.error("Error cargando canales:", err); 
-        const welcomeInstruction = document.getElementById('welcomeInstruction');
-        if (welcomeInstruction) {
-            // Ahora la pantalla te dirá exactamente QUÉ falló (ej. si fue un bloqueo o formato)
-            welcomeInstruction.textContent = `Error: ${err.message}`;
-        }
-    }
-}
-function seleccionarCanal(canal) {
-    canalActualGlobal = canal;
-    containerOpciones.innerHTML = "";
-    
-    // CORRECCIÓN: Ocultar la pantalla de bienvenida de inmediato para que 
-    // no tape la zona de reproducción ni los botones de opciones (z-10)
-    const welcomeScreen = document.getElementById('welcomeScreen');
-    if (welcomeScreen) welcomeScreen.classList.add('hidden');
-    
-    if (canal.opciones && canal.opciones.length > 0) {
-        canal.opciones.forEach((opc, index) => {
-            const b = document.createElement('button');
-            b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:bg-blue-600 focus:ring-4 focus:ring-blue-400 focus:scale-110 shadow-lg";
-            b.textContent = opc.nombre;
-            
-            b.onclick = function() { 
-                this.blur(); 
+        function renderizarMenuCanales() {
+            listaCanales.innerHTML = "";
+            cacheCanalesGlobal.forEach((canal) => {
+                const btn = document.createElement('button');
+                btn.className = "tv-focusable flex items-center w-full text-left bg-neutral-900 hover:bg-neutral-800 focus:outline-none p-2 rounded-xl transition-all border border-neutral-800/85 shadow-sm group";
+                btn.setAttribute("tabindex", "0");
                 
-                // URL directa → va directo a ExoPlayer (APK) o hls.js (web), sin proxy
-                if (opc.url) {
-                    reproducirCanal(opc.url, null);
-                } else if (opc.id) {
-                    // Canal con bot/scraping → consulta Render
-                    consultarServidorYReproducir(opc.id);
-                }
-
-                if (esTV && btnFullscreen) {
-                    setTimeout(() => { btnFullscreen.focus(); }, 150);
-                }
-            };
-            containerOpciones.appendChild(b);
-        });
-        
-        const primerBotonOpc = containerOpciones.querySelector('button');
-        if (primerBotonOpc) primerBotonOpc.focus();
-        
-        mostrarControlesInteractivos();
-    } else { 
-        mostrarAlerta(); 
-    }
-}
-// =========================================================================
-// INTEGRACIÓN NATIVA: INTERCEPTOR UNIVERSAL EXOPLAYER
-// =========================================================================
-
-async function consultarServidorYReproducir(opcionId) {
-    mostrarLoader();
-    try {
-        // 🎯 CORRECCIÓN FINAL: Usamos la ruta exacta que está en tu backend
-        const urlAPI = `https://casta-app.onrender.com/api/get-stream/${opcionId}`;
-        console.log("Consultando al servidor:", urlAPI);
-
-        const res = await fetch(urlAPI);
-        
-        if (!res.ok) {
-            throw new Error(`Servidor rechazó la conexión (Error ${res.status})`);
-        }
-        
-        const data = await res.json();
-        
-        if (data.exito && data.url) { 
-            reproducirCanal(data.url, data); 
-        } else { 
-            ocultarLoader(); 
-            mostrarAlerta(data.mensaje || "El servidor no envió una URL válida"); 
-        }
-    } catch(e) { 
-        ocultarLoader(); 
-        mostrarAlerta(`Fallo de red: ${e.message}`); 
-    }
-}
-
-async function reproducirCanal(url, infoStream) {
-    mostrarLoader();
-    const welcomeScreen = document.getElementById('welcomeScreen');
-    if (welcomeScreen) welcomeScreen.classList.add('hidden');
-    
-    // 🚀 PUENTE NATIVO ANDROID: Si estamos en la app, desviamos el flujo a Java
-    if (window.Capacitor) {
-        try {
-            let CustomPlayer = null;
-            if (window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
-                CustomPlayer = window.Capacitor.Plugins.CustomPlayer;
-            } else if (typeof window.Capacitor.registerPlugin === 'function') {
-                CustomPlayer = window.Capacitor.registerPlugin('CustomPlayer');
-            }
-
-            if (CustomPlayer) {
-                ocultarLoader();
-                const tituloCanal = canalActualGlobal ? canalActualGlobal.nombre : "CASTA-APP";
+                btn.innerHTML = `
+                    <div class="w-10 h-10 bg-white rounded-lg p-1 mr-3 flex-shrink-0 shadow-inner">
+                        <img src="${canal.logo}" class="w-full h-full object-contain" alt="logo" onerror="this.src='https://placehold.co/40x40/000000/ffffff?text=TV'">
+                    </div>
+                    <div class="flex flex-col flex-1 truncate">
+                        <span class="text-white font-bold text-sm tracking-wide truncate">${canal.nombre}</span>
+                        <span class="text-blue-400 text-[9px] font-black uppercase tracking-widest mt-0.5">${canal.categoria || 'CANAL'}</span>
+                    </div>
+                `;
                 
-                // Enviamos la URL fija o la del bot directamente a ExoPlayer nativo
-                await CustomPlayer.playVideo({
-                    url: url,
-                    title: tituloCanal
-                });
-                return; // Cortamos acá para que no intente reproducir en la web
-            }
-        } catch (err) {
-            console.error("Fallo al conectar con CustomPlayer nativo:", err);
-        }
-    }
-
-    // 🖥️ RESPALDO MODO WEB (Tu código original por si lo pruebas en la PC)
-    if (videoElement) {
-        videoElement.pause();
-        videoElement.classList.remove('hidden');
-    }
-
-    if (hls) {
-        hls.destroy();
-        hls = null;
-    }
-
-    let drmConfig = null;
-    if (infoStream) {
-        try {
-            let keyIdHex = infoStream.keyId || (infoStream.drm && infoStream.drm.keyId);
-            let keyHex = infoStream.key || (infoStream.drm && infoStream.drm.key);
-
-            if (keyIdHex && keyHex) {
-                drmConfig = {
-                    "org.w3.clearkey": {
-                        "clearkeys": { [keyIdHex]: keyHex }
-                    }
+                btn.onclick = () => {
+                    seleccionarCanal(canal);
+                    if (esCelularWeb) ocultarSidebarCompleto();
                 };
-                console.log("DRM detectado y configurado en el reproductor.");
-            }
-        } catch (e) {
-            console.error("Error al procesar DRM:", e);
-        }
-    }
-
-    if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-        let hlsConfig = { maxMaxBufferLength: 10 };
-        if (drmConfig) {
-            hlsConfig.emeEnabled = true;
-            hlsConfig.drmSystems = drmConfig;
+                listaCanales.appendChild(btn);
+            });
         }
 
-        hls = new Hls(hlsConfig);
-        hls.loadSource(url);
-        hls.attachMedia(videoElement);
-        
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            ocultarLoader();
-            videoElement.play().catch(err => console.log("Auto-play bloqueado:", err));
-        });
-
-        hls.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) {
-                switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
-                    case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-                    default: ocultarLoader(); mostrarAlerta("Error crítico en la transmisión."); break;
+        async function descargarListaCanales() {
+            try {
+                const res = await fetch('https://casta-app.onrender.com/api/canales');
+                if (!res.ok) throw new Error(`Servidor ocupado (Código ${res.status})`);
+                const data = await res.json();
+                cacheCanalesGlobal = data;
+                renderizarMenuCanales();
+                
+                const welcomeInstruction = document.getElementById('welcomeInstruction');
+                if (welcomeInstruction) {
+                    if (esTV) welcomeInstruction.textContent = "Use su control para elegir un canal.";
+                    else if (esCelularWeb) welcomeInstruction.textContent = "Pulse arriba para desplegar los canales.";
+                    else welcomeInstruction.textContent = "Seleccione un canal de la barra de la derecha.";
                 }
+                
+                if (esTV) {
+                    setTimeout(() => {
+                        const primerBoton = listaCanales.querySelector('button');
+                        if (primerBoton) primerBoton.focus();
+                    }, 1000);
+                }
+            } catch (err) { 
+                console.error("Error cargando canales:", err); 
+                const welcomeInstruction = document.getElementById('welcomeInstruction');
+                if (welcomeInstruction) welcomeInstruction.textContent = `Error de red: Intente de nuevo más tarde`;
             }
-        });
-    } 
-    else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-        videoElement.src = url;
-        videoElement.addEventListener('loadedmetadata', function() {
-            ocultarLoader();
-            videoElement.play().catch(err => console.log("Auto-play bloqueado:", err));
-        });
-   } else {
-        ocultarLoader();
-        mostrarAlerta("Tu dispositivo no soporta reproducción HLS o la librería no cargó correctamente.");
-    }
-}
-        // CONTROL REMOTO / TECLADO
+        }
+
+        function seleccionarCanal(canal) {
+            canalActualGlobal = canal;
+            containerOpciones.innerHTML = "";
+            
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            if (welcomeScreen) welcomeScreen.classList.add('hidden');
+            
+            if (canal.opciones && canal.opciones.length > 0) {
+                canal.opciones.forEach((opc) => {
+                    const b = document.createElement('button');
+                    b.className = "tv-focusable bg-neutral-900 hover:bg-blue-600 border border-neutral-800 text-white font-bold px-4 py-2.5 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none shadow-lg";
+                    b.setAttribute("tabindex", "0");
+                    b.textContent = opc.nombre;
+                    
+                    b.onclick = function() { 
+                        this.blur(); 
+                        
+                        // Si la opción tiene URL directa (Ej: HTTP puro o HTTPS puro), bypasseamos el servidor
+                        if (opc.url) {
+                            reproducirCanal(opc.url, null);
+                        } else if (opc.id) {
+                            consultarServidorYReproducir(opc.id);
+                        }
+
+                        if (esTV && btnFullscreen) {
+                            setTimeout(() => { btnFullscreen.focus(); }, 150);
+                        }
+                    };
+                    containerOpciones.appendChild(b);
+                });
+                
+                const primerBotonOpc = containerOpciones.querySelector('button');
+                if (primerBotonOpc) primerBotonOpc.focus();
+                
+                mostrarControlesInteractivos();
+            } else { 
+                mostrarAlerta("No hay señales disponibles"); 
+            }
+        }
+
+        async function consultarServidorYReproducir(opcionId) {
+            mostrarLoader();
+            try {
+                const urlAPI = `https://casta-app.onrender.com/api/get-stream/${opcionId}`;
+                const res = await fetch(urlAPI);
+                if (!res.ok) throw new Error(`Error en servidor (Estado: ${res.status})`);
+                const data = await res.json();
+                
+                if (data.exito && data.url) { 
+                    reproducirCanal(data.url, data); 
+                } else { 
+                    ocultarLoader(); 
+                    mostrarAlerta(data.mensaje || "Stream offline temporalmente."); 
+                }
+            } catch(e) { 
+                ocultarLoader(); 
+                mostrarAlerta(`Fallo en el puente: ${e.message}`); 
+            }
+        }
+
+        async function reproducirCanal(url, infoStream) {
+            mostrarLoader();
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            if (welcomeScreen) welcomeScreen.classList.add('hidden');
+            
+            // Bypass Nativo App Android/iOS (Capacitor)
+            if (window.Capacitor) {
+                try {
+                    let CustomPlayer = null;
+                    if (window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
+                        CustomPlayer = window.Capacitor.Plugins.CustomPlayer;
+                    } else if (typeof window.Capacitor.registerPlugin === 'function') {
+                        CustomPlayer = window.Capacitor.registerPlugin('CustomPlayer');
+                    }
+
+                    if (CustomPlayer) {
+                        ocultarLoader();
+                        const tituloCanal = canalActualGlobal ? canalActualGlobal.nombre : "CASTA-APP";
+                        await CustomPlayer.playVideo({ url: url, title: tituloCanal });
+                        return;
+                    }
+                } catch (err) { console.error("No se pudo enlazar con la aplicación nativa:", err); }
+            }
+
+            if (videoElement) {
+                videoElement.pause();
+                videoElement.classList.remove('hidden');
+                iframeElement.classList.add('hidden');
+            }
+
+            if (hls) { hls.destroy(); hls = null; }
+            if (dashPlayer) { dashPlayer.destroy(); dashPlayer = null; }
+
+            let drmConfig = null;
+            if (infoStream) {
+                try {
+                    let keyIdHex = infoStream.keyId || (infoStream.drm && infoStream.drm.keyId);
+                    let keyHex = infoStream.key || (infoStream.drm && infoStream.drm.key);
+                    if (keyIdHex && keyHex) {
+                        drmConfig = { "org.w3.clearkey": { "clearkeys": { [keyIdHex]: keyHex } } };
+                    }
+                } catch (e) { console.error("Error DRM:", e); }
+            }
+
+            const esDash = url.includes('.mpd');
+            const esHttpPuro = url.startsWith('http://');
+
+            // 1. DASH (.mpd)
+            if (esDash && typeof dashjs !== 'undefined') {
+                dashPlayer = dashjs.MediaPlayer().create();
+                dashPlayer.initialize(videoElement, url, true);
+                if (drmConfig) dashPlayer.setProtectionData(drmConfig);
+                
+                dashPlayer.on(dashjs.MediaPlayer.events.PLAYBACK_METADATA_LOADED, function() { ocultarLoader(); });
+                dashPlayer.on(dashjs.MediaPlayer.events.ERROR, function(e) {
+                    console.error("Error DASH:", e);
+                    mostrarAlerta("Error al cargar origen DASH");
+                    ocultarLoader();
+                });
+            } 
+            // 2. APPLE HLS (.m3u8) - Intento estándar
+            else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                let hlsConfig = { maxMaxBufferLength: 10, lowLatencyMode: true };
+                if (drmConfig) {
+                    hlsConfig.emeEnabled = true;
+                    hlsConfig.drmSystems = drmConfig;
+                }
+
+                hls = new Hls(hlsConfig);
+                hls.loadSource(url);
+                hls.attachMedia(videoElement);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    ocultarLoader();
+                    videoElement.play().catch(() => {
+                        videoElement.muted = true;
+                        videoElement.play();
+                        actualizarIndicadorVolumen();
+                    });
+                });
+
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR: 
+                                console.warn("Error de Red / CORS detectado. Fallback activado para HTTP...");
+                                // EL NAVEGADOR BLOQUEA HTTP O HAY ERROR CORS:
+                                // Intentamos inyectar el video directo en la etiqueta (A Smart TVs y Celulares no les importa el CORS)
+                                hls.destroy();
+                                hls = null;
+                                
+                                videoElement.src = url;
+                                videoElement.addEventListener('loadedmetadata', function() {
+                                    ocultarLoader();
+                                    videoElement.play().catch(() => {
+                                        videoElement.muted = true;
+                                        videoElement.play();
+                                    });
+                                }, { once: true });
+                                
+                                // Si también falla el fallback nativo:
+                                videoElement.onerror = function() {
+                                    ocultarLoader();
+                                    if (esHttpPuro && window.location.protocol === 'https:') {
+                                        mostrarAlerta("Enlace HTTP bloqueado por seguridad del Navegador PC.");
+                                    } else {
+                                        mostrarAlerta("La señal ha sido rechazada por el servidor destino.");
+                                    }
+                                };
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+                            default: ocultarLoader(); mostrarAlerta("La señal no se encuentra disponible."); break;
+                        }
+                    }
+                });
+            } 
+            // 3. Fallback Nativo (Safari iOS, Smart TVs Tizen/WebOS)
+            else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                videoElement.src = url;
+                videoElement.addEventListener('loadedmetadata', function() {
+                    ocultarLoader();
+                    videoElement.play().catch(() => {
+                        videoElement.muted = true;
+                        videoElement.play();
+                        actualizarIndicadorVolumen();
+                    });
+                });
+            } else {
+                ocultarLoader();
+                mostrarAlerta("Este dispositivo carece de decodificadores multimedia integrados.");
+            }
+        }
+
         document.addEventListener('keydown', (e) => {
-            const keys = { 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 13: 'Enter' };
+            const keys = { 
+                37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down', 
+                13: 'Enter', 27: 'Back', 8: 'Back', 461: 'Back', 10009: 'Back' 
+            };
             const keyName = keys[e.keyCode];
             if (!keyName) return;
  
             const botones = Array.from(listaCanales.querySelectorAll('button'));
             const currentIndex = botones.indexOf(document.activeElement);
+            const isUp = keyName === 'Up', isDown = keyName === 'Down', isLeft = keyName === 'Left', isRight = keyName === 'Right', isEnter = keyName === 'Enter', isBack = keyName === 'Back';
  
-            const isUp = keyName === 'Up';
-            const isDown = keyName === 'Down';
-            const isLeft = keyName === 'Left';
-            const isRight = keyName === 'Right';
-            const isEnter = keyName === 'Enter';
- 
+            if (isBack) {
+                e.preventDefault();
+                if (isPseudoFullscreen) { togglePseudoFullscreen(); return; }
+                const sidebarVisible = !sidebar.classList.contains('hidden') && !sidebar.classList.contains('translate-y-full');
+                if (sidebarVisible) ocultarSidebarCompleto();
+                else if (document.fullscreenElement || document.webkitFullscreenElement) {
+                    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                    if (exit) exit.call(document);
+                }
+                return;
+            }
+
             if (esTV) {
-                const sidebarOculto = document.getElementById('sidebar').classList.contains('hidden');
+                const sidebarOculto = sidebar.classList.contains('hidden') || sidebar.classList.contains('translate-y-full');
                 if (sidebarOculto) {
-                    if (isRight) {
+                    if (isRight || isLeft || isUp || isDown) {
                         e.preventDefault();
-                        if (document.fullscreenElement || document.webkitFullscreenElement) {
-                            const exit = document.exitFullscreen || document.webkitExitFullscreen;
-                            if (exit) exit.call(document);
-                        } else {
-                            mostrarSidebarCompleto(); 
-                        }
+                        mostrarSidebarCompleto(); 
                         setTimeout(() => { if (botones.length > 0) botones[0].focus(); }, 150);
                         return;
                     }
-                    mostrarControlesInteractivos();
-                    return;
                 }
             }
  
@@ -672,35 +779,13 @@ async function reproducirCanal(url, infoStream) {
                 if (isEnter && (document.activeElement.tagName === 'BUTTON')) document.activeElement.click();
             }
         });
- // --- PEGAR ESTA FUNCIÓN NUEVA ---
-async function abrirReproductorNativo(url, nombreCanal, nombreOpcion) {
-    if (window.Capacitor) {
-        try {
-            let CustomPlayer = null;
 
-            if (window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
-                CustomPlayer = window.Capacitor.Plugins.CustomPlayer;
-            } else if (typeof window.Capacitor.registerPlugin === 'function') {
-                CustomPlayer = window.Capacitor.registerPlugin('CustomPlayer');
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape" || e.keyCode === 27) {
+                if (isPseudoFullscreen) togglePseudoFullscreen();
             }
+        });
 
-            if (CustomPlayer) {
-                // Le pasamos a Java el título del canal + la opción elegida (Ej: "ESPN Premium - Opción 1")
-                await CustomPlayer.playVideo({
-                    url: url,
-                    title: `${nombreCanal} (${nombreOpcion})`
-                });
-            } else {
-                alert("No se pudo iniciar el reproductor nativo.");
-            }
-        } catch (err) {
-            alert(`Fallo en el puente nativo: ${err.message || err}`);
-        }
-    } else {
-        alert("Estás en modo web. El video es: " + url);
-    }
-}
-// --------------------------------
         window.onload = () => {
             adaptarInterfazPorDispositivo();
             descargarListaCanales();
