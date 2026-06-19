@@ -6,9 +6,6 @@
     <meta name="referrer" content="no-referrer">
     <title>📺CASTA-APP⚽</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.1/dash.all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.js"></script>
     <style>
         body { background-color: black !important; }
         
@@ -423,7 +420,6 @@ async function descargarListaCanales() {
         }
     }
 }
-
 function seleccionarCanal(canal) {
     canalActualGlobal = canal;
     containerOpciones.innerHTML = "";
@@ -438,14 +434,23 @@ function seleccionarCanal(canal) {
             const b = document.createElement('button');
             b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:bg-blue-600 focus:ring-4 focus:ring-blue-400 focus:scale-110 shadow-lg";
             b.textContent = opc.nombre;
+            
             b.onclick = function() { 
                 this.blur(); 
                 
-                const playPromise = videoElement.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(() => {});
+                // 🌟 DETECTOR HÍBRIDO INTELIGENTE
+                if (opc.url) {
+                    // Si tiene URL fija, se la mandamos directo al reproductor
+                    reproducirCanal(opc.url, null);
+                } else if (opc.id) {
+                    // Si no tiene URL pero tiene ID, ejecutamos tu bot
+                    const playPromise = videoElement.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(() => {});
+                    }
+                    consultarServidorYReproducir(opc.id); 
                 }
-                consultarServidorYReproducir(opc.id); 
+
                 if (esTV && btnFullscreen) {
                     setTimeout(() => { btnFullscreen.focus(); }, 150);
                 }
@@ -461,7 +466,6 @@ function seleccionarCanal(canal) {
         mostrarAlerta(); 
     }
 }
- 
 // =========================================================================
 // INTEGRACIÓN NATIVA: INTERCEPTOR UNIVERSAL EXOPLAYER
 // =========================================================================
@@ -498,19 +502,43 @@ async function reproducirCanal(url, infoStream) {
     const welcomeScreen = document.getElementById('welcomeScreen');
     if (welcomeScreen) welcomeScreen.classList.add('hidden');
     
-    // Asegurar que el elemento de video sea visible
+    // 🚀 PUENTE NATIVO ANDROID: Si estamos en la app, desviamos el flujo a Java
+    if (window.Capacitor) {
+        try {
+            let CustomPlayer = null;
+            if (window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
+                CustomPlayer = window.Capacitor.Plugins.CustomPlayer;
+            } else if (typeof window.Capacitor.registerPlugin === 'function') {
+                CustomPlayer = window.Capacitor.registerPlugin('CustomPlayer');
+            }
+
+            if (CustomPlayer) {
+                ocultarLoader();
+                const tituloCanal = canalActualGlobal ? canalActualGlobal.nombre : "CASTA-APP";
+                
+                // Enviamos la URL fija o la del bot directamente a ExoPlayer nativo
+                await CustomPlayer.playVideo({
+                    url: url,
+                    title: tituloCanal
+                });
+                return; // Cortamos acá para que no intente reproducir en la web
+            }
+        } catch (err) {
+            console.error("Fallo al conectar con CustomPlayer nativo:", err);
+        }
+    }
+
+    // 🖥️ RESPALDO MODO WEB (Tu código original por si lo pruebas en la PC)
     if (videoElement) {
         videoElement.pause();
         videoElement.classList.remove('hidden');
     }
 
-    // 1. LIMPIEZA DE INSTANCIAS PREVIAS
     if (hls) {
         hls.destroy();
         hls = null;
     }
 
-    // 2. EXTRAER LLAVES DRM (ClearKey) SI EXISTEN
     let drmConfig = null;
     if (infoStream) {
         try {
@@ -518,12 +546,9 @@ async function reproducirCanal(url, infoStream) {
             let keyHex = infoStream.key || (infoStream.drm && infoStream.drm.key);
 
             if (keyIdHex && keyHex) {
-                // Configuración ClearKey requerida por Hls.js
                 drmConfig = {
                     "org.w3.clearkey": {
-                        "clearkeys": {
-                            [keyIdHex]: keyHex
-                        }
+                        "clearkeys": { [keyIdHex]: keyHex }
                     }
                 };
                 console.log("DRM detectado y configurado en el reproductor.");
@@ -533,14 +558,8 @@ async function reproducirCanal(url, infoStream) {
         }
     }
 
-    // 3. REPRODUCCIÓN CON HLS.JS
     if (Hls.isSupported()) {
-        // Creamos la configuración inicial de Hls.js
-        let hlsConfig = {
-            maxMaxBufferLength: 10 // Reduce latencia en la app
-        };
-
-        // Si hay llaves DRM, las inyectamos en la configuración
+        let hlsConfig = { maxMaxBufferLength: 10 };
         if (drmConfig) {
             hlsConfig.emeEnabled = true;
             hlsConfig.drmSystems = drmConfig;
@@ -558,21 +577,13 @@ async function reproducirCanal(url, infoStream) {
         hls.on(Hls.Events.ERROR, function(event, data) {
             if (data.fatal) {
                 switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR:
-                        hls.startLoad();
-                        break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                        hls.recoverMediaError();
-                        break;
-                    default:
-                        ocultarLoader();
-                        mostrarAlerta("Error crítico en la transmisión.");
-                        break;
+                    case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+                    case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+                    default: ocultarLoader(); mostrarAlerta("Error crítico en la transmisión."); break;
                 }
             }
         });
     } 
-    // 4. SOPORTE NATIVO (Ej. Dispositivos Apple/iOS que no usan Hls.js)
     else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
         videoElement.src = url;
         videoElement.addEventListener('loadedmetadata', function() {
@@ -666,7 +677,35 @@ async function reproducirCanal(url, infoStream) {
                 if (isEnter && (document.activeElement.tagName === 'BUTTON')) document.activeElement.click();
             }
         });
- 
+ // --- PEGAR ESTA FUNCIÓN NUEVA ---
+async function abrirReproductorNativo(url, nombreCanal, nombreOpcion) {
+    if (window.Capacitor) {
+        try {
+            let CustomPlayer = null;
+
+            if (window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
+                CustomPlayer = window.Capacitor.Plugins.CustomPlayer;
+            } else if (typeof window.Capacitor.registerPlugin === 'function') {
+                CustomPlayer = window.Capacitor.registerPlugin('CustomPlayer');
+            }
+
+            if (CustomPlayer) {
+                // Le pasamos a Java el título del canal + la opción elegida (Ej: "ESPN Premium - Opción 1")
+                await CustomPlayer.playVideo({
+                    url: url,
+                    title: `${nombreCanal} (${nombreOpcion})`
+                });
+            } else {
+                alert("No se pudo iniciar el reproductor nativo.");
+            }
+        } catch (err) {
+            alert(`Fallo en el puente nativo: ${err.message || err}`);
+        }
+    } else {
+        alert("Estás en modo web. El video es: " + url);
+    }
+}
+// --------------------------------
         window.onload = () => {
             adaptarInterfazPorDispositivo();
             descargarListaCanales();
