@@ -498,65 +498,91 @@ async function reproducirCanal(url, infoStream) {
     const welcomeScreen = document.getElementById('welcomeScreen');
     if (welcomeScreen) welcomeScreen.classList.add('hidden');
     
+    // Asegurar que el elemento de video sea visible
     if (videoElement) {
         videoElement.pause();
-        videoElement.src = "";
-        videoElement.removeAttribute("src");
-        videoElement.classList.add('hidden');
+        videoElement.classList.remove('hidden');
     }
 
-    let keyIdHex = null;
-    let keyHex = null;
+    // 1. LIMPIEZA DE INSTANCIAS PREVIAS
+    if (hls) {
+        hls.destroy();
+        hls = null;
+    }
 
+    // 2. EXTRAER LLAVES DRM (ClearKey) SI EXISTEN
+    let drmConfig = null;
     if (infoStream) {
         try {
-            if (infoStream.keyId && infoStream.key) {
-                keyIdHex = infoStream.keyId;
-                keyHex = infoStream.key;
-            } else if (infoStream.drm && infoStream.drm.keyId && infoStream.drm.key) {
-                keyIdHex = infoStream.drm.keyId;
-                keyHex = infoStream.drm.key;
+            let keyIdHex = infoStream.keyId || (infoStream.drm && infoStream.drm.keyId);
+            let keyHex = infoStream.key || (infoStream.drm && infoStream.drm.key);
+
+            if (keyIdHex && keyHex) {
+                // Configuración ClearKey requerida por Hls.js
+                drmConfig = {
+                    "org.w3.clearkey": {
+                        "clearkeys": {
+                            [keyIdHex]: keyHex
+                        }
+                    }
+                };
+                console.log("DRM detectado y configurado en el reproductor.");
             }
         } catch (e) {
-            console.error("Error DRM:", e);
+            console.error("Error al procesar DRM:", e);
         }
     }
 
-    // ⚡ CONTROL ULTRA SEGURO (Buscamos el plugin por ambos caminos de Capacitor)
-    if (window.Capacitor) {
-        try {
-            let CustomPlayer = null;
+    // 3. REPRODUCCIÓN CON HLS.JS
+    if (Hls.isSupported()) {
+        // Creamos la configuración inicial de Hls.js
+        let hlsConfig = {
+            maxMaxBufferLength: 10 // Reduce latencia en la app
+        };
 
-            // Camino 1: Ver si Capacitor ya lo registró automáticamente en sus Plugins globales
-            if (window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
-                CustomPlayer = window.Capacitor.Plugins.CustomPlayer;
-            } 
-            // Camino 2: Intentar forzar el registro manual (CUIDANDO MAYÚSCULAS PERFECTAMENTE)
-            else if (typeof window.Capacitor.registerPlugin === 'function') {
-                CustomPlayer = window.Capacitor.registerPlugin('CustomPlayer');
-            }
-
-            // Si logramos enganchar el código Java por cualquiera de las dos vías:
-            if (CustomPlayer) {
-                await CustomPlayer.playVideo({
-                    url: url,
-                    keyId: keyIdHex || null,
-                    key: keyHex || null
-                });
-                ocultarLoader();
-            } else {
-                ocultarLoader();
-                // Si llega acá, es porque Android Studio NO está compilando el archivo CustomPlayerPlugin.java
-                mostrarAlerta("Java no activó el Plugin. Rebuild necesario en Android Studio.");
-            }
-
-        } catch (err) {
-            ocultarLoader();
-            mostrarAlerta(`Fallo en el puente nativo: ${err.message || err}`);
+        // Si hay llaves DRM, las inyectamos en la configuración
+        if (drmConfig) {
+            hlsConfig.emeEnabled = true;
+            hlsConfig.drmSystems = drmConfig;
         }
-    } else {
+
+        hls = new Hls(hlsConfig);
+        hls.loadSource(url);
+        hls.attachMedia(videoElement);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            ocultarLoader();
+            videoElement.play().catch(err => console.log("Auto-play bloqueado:", err));
+        });
+
+        hls.on(Hls.Events.ERROR, function(event, data) {
+            if (data.fatal) {
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        hls.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        ocultarLoader();
+                        mostrarAlerta("Error crítico en la transmisión.");
+                        break;
+                }
+            }
+        });
+    } 
+    // 4. SOPORTE NATIVO (Ej. Dispositivos Apple/iOS que no usan Hls.js)
+    else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        videoElement.src = url;
+        videoElement.addEventListener('loadedmetadata', function() {
+            ocultarLoader();
+            videoElement.play().catch(err => console.log("Auto-play bloqueado:", err));
+        });
+    } 
+    else {
         ocultarLoader();
-        mostrarAlerta("No estás dentro de la App de Android");
+        mostrarAlerta("Tu dispositivo no soporta reproducción HLS.");
     }
 }
         // CONTROL REMOTO / TECLADO
