@@ -151,6 +151,7 @@
         const txtVolValue = document.getElementById('txtVolValue');
  
         let cacheCanalesGlobal = [];
+        let ultimoCanalFocusIndex = 0;
         let canalActualGlobal = null;
         let hls = null;
         let dashPlayer = null;
@@ -364,60 +365,70 @@ function kodiBase64ToHex(base64String) {
         document.addEventListener('webkitfullscreenchange', manejarCambioFullscreen);
 
 // ====== PEGA ESTO JUSTO ARRIBA DE descargarListaCanales ======
+
 function renderizarMenuCanales() {
     const listaCanales = document.getElementById('listaCanales');
     listaCanales.innerHTML = "";
     
-    cacheCanalesGlobal.forEach((canal) => {
+    cacheCanalesGlobal.forEach((canal, idx) => {
         const btn = document.createElement('button');
         btn.className = "flex items-center w-full text-left bg-neutral-900 hover:bg-neutral-800 focus:bg-blue-600 focus:outline-none p-2 rounded-xl transition-all border border-gray-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-500 shadow-sm group";
+        btn.dataset.idx = idx;
         
         btn.innerHTML = `
             <div class="w-10 h-10 bg-white rounded-lg p-1 mr-3 flex-shrink-0 shadow-inner">
-                <img src="${canal.logo}" class="w-full h-full object-contain" alt="logo">
+                <img src="${canal.logo}" class="w-full h-full object-contain" alt="logo" loading="lazy">
             </div>
             <div class="flex flex-col flex-1 truncate">
                 <span class="text-white font-bold text-sm tracking-wide truncate">${canal.nombre}</span>
                 <span class="text-blue-400 text-[10px] font-black uppercase tracking-widest mt-0.5">${canal.categoria || 'CANAL'}</span>
             </div>
+            <span class="text-gray-700 group-hover:text-blue-400 group-focus:text-white text-base ml-2 transition-colors">▶</span>
         `;
         
-        btn.onclick = () => seleccionarCanal(canal);
+        btn.onclick = () => { ultimoCanalFocusIndex = idx; seleccionarCanal(canal); };
+        btn.onfocus = () => { ultimoCanalFocusIndex = idx; };
         listaCanales.appendChild(btn);
     });
 }
-// =============================================================
 
-async function descargarListaCanales() {
+async function descargarListaCanales(intento = 1) {
+    const welcomeInstruction = document.getElementById('welcomeInstruction');
+    const maxIntentos = 4;
     try {
-        const res = await fetch('https://casta-app.onrender.com/api/canales');
-        
-        // Si el servidor responde con un error (403, 404, 500, etc) lo atrapamos aquí
-        if (!res.ok) {
-            throw new Error(`Código de estado HTTP: ${res.status}`);
+        if (welcomeInstruction) {
+            welcomeInstruction.textContent = intento === 1 ? "Conectando con el servidor..." : `Reintentando (${intento}/${maxIntentos})...`;
         }
 
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        const res = await fetch('https://casta-app.onrender.com/api/canales', { signal: controller.signal });
+        clearTimeout(timeout);
+
+        if (!res.ok) throw new Error(`Código de estado HTTP: ${res.status}`);
+
         const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) throw new Error("Lista de canales vacía");
+
         cacheCanalesGlobal = data;
         renderizarMenuCanales();
         
-        const welcomeInstruction = document.getElementById('welcomeInstruction');
-        if (welcomeInstruction) {
-            welcomeInstruction.textContent = "Seleccione un canal de la lista.";
-        }
+        if (welcomeInstruction) welcomeInstruction.textContent = "Seleccione un canal de la lista.";
         
         if (esTV) {
             setTimeout(() => {
-                const primerBoton = listaCanales.querySelector('button');
-                if (primerBoton) primerBoton.focus();
+                const todos = Array.from(listaCanales.querySelectorAll('button'));
+                if (todos[0]) { todos[0].focus(); ultimoCanalFocusIndex = 0; }
             }, 800);
         }
     } catch (err) { 
-        console.error("Error cargando canales:", err); 
-        const welcomeInstruction = document.getElementById('welcomeInstruction');
-        if (welcomeInstruction) {
-            // Ahora la pantalla te dirá exactamente QUÉ falló (ej. si fue un bloqueo o formato)
-            welcomeInstruction.textContent = `Error: ${err.message}`;
+        console.error(`Error cargando canales (intento ${intento}):`, err);
+        if (intento < maxIntentos) {
+            const espera = intento * 4000;
+            if (welcomeInstruction) welcomeInstruction.textContent = `Reintentando en ${espera/1000}s...`;
+            setTimeout(() => descargarListaCanales(intento + 1), espera);
+        } else if (welcomeInstruction) {
+            welcomeInstruction.textContent = `Error: ${err.message}. Recargá la app.`;
         }
     }
 }
@@ -439,7 +450,7 @@ function seleccionarCanal(canal) {
             b.onclick = function() { 
                 this.blur(); 
                 
-                // URL directa → va directo a ExoPlayer (APK) o hls.js (web), sin proxy
+                // URL directa → hls.js reproduce dentro del WebView, sin proxy
                 if (opc.url) {
                     reproducirCanal(opc.url, null);
                 } else if (opc.id) {
@@ -497,98 +508,93 @@ async function reproducirCanal(url, infoStream) {
     mostrarLoader();
     const welcomeScreen = document.getElementById('welcomeScreen');
     if (welcomeScreen) welcomeScreen.classList.add('hidden');
-    
-    // 🚀 PUENTE NATIVO ANDROID: Si estamos en la app, desviamos el flujo a Java
-    if (window.Capacitor) {
-        try {
-            let CustomPlayer = null;
-            if (window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
-                CustomPlayer = window.Capacitor.Plugins.CustomPlayer;
-            } else if (typeof window.Capacitor.registerPlugin === 'function') {
-                CustomPlayer = window.Capacitor.registerPlugin('CustomPlayer');
-            }
 
+    // Extraer llaves DRM si el servidor las mandó
+    let keyIdHex = null, keyHex = null;
+    if (infoStream && infoStream.drm) {
+        try {
+            if (infoStream.drm.type === 'clearkey' && infoStream.drm.key) {
+                const decoded = JSON.parse(atob(infoStream.drm.key));
+                if (decoded.keys && decoded.keys[0]) {
+                    keyIdHex = kodiBase64ToHex(decoded.keys[0].kid);
+                    keyHex   = kodiBase64ToHex(decoded.keys[0].k);
+                }
+            } else if (infoStream.drm['org.w3.clearkey']) {
+                const ck = infoStream.drm['org.w3.clearkey'].clearkeys;
+                const kid = Object.keys(ck)[0];
+                keyIdHex = kodiBase64ToHex(kid);
+                keyHex   = kodiBase64ToHex(ck[kid]);
+            }
+        } catch(e) { console.error("Error parseando DRM:", e); }
+    }
+
+    // ── APK Android: ExoPlayer nativo para URLs directas (evita CORS del WebView) ──
+    const estaEnAPK = !!(window.Capacitor);
+    if (estaEnAPK) {
+        try {
+            let CustomPlayer = window.Capacitor.Plugins?.CustomPlayer
+                || (typeof window.Capacitor.registerPlugin === 'function' ? window.Capacitor.registerPlugin('CustomPlayer') : null);
             if (CustomPlayer) {
+                await CustomPlayer.playVideo({ url, keyId: keyIdHex, key: keyHex });
                 ocultarLoader();
-                const tituloCanal = canalActualGlobal ? canalActualGlobal.nombre : "CASTA-APP";
-                
-                // Enviamos la URL fija o la del bot directamente a ExoPlayer nativo
-                await CustomPlayer.playVideo({
-                    url: url,
-                    title: tituloCanal
-                });
-                return; // Cortamos acá para que no intente reproducir en la web
+                return;
             }
-        } catch (err) {
-            console.error("Fallo al conectar con CustomPlayer nativo:", err);
+        } catch(err) {
+            console.error("ExoPlayer falló, usando WebView:", err);
         }
     }
 
-    // 🖥️ RESPALDO MODO WEB (Tu código original por si lo pruebas en la PC)
-    if (videoElement) {
-        videoElement.pause();
-        videoElement.classList.remove('hidden');
-    }
+    // ── Navegador / Smart TV / Web: hls.js dentro del WebView ──
+    if (hls) { hls.destroy(); hls = null; }
+    if (dashPlayer) { try { dashPlayer.destroy(); } catch(e){} dashPlayer = null; }
+    videoElement.pause();
+    videoElement.src = "";
+    videoElement.removeAttribute("src");
+    videoElement.classList.remove('hidden');
 
-    if (hls) {
-        hls.destroy();
-        hls = null;
-    }
-
-    let drmConfig = null;
-    if (infoStream) {
-        try {
-            let keyIdHex = infoStream.keyId || (infoStream.drm && infoStream.drm.keyId);
-            let keyHex = infoStream.key || (infoStream.drm && infoStream.drm.key);
-
-            if (keyIdHex && keyHex) {
-                drmConfig = {
-                    "org.w3.clearkey": {
-                        "clearkeys": { [keyIdHex]: keyHex }
-                    }
-                };
-                console.log("DRM detectado y configurado en el reproductor.");
-            }
-        } catch (e) {
-            console.error("Error al procesar DRM:", e);
+    // DASH (.mpd)
+    if (url.includes('.mpd') && typeof dashjs !== 'undefined') {
+        dashPlayer = dashjs.MediaPlayer().create();
+        if (keyIdHex && keyHex) {
+            dashPlayer.setProtectionData({ "org.w3.clearkey": { "clearkeys": { [keyIdHex]: keyHex } } });
         }
+        dashPlayer.setAutoPlay(true);
+        dashPlayer.initialize(videoElement, url, true);
+        dashPlayer.on(dashjs.MediaPlayer.events.CAN_PLAY, () => { ocultarLoader(); });
+        dashPlayer.on(dashjs.MediaPlayer.events.ERROR, () => { ocultarLoader(); mostrarAlerta("Error en el stream."); });
+        return;
     }
 
+    // HLS — hls.js
     if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-        let hlsConfig = { maxMaxBufferLength: 10 };
-        if (drmConfig) {
-            hlsConfig.emeEnabled = true;
-            hlsConfig.drmSystems = drmConfig;
-        }
-
-        hls = new Hls(hlsConfig);
+        hls = new Hls({ maxMaxBufferLength: 10, enableWorker: true, lowLatencyMode: true });
         hls.loadSource(url);
         hls.attachMedia(videoElement);
-        
         hls.on(Hls.Events.MANIFEST_PARSED, function() {
             ocultarLoader();
-            videoElement.play().catch(err => console.log("Auto-play bloqueado:", err));
+            videoElement.muted = true;
+            videoElement.play()
+                .then(() => { setTimeout(() => { videoElement.muted = false; videoElement.volume = 1.0; actualizarIndicadorVolumen(); }, 300); })
+                .catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, function(event, data) {
+            if (!data.fatal) return;
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+            else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+            else { hls.destroy(); hls = null; ocultarLoader(); mostrarAlerta("Error crítico en la transmisión."); }
         });
 
-        hls.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) {
-                switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
-                    case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-                    default: ocultarLoader(); mostrarAlerta("Error crítico en la transmisión."); break;
-                }
-            }
-        });
-    } 
-    else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+    // Safari / iOS nativo
+    } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
         videoElement.src = url;
-        videoElement.addEventListener('loadedmetadata', function() {
+        videoElement.addEventListener('loadedmetadata', function once() {
+            this.removeEventListener('loadedmetadata', once);
             ocultarLoader();
-            videoElement.play().catch(err => console.log("Auto-play bloqueado:", err));
+            videoElement.play().catch(() => {});
         });
-   } else {
+    } else {
         ocultarLoader();
-        mostrarAlerta("Tu dispositivo no soporta reproducción HLS o la librería no cargó correctamente.");
+        mostrarAlerta("Tu dispositivo no soporta reproducción HLS.");
     }
 }
         // CONTROL REMOTO / TECLADO
@@ -617,7 +623,11 @@ async function reproducirCanal(url, infoStream) {
                         } else {
                             mostrarSidebarCompleto(); 
                         }
-                        setTimeout(() => { if (botones.length > 0) botones[0].focus(); }, 150);
+                        setTimeout(() => {
+                            const todos = Array.from(listaCanales.querySelectorAll('button'));
+                            const target = todos.find(b => parseInt(b.dataset.idx) === ultimoCanalFocusIndex) || todos[0];
+                            if (target) { target.focus(); target.scrollIntoView({ block: "center", behavior: "smooth" }); }
+                        }, 150);
                         return;
                     }
                     mostrarControlesInteractivos();
@@ -672,35 +682,6 @@ async function reproducirCanal(url, infoStream) {
                 if (isEnter && (document.activeElement.tagName === 'BUTTON')) document.activeElement.click();
             }
         });
- // --- PEGAR ESTA FUNCIÓN NUEVA ---
-async function abrirReproductorNativo(url, nombreCanal, nombreOpcion) {
-    if (window.Capacitor) {
-        try {
-            let CustomPlayer = null;
-
-            if (window.Capacitor.Plugins && window.Capacitor.Plugins.CustomPlayer) {
-                CustomPlayer = window.Capacitor.Plugins.CustomPlayer;
-            } else if (typeof window.Capacitor.registerPlugin === 'function') {
-                CustomPlayer = window.Capacitor.registerPlugin('CustomPlayer');
-            }
-
-            if (CustomPlayer) {
-                // Le pasamos a Java el título del canal + la opción elegida (Ej: "ESPN Premium - Opción 1")
-                await CustomPlayer.playVideo({
-                    url: url,
-                    title: `${nombreCanal} (${nombreOpcion})`
-                });
-            } else {
-                alert("No se pudo iniciar el reproductor nativo.");
-            }
-        } catch (err) {
-            alert(`Fallo en el puente nativo: ${err.message || err}`);
-        }
-    } else {
-        alert("Estás en modo web. El video es: " + url);
-    }
-}
-// --------------------------------
         window.onload = () => {
             adaptarInterfazPorDispositivo();
             descargarListaCanales();
