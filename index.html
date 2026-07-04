@@ -528,23 +528,7 @@ async function reproducirCanal(url, infoStream) {
         } catch(e) { console.error("Error parseando DRM:", e); }
     }
 
-    // ── APK Android: ExoPlayer nativo para URLs directas (evita CORS del WebView) ──
-    const estaEnAPK = !!(window.Capacitor);
-    if (estaEnAPK) {
-        try {
-            let CustomPlayer = window.Capacitor.Plugins?.CustomPlayer
-                || (typeof window.Capacitor.registerPlugin === 'function' ? window.Capacitor.registerPlugin('CustomPlayer') : null);
-            if (CustomPlayer) {
-                await CustomPlayer.playVideo({ url, keyId: keyIdHex, key: keyHex });
-                ocultarLoader();
-                return;
-            }
-        } catch(err) {
-            console.error("ExoPlayer falló, usando WebView:", err);
-        }
-    }
-
-    // ── Navegador / Smart TV / Web: hls.js dentro del WebView ──
+    // ── Reproducción dentro del WebView con hls.js ──
     if (hls) { hls.destroy(); hls = null; }
     if (dashPlayer) { try { dashPlayer.destroy(); } catch(e){} dashPlayer = null; }
     videoElement.pause();
