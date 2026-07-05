@@ -190,6 +190,12 @@ function kodiBase64ToHex(base64String) {
             sidebar.classList.remove('hidden');
             playerArea.style.width = '';
             playerArea.style.height = '';
+            // Restaurar posición en el canal que se estaba viendo
+            setTimeout(() => {
+                const todos = Array.from(listaCanales.querySelectorAll('button'));
+                const target = todos.find(b => parseInt(b.dataset.idx) === ultimoCanalFocusIndex) || todos[0];
+                if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }, 80);
         }
  
         function mostrarLoader() { 
