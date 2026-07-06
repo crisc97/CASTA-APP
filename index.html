@@ -442,25 +442,30 @@ function seleccionarCanal(canal) {
     canalActualGlobal = canal;
     containerOpciones.innerHTML = "";
     
-    // CORRECCIÓN: Ocultar la pantalla de bienvenida de inmediato para que 
-    // no tape la zona de reproducción ni los botones de opciones (z-10)
     const welcomeScreen = document.getElementById('welcomeScreen');
     if (welcomeScreen) welcomeScreen.classList.add('hidden');
     
     if (canal.opciones && canal.opciones.length > 0) {
         canal.opciones.forEach((opc, index) => {
             const b = document.createElement('button');
+            // Resaltar el botón activo
             b.className = "bg-neutral-900 hover:bg-blue-600 border border-gray-800 text-white font-bold px-4 py-2 rounded-lg text-xs tracking-wider transition-all uppercase focus:outline-none focus:bg-blue-600 focus:ring-4 focus:ring-blue-400 focus:scale-110 shadow-lg";
             b.textContent = opc.nombre;
+            b.dataset.opcIndex = index;
             
             b.onclick = function() { 
-                this.blur(); 
-                
-                // URL directa → hls.js reproduce dentro del WebView, sin proxy
+                this.blur();
+                // Marcar botón activo visualmente
+                containerOpciones.querySelectorAll('button').forEach(x => {
+                    x.classList.remove('bg-blue-700', 'border-blue-500');
+                    x.classList.add('bg-neutral-900', 'border-gray-800');
+                });
+                this.classList.remove('bg-neutral-900', 'border-gray-800');
+                this.classList.add('bg-blue-700', 'border-blue-500');
+
                 if (opc.url) {
                     reproducirCanal(opc.url, null);
                 } else if (opc.id) {
-                    // Canal con bot/scraping → consulta Render
                     consultarServidorYReproducir(opc.id);
                 }
 
@@ -471,10 +476,12 @@ function seleccionarCanal(canal) {
             containerOpciones.appendChild(b);
         });
         
-        const primerBotonOpc = containerOpciones.querySelector('button');
-        if (primerBotonOpc) primerBotonOpc.focus();
-        
         mostrarControlesInteractivos();
+
+        // ── Auto-reproducir la primera opción directamente ──
+        const primerBtn = containerOpciones.querySelector('button');
+        if (primerBtn) primerBtn.click();
+
     } else { 
         mostrarAlerta(); 
     }
