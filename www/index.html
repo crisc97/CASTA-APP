@@ -131,6 +131,27 @@
         const esCapacitorNativo = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorVideoPlayer);
  
         const videoElement = document.getElementById('video-player');
+
+        // ── Keep-alive del video en Android WebView ───────────────────────
+        // El WebView suspende el video cuando el layout cambia (sidebar aparece)
+        // y lo deja en negro con solo audio. Esto lo previene.
+        videoElement.addEventListener('pause', function() {
+            // Solo re-play si hay fuente cargada y no fue el usuario quien pausó
+            if (videoElement.src || videoElement.srcObject || (window._hlsActivo && window._hlsActivo.media)) {
+                setTimeout(() => {
+                    if (videoElement.paused && !window._usuarioPauso) {
+                        videoElement.play().catch(() => {});
+                    }
+                }, 300);
+            }
+        });
+
+        // Recuperar video al volver a la app desde background
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && videoElement.paused && !window._usuarioPauso) {
+                videoElement.play().catch(() => {});
+            }
+        });
         const iframeElement = document.getElementById('iframeElement'); 
         const playerArea = document.getElementById('playerArea');
         const loader = document.getElementById('loader');
@@ -565,6 +586,7 @@ async function reproducirCanal(url, infoStream) {
     // HLS — hls.js
     if (typeof Hls !== 'undefined' && Hls.isSupported()) {
         hls = new Hls({ maxMaxBufferLength: 10, enableWorker: true, lowLatencyMode: true });
+        window._hlsActivo = hls;
         hls.loadSource(url);
         hls.attachMedia(videoElement);
         hls.on(Hls.Events.MANIFEST_PARSED, function() {
@@ -578,7 +600,7 @@ async function reproducirCanal(url, infoStream) {
             if (!data.fatal) return;
             if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
             else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-            else { hls.destroy(); hls = null; ocultarLoader(); mostrarAlerta("Error crítico en la transmisión."); }
+            else { hls.destroy(); hls = null; window._hlsActivo = null; ocultarLoader(); mostrarAlerta("Error crítico en la transmisión."); }
         });
 
     // Safari / iOS nativo
