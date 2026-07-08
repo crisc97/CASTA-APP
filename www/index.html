@@ -585,7 +585,28 @@ async function reproducirCanal(url, infoStream) {
 
     // HLS — hls.js
     if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-        hls = new Hls({ maxMaxBufferLength: 10, enableWorker: true, lowLatencyMode: true });
+        hls = new Hls({
+            // ── Buffer reducido para streams en vivo ──────────────────────
+            maxBufferLength: 4,          // Máximo 4s de buffer adelante (VLC usa ~2s)
+            maxMaxBufferLength: 6,       // Nunca superar 6s bajo ninguna condición
+            backBufferLength: 0,         // No guardar nada del pasado (libera RAM)
+
+            // ── Sincronización con el borde del stream en vivo ────────────
+            liveSyncDurationCount: 2,    // Quedarse a 2 segmentos del borde live
+            liveMaxLatencyDurationCount: 4, // Si supera 4 segmentos de retraso, salta al borde
+            liveDurationInfinity: true,  // Tratar el stream como infinito (no cortar)
+
+            // ── Recuperación rápida ante errores de red ───────────────────
+            fragLoadingMaxRetry: 6,
+            manifestLoadingMaxRetry: 3,
+            levelLoadingMaxRetry: 4,
+            fragLoadingRetryDelay: 500,  // Reintentar cada 500ms (no 1000ms por defecto)
+
+            // ── Performance ───────────────────────────────────────────────
+            enableWorker: true,
+            lowLatencyMode: true,
+            progressive: false,          // Desactivar para streams HLS puros
+        });
         window._hlsActivo = hls;
         hls.loadSource(url);
         hls.attachMedia(videoElement);
@@ -596,6 +617,17 @@ async function reproducirCanal(url, infoStream) {
                 .then(() => { setTimeout(() => { videoElement.muted = false; videoElement.volume = 1.0; actualizarIndicadorVolumen(); }, 300); })
                 .catch(() => {});
         });
+
+        // Si el video se traba, saltar al borde del stream en vivo
+        hls.on(Hls.Events.FRAG_LOAD_EMERGENCY_ABORTED, function() {
+            if (hls) hls.startLoad(-1); // -1 = desde el borde live
+        });
+
+        videoElement.addEventListener('stalled', function() {
+            if (hls && hls.liveSyncPosition) {
+                videoElement.currentTime = hls.liveSyncPosition;
+            }
+        }, { once: false });
         hls.on(Hls.Events.ERROR, function(event, data) {
             if (!data.fatal) return;
             if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
