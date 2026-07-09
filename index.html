@@ -7,6 +7,7 @@
     <title>📺CASTA-APP⚽</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
     <style>
         body { background-color: black !important; }
         
@@ -583,29 +584,50 @@ async function reproducirCanal(url, infoStream) {
         return;
     }
 
-    // HLS — hls.js
+    // MPEG-TS directo — URLs sin extensión tipo Xtream Codes (host:port/user/pass/id)
+    const esHls = url.includes('.m3u8') || url.includes('.m3u');
+    const esMpegTs = !esHls && !url.includes('.mpd')
+        && typeof mpegts !== 'undefined' && mpegts.isSupported();
+
+    if (esMpegTs) {
+        if (mpegtsPlayer) { mpegtsPlayer.destroy(); mpegtsPlayer = null; }
+        mpegtsPlayer = mpegts.createPlayer(
+            { type: 'mpegts', isLive: true, url: url, cors: true },
+            { enableWorker: true, liveBufferLatencyChasing: true,
+              liveBufferLatencyMaxLatency: 4.0, liveBufferLatencyMinRemain: 0.5 }
+        );
+        mpegtsPlayer.attachMediaElement(videoElement);
+        mpegtsPlayer.load();
+        mpegtsPlayer.on(mpegts.Events.ERROR, () => {
+            mpegtsPlayer.destroy(); mpegtsPlayer = null;
+            reproducirConHls(url);
+        });
+        videoElement.muted = true;
+        mpegtsPlayer.play()
+            .then(() => { ocultarLoader(); setTimeout(() => { videoElement.muted = false; videoElement.volume = 1.0; actualizarIndicadorVolumen(); }, 300); })
+            .catch(() => { mpegtsPlayer.destroy(); mpegtsPlayer = null; reproducirConHls(url); });
+        return;
+    }
+
+    reproducirConHls(url);
+}
+
+function reproducirConHls(url) {
+    if (hls) { hls.destroy(); hls = null; }
     if (typeof Hls !== 'undefined' && Hls.isSupported()) {
         hls = new Hls({
-            // ── Buffer reducido para streams en vivo ──────────────────────
-            maxBufferLength: 4,          // Máximo 4s de buffer adelante (VLC usa ~2s)
-            maxMaxBufferLength: 6,       // Nunca superar 6s bajo ninguna condición
-            backBufferLength: 0,         // No guardar nada del pasado (libera RAM)
-
-            // ── Sincronización con el borde del stream en vivo ────────────
-            liveSyncDurationCount: 2,    // Quedarse a 2 segmentos del borde live
-            liveMaxLatencyDurationCount: 4, // Si supera 4 segmentos de retraso, salta al borde
-            liveDurationInfinity: true,  // Tratar el stream como infinito (no cortar)
-
-            // ── Recuperación rápida ante errores de red ───────────────────
+            maxBufferLength: 8,
+            maxMaxBufferLength: 16,
+            backBufferLength: 4,
+            liveSyncDurationCount: 3,
+            liveMaxLatencyDurationCount: 6,
+            liveDurationInfinity: true,
             fragLoadingMaxRetry: 6,
-            manifestLoadingMaxRetry: 3,
+            manifestLoadingMaxRetry: 4,
             levelLoadingMaxRetry: 4,
-            fragLoadingRetryDelay: 500,  // Reintentar cada 500ms (no 1000ms por defecto)
-
-            // ── Performance ───────────────────────────────────────────────
+            fragLoadingRetryDelay: 500,
             enableWorker: true,
-            lowLatencyMode: true,
-            progressive: false,          // Desactivar para streams HLS puros
+            lowLatencyMode: false,
         });
         window._hlsActivo = hls;
         hls.loadSource(url);
